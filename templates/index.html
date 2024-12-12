@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de RD com Login</title>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <style>
+        /* Estilo Global */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        body {
+            background-color: #f4f6f9;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            margin-top: 20px;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 26px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        h2 {
+            color: #444;
+            font-size: 20px;
+            margin-top: 30px;
+            border-bottom: 2px solid #007BFF;
+            padding-bottom: 5px;
+        }
+
+        label {
+            display: block;
+            margin: 15px 0 5px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        input[type="text"],
+        input[type="date"],
+        input[type="number"],
+        input[type="password"],
+        input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+            font-size: 16px;
+            color: #333;
+        }
+
+        button {
+            display: inline-block;
+            margin-top: 20px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+            width: 100%;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        ul {
+            list-style-type: none;
+            margin: 10px 0;
+            padding: 0;
+        }
+
+        .rd-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #f9f9f9;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+
+        .rd-info {
+            flex: 1;
+            color: #555;
+        }
+
+        .rd-info a {
+            color: #007BFF;
+            text-decoration: none;
+        }
+
+        .rd-info a:hover {
+            text-decoration: underline;
+        }
+
+        .action-btn {
+            margin-left: 5px;
+            padding: 4px 8px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background-color 0.3s ease;
+        }
+
+        .atender-btn { background-color: #28a745; color: white; }
+        .aprovar-btn { background-color: #ffc107; color: white; }
+        .excluir-btn { background-color: #dc3545; color: white; }
+
+        .atender-btn:hover { background-color: #218838; }
+        .aprovar-btn:hover { background-color: #e0a800; }
+        .excluir-btn:hover { background-color: #c82333; }
+
+        #login-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            width: 100%;
+        }
+
+        #sistema-container {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Tela de Login -->
+    <div id="login-container">
+        <h1>Login no Sistema de RD</h1>
+        <label>Usuário:</label>
+        <input type="text" id="login-usuario" placeholder="Digite seu usuário">
+        
+        <label>Senha:</label>
+        <input type="password" id="login-senha" placeholder="Digite sua senha">
+        
+        <button onclick="fazerLogin()">Entrar</button>
+    </div>
+
+    <!-- Sistema de RD -->
+    <div id="sistema-container" class="container">
+        <h1>Sistema de Requisição de Demanda (RD)</h1>
+
+        <!-- Botão para sair do sistema -->
+        <button onclick="sairLogin()">Sair</button>
+
+        <!-- Formulário para solicitar uma nova RD -->
+        <h2>Nova Solicitação de RD</h2>
+        <label>Funcionário:</label>
+        <input type="text" id="funcionario" placeholder="Nome do Funcionário">
+        
+        <label>Data de Solicitação:</label>
+        <input type="date" id="data_solicitacao">
+        
+        <label>Valor:</label>
+        <input type="number" id="valor" placeholder="Valor da RD">
+        
+        <label>Centro de Custo:</label>
+        <input type="text" id="centro_custo" placeholder="Centro de Custo">
+        
+        <label>Anexar Arquivo (PDF, Word, XLSX):</label>
+        <input type="file" id="arquivo" accept=".pdf,.doc,.docx,.xlsx">
+
+        <button onclick="solicitarRD()">Enviar Solicitação</button>
+
+        <h2>RDs Pendentes</h2>
+        <ul id="pendentes"></ul>
+
+        <h2>RDs Atendidas</h2>
+        <ul id="atendidas"></ul>
+    </div>
+
+    <script>
+        let isAprovador = false;
+
+        function fazerLogin() {
+            const usuario = document.getElementById('login-usuario').value.trim();
+            const senha = document.getElementById('login-senha').value.trim();
+
+            if ((usuario === 'solicitante' && senha === '351073') || (usuario === 'aprovador' && senha === '115289')) {
+                document.getElementById('login-container').style.display = 'none';
+                document.getElementById('sistema-container').style.display = 'block';
+                isAprovador = (usuario === 'aprovador');
+            } else {
+                alert('Usuário ou senha incorretos!');
+            }
+        }
+
+        function sairLogin() {
+            document.getElementById('login-container').style.display = 'flex';
+            document.getElementById('sistema-container').style.display = 'none';
+        }
+
+        function solicitarRD() {
+            const funcionario = document.getElementById('funcionario').value.trim();
+            const dataSolicitacao = document.getElementById('data_solicitacao').value;
+            const valor = document.getElementById('valor').value;
+            const centroCusto = document.getElementById('centro_custo').value.trim();
+
+            if (!funcionario || !dataSolicitacao || !valor || !centroCusto) {
+                alert('Por favor, preencha todos os campos.');
+                return;
+            }
+
+            const pendentesList = document.getElementById('pendentes');
+            const li = document.createElement('li');
+            li.className = 'rd-item';
+
+            li.innerHTML = `
+                <div class="rd-info">
+                    <strong>Funcionário:</strong> ${funcionario} <br>
+                    <strong>Data:</strong> ${dataSolicitacao} <br>
+                    <strong>Valor:</strong> R$ ${parseFloat(valor).toFixed(2)} <br>
+                    <strong>Centro de Custo:</strong> ${centroCusto}
+                </div>
+                <div>
+                    <button class="action-btn aprovar-btn" onclick="aprovarRD(this)">Aprovar</button>
+                    <button class="action-btn atender-btn" onclick="atenderRD(this)">Atender</button>
+                    <button class="action-btn excluir-btn" onclick="excluirRD(this)">Excluir</button>
+                </div>
+            `;
+
+            pendentesList.appendChild(li);
+
+            document.getElementById('funcionario').value = '';
+            document.getElementById('data_solicitacao').value = '';
+            document.getElementById('valor').value = '';
+            document.getElementById('centro_custo').value = '';
+        }
+
+        function aprovarRD(button) {
+            const li = button.closest('li');
+            alert('RD Aprovada!');
+            li.remove();
+        }
+
+        function atenderRD(button) {
+            const li = button.closest('li');
+            const atendidasList = document.getElementById('atendidas');
+            atendidasList.appendChild(li);
+            li.querySelector('.aprovar-btn').remove();
+            li.querySelector('.atender-btn').remove();
+        }
+
+        function excluirRD(button) {
+            const li = button.closest('li');
+            li.remove();
+        }
+    </script>
+</body>
+</html>
