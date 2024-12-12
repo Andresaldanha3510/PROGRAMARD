@@ -3,278 +3,503 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de RD com Login</title>
-    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <title>Gerenciamento de RDs</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        /* Estilo Global */
-        * {
-            box-sizing: border-box;
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f2f3f5;
+            color: #2c3e50;
             margin: 0;
             padding: 0;
-            font-family: Arial, sans-serif;
         }
 
-        body {
-            background-color: #f4f6f9;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px;
+        .top-bar {
+            background: #34495e;
+            padding: 10px 20px;
+            text-align: right;
+            color: #ffffff;
         }
 
-        .container {
-            max-width: 900px;
-            width: 100%;
-            background-color: #ffffff;
-            border-radius: 10px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            padding: 30px;
-            margin-top: 20px;
-        }
-
-        h1 {
-            color: #333;
-            font-size: 26px;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-
-        h2 {
-            color: #444;
-            font-size: 20px;
-            margin-top: 30px;
-            border-bottom: 2px solid #007BFF;
-            padding-bottom: 5px;
-        }
-
-        label {
-            display: block;
-            margin: 15px 0 5px;
-            font-weight: bold;
-            color: #555;
-        }
-
-        input[type="text"],
-        input[type="date"],
-        input[type="number"],
-        input[type="password"],
-        input[type="file"] {
-            width: 100%;
-            padding: 10px;
-            margin-top: 5px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            background-color: #f9f9f9;
-            font-size: 16px;
-            color: #333;
-        }
-
-        button {
-            display: inline-block;
-            margin-top: 20px;
-            background-color: #007BFF;
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: background-color 0.3s ease;
-            width: 100%;
-        }
-
-        button:hover {
-            background-color: #0056b3;
-        }
-
-        ul {
-            list-style-type: none;
-            margin: 10px 0;
-            padding: 0;
-        }
-
-        .rd-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background-color: #f9f9f9;
-            padding: 15px;
-            margin-bottom: 10px;
-            border-radius: 5px;
-            border: 1px solid #ddd;
-        }
-
-        .rd-info {
-            flex: 1;
-            color: #555;
-        }
-
-        .rd-info a {
-            color: #007BFF;
+        .top-bar a {
+            color: #ecf0f1;
+            font-weight: 600;
             text-decoration: none;
+            margin-left: 20px;
         }
 
-        .rd-info a:hover {
+        .top-bar a:hover {
             text-decoration: underline;
         }
 
-        .action-btn {
-            margin-left: 5px;
-            padding: 4px 8px;
+        h1, h2 {
+            font-weight: 700;
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 20px;
+            margin-top: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #ffffff;
+            margin-top: 30px;
+            margin-bottom: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        /* Formulários principais (login, adicionar, etc.) */
+        .main-form {
+            background-color: #ffffff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
+            border: 1px solid #e1e1e1;
+        }
+
+        .main-form label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #34495e;
+        }
+
+        .main-form input, .main-form button {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #dcdde1;
+            border-radius: 5px;
+            font-size: 1rem;
+            box-sizing: border-box;
+        }
+
+        .main-form button {
+            background-color: #3498db;
+            color: #ffffff;
+            font-weight: 600;
             border: none;
-            border-radius: 3px;
             cursor: pointer;
-            font-size: 12px;
+            transition: background-color 0.3s ease;
+            width: auto;
+            display: inline-block;
+            padding: 10px 20px;
+        }
+
+        .main-form button:hover {
+            background-color: #2980b9;
+        }
+
+        /* Formulários de ação (Aprovar, Excluir, etc.) sem fundo */
+        .action-form {
+            background: none;
+            border: none;
+            box-shadow: none;
+            padding: 0;
+            margin: 0;
+            display: inline;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        table th, table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ecf0f1;
+            font-size: 0.95rem;
+        }
+
+        table th {
+            background-color: #3498db;
+            color: #ffffff;
+            font-weight: 700;
+        }
+
+        table tr:hover td {
+            background-color: #ecf0f1;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 6px 12px;
+            font-size: 0.85rem;
+            border-radius: 5px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            margin-right: 5px;
+            text-decoration: none;
+            color: #fff;
             transition: background-color 0.3s ease;
         }
 
-        .atender-btn { background-color: #28a745; color: white; }
-        .aprovar-btn { background-color: #ffc107; color: white; }
-        .excluir-btn { background-color: #dc3545; color: white; }
+        .btn-approve { background-color: #2ecc71; }
+        .btn-approve:hover { background-color: #27ae60; }
 
-        .atender-btn:hover { background-color: #218838; }
-        .aprovar-btn:hover { background-color: #e0a800; }
-        .excluir-btn:hover { background-color: #c82333; }
+        .btn-release { background-color: #2980b9; }
+        .btn-release:hover { background-color: #2471a3; }
 
-        #login-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 20px;
-            background-color: #fff;
-            border-radius: 10px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            max-width: 400px;
-            width: 100%;
+        .btn-additional { background-color: #f39c12; }
+        .btn-additional:hover { background-color: #d68910; }
+
+        .btn-fechamento { background-color: #8e44ad; }
+        .btn-fechamento:hover { background-color: #7d3c98; }
+
+        .btn-delete { background-color: #e74c3c; }
+        .btn-delete:hover { background-color: #c0392b; }
+
+        .btn-view { background-color: #1abc9c; }
+        .btn-view:hover { background-color: #16a085; }
+
+        ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
         }
 
-        #sistema-container {
-            display: none;
+        ul li {
+            margin-bottom: 5px;
+        }
+
+        .form-adicional, .form-fechamento {
+            max-width: 600px;
+            margin: 50px auto;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            background: #fff;
+        }
+
+        .form-adicional h2, .form-fechamento h2 {
+            text-align: center;
+        }
+
+        footer {
+            text-align: center;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .main-form input, .main-form button {
+                font-size: 0.9rem;
+            }
+
+            table th, table td {
+                font-size: 0.85rem;
+            }
+
+            .btn {
+                font-size: 0.75rem;
+                padding: 5px 10px;
+            }
         }
     </style>
 </head>
 <body>
-    <!-- Tela de Login -->
-    <div id="login-container">
-        <h1>Login no Sistema de RD</h1>
-        <label>Usuário:</label>
-        <input type="text" id="login-usuario" placeholder="Digite seu usuário">
-        
-        <label>Senha:</label>
-        <input type="password" id="login-senha" placeholder="Digite sua senha">
-        
-        <button onclick="fazerLogin()">Entrar</button>
+    {% if user_role is defined %}
+    <div class="top-bar">
+        Bem-vindo, {{ user_role }}
+        | <a href="{{ url_for('logout') }}">Sair</a>
+    </div>
+    {% endif %}
+
+    <div class="container">
+        <h1>Gerenciamento de RDs</h1>
+
+        {% if user_role is not defined %}
+        <!-- Formulário de Login -->
+        <form action="/" method="POST" class="main-form">
+            {% if error %}
+            <p style="color:red;">{{ error }}</p>
+            {% endif %}
+            <label for="username">Usuário:</label>
+            <input type="text" id="username" name="username" required>
+            <label for="password">Senha:</label>
+            <input type="password" id="password" name="password" required>
+            <button type="submit">Entrar</button>
+        </form>
+
+        {% elif adicional_id %}
+        <!-- Formulário de Crédito Adicional -->
+        <div class="form-adicional">
+            <h2>Solicitar Crédito Adicional para RD #{{ adicional_id }}</h2>
+            <form action="/adicional_submit/{{ adicional_id }}" method="POST" enctype="multipart/form-data" class="main-form">
+                <label for="valor_adicional">Valor Adicional (R$):</label>
+                <input type="number" id="valor_adicional" name="valor_adicional" step="0.01" required>
+                <label for="arquivo">Anexar Arquivos Adicionais (opcional):</label>
+                <input type="file" id="arquivo" name="arquivo" multiple>
+                <button type="submit">Solicitar Adicional</button>
+            </form>
+        </div>
+
+        {% elif fechamento_id %}
+        <!-- Formulário de Fechamento -->
+        <div class="form-fechamento">
+            <h2>Fechamento da RD #{{ fechamento_id }}</h2>
+            <form action="/fechamento_submit/{{ fechamento_id }}" method="POST" enctype="multipart/form-data" class="main-form">
+                <label for="valor_despesa">Valor da Despesa (R$):</label>
+                <input type="number" id="valor_despesa" name="valor_despesa" step="0.01" required>
+                <label for="arquivo">Anexar Arquivos Finais (opcional):</label>
+                <input type="file" id="arquivo" name="arquivo" multiple>
+                <button type="submit">Fechar RD</button>
+            </form>
+        </div>
+
+        {% else %}
+        <!-- Tela principal (Listas + Formulário de Adição) -->
+        {% if can_add %}
+        <form action="/add" method="POST" enctype="multipart/form-data" class="main-form">
+            <label for="solicitante">Solicitante:</label>
+            <input type="text" id="solicitante" name="solicitante" required>
+            
+            <label for="funcionario">Funcionário:</label>
+            <input type="text" id="funcionario" name="funcionario" required>
+            
+            <label for="data">Data:</label>
+            <input type="date" id="data" name="data" required>
+            
+            <label for="centro_custo">Centro de Custo:</label>
+            <input type="text" id="centro_custo" name="centro_custo" required>
+            
+            <label for="valor">Valor (R$):</label>
+            <input type="number" id="valor" name="valor" step="0.01" required>
+            
+            <label for="arquivo">Anexar Arquivos:</label>
+            <input type="file" id="arquivo" name="arquivo" multiple>
+            
+            <button type="submit">Adicionar RD</button>
+        </form>
+        {% endif %}
+
+        {% macro mostrar_valores(rd) %}
+            {% set valor=rd[5] %}
+            {% set valor_adic=rd[7] if rd[7] else 0 %}
+            {% set valor_total=valor+valor_adic %}
+            {% set valor_despesa=rd[9] if rd[9] else 0 %}
+            {% set saldo_devolver=rd[10] if rd[10] else (valor_total - valor_despesa) %}
+            {% set data_fechamento=rd[11] if rd[11] else 'N/A' %}
+            Valor Total: {{ valor_total }}<br>
+            Despesa: {{ valor_despesa }}<br>
+            Saldo a Devolver: {{ saldo_devolver }}<br>
+            Fechado em: {{ data_fechamento }}
+        {% endmacro %}
+
+        <h2>Pedidos Pendentes</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Solicitante</th>
+                    <th>Funcionário</th>
+                    <th>Data</th>
+                    <th>Centro de Custo</th>
+                    <th>Valores</th>
+                    <th>Arquivos</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rd in pendentes %}
+                {% set rd_id=rd[0] %}
+                <tr>
+                    <td>{{ rd_id }}</td>
+                    <td>{{ rd[1] }}</td>
+                    <td>{{ rd[2] }}</td>
+                    <td>{{ rd[3] }}</td>
+                    <td>{{ rd[4] }}</td>
+                    <td>{{ mostrar_valores(rd) }}</td>
+                    <td>
+                        <ul>
+                            {% if anexos[rd_id] is defined %}
+                                {% for arquivo in anexos[rd_id] %}
+                                <li><a href="{{ url_for('uploaded_file', filename=arquivo) }}" class="btn btn-view" target="_blank">Ver {{ arquivo }}</a></li>
+                                {% endfor %}
+                            {% endif %}
+                        </ul>
+                    </td>
+                    <td>
+                        {% if can_approve %}
+                        <form action="/approve/{{ rd_id }}" method="POST" class="action-form">
+                            <button type="submit" class="btn btn-approve">Aprovar</button>
+                        </form>
+                        {% endif %}
+                        {% if can_delete %}
+                        <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
+                            <button type="submit" class="btn btn-delete">Excluir</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <h2>Pedidos Aprovados</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Solicitante</th>
+                    <th>Funcionário</th>
+                    <th>Data</th>
+                    <th>Centro de Custo</th>
+                    <th>Valores</th>
+                    <th>Arquivos</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rd in aprovados %}
+                {% set rd_id=rd[0] %}
+                <tr>
+                    <td>{{ rd_id }}</td>
+                    <td>{{ rd[1] }}</td>
+                    <td>{{ rd[2] }}</td>
+                    <td>{{ rd[3] }}</td>
+                    <td>{{ rd[4] }}</td>
+                    <td>{{ mostrar_valores(rd) }}</td>
+                    <td>
+                        <ul>
+                            {% if anexos[rd_id] is defined %}
+                                {% for arquivo in anexos[rd_id] %}
+                                <li><a href="{{ url_for('uploaded_file', filename=arquivo) }}" class="btn btn-view" target="_blank">Ver {{ arquivo }}</a></li>
+                                {% endfor %}
+                            {% endif %}
+                        </ul>
+                    </td>
+                    <td>
+                        {% if can_release %}
+                        <form action="/release/{{ rd_id }}" method="POST" class="action-form">
+                            <button type="submit" class="btn btn-release">Liberar</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <h2>Pedidos Liberados</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Solicitante</th>
+                    <th>Funcionário</th>
+                    <th>Data</th>
+                    <th>Centro de Custo</th>
+                    <th>Valores</th>
+                    <th>Arquivos</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rd in liberados %}
+                {% set rd_id=rd[0] %}
+                <tr>
+                    <td>{{ rd_id }}</td>
+                    <td>{{ rd[1] }}</td>
+                    <td>{{ rd[2] }}</td>
+                    <td>{{ rd[3] }}</td>
+                    <td>{{ rd[4] }}</td>
+                    <td>{{ mostrar_valores(rd) }}</td>
+                    <td>
+                        <ul>
+                            {% if anexos[rd_id] is defined %}
+                                {% for arquivo in anexos[rd_id] %}
+                                <li><a href="{{ url_for('uploaded_file', filename=arquivo) }}" class="btn btn-view" target="_blank">Ver {{ arquivo }}</a></li>
+                                {% endfor %}
+                            {% endif %}
+                        </ul>
+                    </td>
+                    <td>
+                        {% if can_delete %}
+                        <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
+                            <button type="submit" class="btn btn-delete">Excluir</button>
+                        </form>
+                        {% endif %}
+                        {% if can_request_additional %}
+                        <form action="/" method="GET" class="action-form">
+                            <input type="hidden" name="adicional" value="{{ rd_id }}">
+                            <button type="submit" class="btn btn-additional">Crédito Adicional</button>
+                        </form>
+                        {% endif %}
+                        {% if is_solicitante %}
+                        <form action="/" method="GET" class="action-form">
+                            <input type="hidden" name="fechamento" value="{{ rd_id }}">
+                            <button type="submit" class="btn btn-fechamento">Fechamento</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <h2>Pedidos Fechados</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Solicitante</th>
+                    <th>Funcionário</th>
+                    <th>Data</th>
+                    <th>Centro de Custo</th>
+                    <th>Valores</th>
+                    <th>Arquivos</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rd in fechados %}
+                {% set rd_id=rd[0] %}
+                <tr>
+                    <td>{{ rd_id }}</td>
+                    <td>{{ rd[1] }}</td>
+                    <td>{{ rd[2] }}</td>
+                    <td>{{ rd[3] }}</td>
+                    <td>{{ rd[4] }}</td>
+                    <td>{{ mostrar_valores(rd) }}</td>
+                    <td>
+                        <ul>
+                            {% if anexos[rd_id] is defined %}
+                                {% for arquivo in anexos[rd_id] %}
+                                <li><a href="{{ url_for('uploaded_file', filename=arquivo) }}" class="btn btn-view" target="_blank">Ver {{ arquivo }}</a></li>
+                                {% endfor %}
+                            {% endif %}
+                        </ul>
+                    </td>
+                    <td>
+                        {% if can_delete %}
+                        <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
+                            <button type="submit" class="btn btn-delete">Excluir</button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        {% endif %}
     </div>
 
-    <!-- Sistema de RD -->
-    <div id="sistema-container" class="container">
-        <h1>Sistema de Requisição de Demanda (RD)</h1>
-
-        <!-- Botão para sair do sistema -->
-        <button onclick="sairLogin()">Sair</button>
-
-        <!-- Formulário para solicitar uma nova RD -->
-        <h2>Nova Solicitação de RD</h2>
-        <label>Funcionário:</label>
-        <input type="text" id="funcionario" placeholder="Nome do Funcionário">
-        
-        <label>Data de Solicitação:</label>
-        <input type="date" id="data_solicitacao">
-        
-        <label>Valor:</label>
-        <input type="number" id="valor" placeholder="Valor da RD">
-        
-        <label>Centro de Custo:</label>
-        <input type="text" id="centro_custo" placeholder="Centro de Custo">
-        
-        <label>Anexar Arquivo (PDF, Word, XLSX):</label>
-        <input type="file" id="arquivo" accept=".pdf,.doc,.docx,.xlsx">
-
-        <button onclick="solicitarRD()">Enviar Solicitação</button>
-
-        <h2>RDs Pendentes</h2>
-        <ul id="pendentes"></ul>
-
-        <h2>RDs Atendidas</h2>
-        <ul id="atendidas"></ul>
-    </div>
-
-    <script>
-        let isAprovador = false;
-
-        function fazerLogin() {
-            const usuario = document.getElementById('login-usuario').value.trim();
-            const senha = document.getElementById('login-senha').value.trim();
-
-            if ((usuario === 'solicitante' && senha === '351073') || (usuario === 'aprovador' && senha === '115289')) {
-                document.getElementById('login-container').style.display = 'none';
-                document.getElementById('sistema-container').style.display = 'block';
-                isAprovador = (usuario === 'aprovador');
-            } else {
-                alert('Usuário ou senha incorretos!');
-            }
-        }
-
-        function sairLogin() {
-            document.getElementById('login-container').style.display = 'flex';
-            document.getElementById('sistema-container').style.display = 'none';
-        }
-
-        function solicitarRD() {
-            const funcionario = document.getElementById('funcionario').value.trim();
-            const dataSolicitacao = document.getElementById('data_solicitacao').value;
-            const valor = document.getElementById('valor').value;
-            const centroCusto = document.getElementById('centro_custo').value.trim();
-
-            if (!funcionario || !dataSolicitacao || !valor || !centroCusto) {
-                alert('Por favor, preencha todos os campos.');
-                return;
-            }
-
-            const pendentesList = document.getElementById('pendentes');
-            const li = document.createElement('li');
-            li.className = 'rd-item';
-
-            li.innerHTML = `
-                <div class="rd-info">
-                    <strong>Funcionário:</strong> ${funcionario} <br>
-                    <strong>Data:</strong> ${dataSolicitacao} <br>
-                    <strong>Valor:</strong> R$ ${parseFloat(valor).toFixed(2)} <br>
-                    <strong>Centro de Custo:</strong> ${centroCusto}
-                </div>
-                <div>
-                    <button class="action-btn aprovar-btn" onclick="aprovarRD(this)">Aprovar</button>
-                    <button class="action-btn atender-btn" onclick="atenderRD(this)">Atender</button>
-                    <button class="action-btn excluir-btn" onclick="excluirRD(this)">Excluir</button>
-                </div>
-            `;
-
-            pendentesList.appendChild(li);
-
-            document.getElementById('funcionario').value = '';
-            document.getElementById('data_solicitacao').value = '';
-            document.getElementById('valor').value = '';
-            document.getElementById('centro_custo').value = '';
-        }
-
-        function aprovarRD(button) {
-            const li = button.closest('li');
-            alert('RD Aprovada!');
-            li.remove();
-        }
-
-        function atenderRD(button) {
-            const li = button.closest('li');
-            const atendidasList = document.getElementById('atendidas');
-            atendidasList.appendChild(li);
-            li.querySelector('.aprovar-btn').remove();
-            li.querySelector('.atender-btn').remove();
-        }
-
-        function excluirRD(button) {
-            const li = button.closest('li');
-            li.remove();
-        }
-    </script>
+    <footer>
+        Desenvolvido por André Ferreira
+    </footer>
 </body>
 </html>

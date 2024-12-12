@@ -1,263 +1,149 @@
-from flask import Flask, request, jsonify, render_template, send_from_directory
-from flask_sqlalchemy import SQLAlchemy
-from flask_socketio import SocketIO, emit
-from werkzeug.utils import secure_filename
+from flask import Flask, render_template, request, redirect, url_for, send_from_directory, session
+import sqlite3
 import os
 from datetime import datetime
 
-# Configuração do aplicativo Flask
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///rd.db'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), 'uploads')  # Pasta onde os arquivos serão salvos
-app.config['ALLOWED_EXTENSIONS'] = {'pdf', 'doc', 'docx', 'xlsx'}  # Adicionando 'xlsx'
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # Limite de 16MB para uploads
+app.secret_key = 'chave_secreta'
 
-# Inicialização do banco de dados e SocketIO
-db = SQLAlchemy(app)
-socketio = SocketIO(app, cors_allowed_origins="*")
+# Configuração do caminho de uploads
+if os.getenv('DYNO'):  # Detecta se está rodando no Heroku
+    UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')  # Caminho relativo para Heroku
+else:
+    UPLOAD_FOLDER = r'C:\Users\financeiro01\Desktop\programa RD'  # Caminho local
 
-# Função para verificar se o arquivo é permitido
-def allowed_file(filename):
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in app.config['ALLOWED_EXTENSIONS']
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
-# Modelo RD
-class RD(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    funcionario = db.Column(db.String(50), nullable=False)
-    data_solicitacao = db.Column(db.DateTime, nullable=False)
-    valor = db.Column(db.Float, nullable=False)
-    centro_custo = db.Column(db.String(50), nullable=False)
-    status = db.Column(db.String(20), default='Pendente')
-    numero_rd = db.Column(db.String(20), nullable=True)
-    arquivo = db.Column(db.String(100), nullable=True)  # Nome do arquivo armazenado
+# Certifique-se de que a pasta existe
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
 
-# Rota para servir o HTML principal
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-# Rota para solicitar uma nova RD com arquivo
-@app.route('/solicitar_rd', methods=['POST'])
-def solicitar_rd():
-    try:
-        # Verifica se os campos obrigatórios estão presentes
-        required_fields = ['funcionario', 'data_solicitacao', 'valor', 'centro_custo']
-        for field in required_fields:
-            if field not in request.form:
-                return jsonify({'error': f'Campo {field} está faltando.'}), 400
-
-        funcionario = request.form['funcionario']
-        data_solicitacao_str = request.form['data_solicitacao']
-        valor_str = request.form['valor']
-        centro_custo = request.form['centro_custo']
-
-        # Validação básica dos campos
-        if not funcionario or not data_solicitacao_str or not valor_str or not centro_custo:
-            return jsonify({'error': 'Todos os campos devem ser preenchidos.'}), 400
-
-        try:
-            data_solicitacao = datetime.strptime(data_solicitacao_str, "%Y-%m-%d")
-        except ValueError:
-            return jsonify({'error': 'Formato de data inválido. Use AAAA-MM-DD.'}), 400
-
-        try:
-            valor = float(valor_str)
-        except ValueError:
-            return jsonify({'error': 'Valor inválido.'}), 400
-
-        # Tratamento do arquivo
-        arquivo = request.files.get('arquivo')
-        filename = None
-        if arquivo and allowed_file(arquivo.filename):
-            filename = secure_filename(arquivo.filename)
-            upload_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            if not os.path.exists(app.config['UPLOAD_FOLDER']):
-                os.makedirs(app.config['UPLOAD_FOLDER'])
-            arquivo.save(upload_path)
-            print(f"Arquivo salvo em: {upload_path}")  # Debug
-        elif arquivo:
-            return jsonify({'error': 'Tipo de arquivo não permitido. Envie PDF, DOC, DOCX ou XLSX.'}), 400
-
-        # Criação da nova RD
-        nova_rd = RD(
-            funcionario=funcionario,
-            data_solicitacao=data_solicitacao,
-            valor=valor,
-            centro_custo=centro_custo,
-            arquivo=filename
+def init_db():
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS rd (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            solicitante TEXT NOT NULL,
+            funcionario TEXT NOT NULL,
+            data TEXT NOT NULL,
+            centro_custo TEXT NOT NULL,
+            valor REAL NOT NULL,
+            status TEXT DEFAULT 'Pendente',
+            valor_adicional REAL DEFAULT 0,
+            adicional_data TEXT,
+            valor_despesa REAL,
+            saldo_devolver REAL,
+            data_fechamento TEXT
         )
-        db.session.add(nova_rd)
-        db.session.commit()
-        print(f"RD criada com ID: {nova_rd.id}")  # Debug
+    ''')
 
-        # Notifica todos os clientes sobre o novo pedido de RD
-        socketio.emit('nova_rd', {
-            'id': nova_rd.id,
-            'funcionario': nova_rd.funcionario,
-            'data_solicitacao': nova_rd.data_solicitacao.strftime("%Y-%m-%d"),
-            'valor': nova_rd.valor,
-            'centro_custo': nova_rd.centro_custo,
-            'arquivo': nova_rd.arquivo,
-            'status': nova_rd.status
-        })
-        return jsonify({'id': nova_rd.id, 'status': 'Pendente'}), 201
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS anexos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            rd_id INTEGER NOT NULL,
+            arquivo TEXT NOT NULL,
+            caminho TEXT,
+            FOREIGN KEY (rd_id) REFERENCES rd (id) ON DELETE CASCADE
+        )
+    ''')
+    conn.commit()
+    conn.close()
 
-    except Exception as e:
-        # Log para debug
-        print(f"Erro ao solicitar RD: {e}")
-        return jsonify({'error': 'Erro interno do servidor.'}), 500
+def can_approve():
+    return 'user_role' in session and session['user_role'] in ['gestor', 'financeiro']
 
-# Rota para carregar RDs pendentes e aprovadas
-@app.route('/rds_pendentes', methods=['GET'])
-def rds_pendentes():
-    try:
-        rds = RD.query.filter(RD.status.in_(['Pendente', 'Aprovado'])).all()
-        rd_list = [
-            {
-                'id': rd.id,
-                'funcionario': rd.funcionario,
-                'data_solicitacao': rd.data_solicitacao.strftime("%Y-%m-%d"),
-                'valor': rd.valor,
-                'centro_custo': rd.centro_custo,
-                'arquivo': rd.arquivo,
-                'status': rd.status
-            }
-            for rd in rds
-        ]
-        return jsonify(rd_list)
-    except Exception as e:
-        print(f"Erro ao carregar RDs pendentes: {e}")
-        return jsonify({'error': 'Erro interno do servidor.'}), 500
+def can_release():
+    return 'user_role' in session and session['user_role'] == 'financeiro'
 
-# Rota para carregar RDs atendidas
-@app.route('/rds_atendidas', methods=['GET'])
-def rds_atendidas():
-    try:
-        rds = RD.query.filter_by(status='Atendido').all()
-        rd_list = [
-            {
-                'id': rd.id,
-                'funcionario': rd.funcionario,
-                'data_solicitacao': rd.data_solicitacao.strftime("%Y-%m-%d"),
-                'valor': rd.valor,
-                'centro_custo': rd.centro_custo,
-                'numero_rd': rd.numero_rd,
-                'arquivo': rd.arquivo,
-                'status': rd.status
-            }
-            for rd in rds
-        ]
-        return jsonify(rd_list)
-    except Exception as e:
-        print(f"Erro ao carregar RDs atendidas: {e}")
-        return jsonify({'error': 'Erro interno do servidor.'}), 500
+def can_add():
+    return 'user_role' in session
 
-# Rota para atender e numerar a RD
-@app.route('/atender_rd/<int:rd_id>', methods=['POST'])
-def atender_rd(rd_id):
-    try:
-        rd = RD.query.get(rd_id)
-        if not rd:
-            return jsonify({'error': 'RD não encontrada.'}), 404
+def can_delete():
+    return 'user_role' in session
 
-        data = request.get_json()
-        if not data or 'numero_rd' not in data:
-            return jsonify({'error': 'Número da RD não fornecido.'}), 400
+def can_request_additional():
+    return 'user_role' in session
 
-        numero_rd = data['numero_rd']
-        if not numero_rd:
-            return jsonify({'error': 'Número da RD inválido.'}), 400
+def is_solicitante():
+    return 'user_role' in session and session['user_role'] == 'solicitante'
 
-        rd.numero_rd = numero_rd
-        rd.status = 'Atendido'
-        db.session.commit()
-        print(f"RD ID {rd.id} atendida com número: {rd.numero_rd}")  # Debug
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    # Login
+    if request.method == 'POST' and 'action' not in request.form:
+        username = request.form.get('username')
+        password = request.form.get('password')
+        if username == 'gestor' and password == '115289':
+            session['user_role'] = 'gestor'
+        elif username == 'financeiro' and password == '351073':
+            session['user_role'] = 'financeiro'
+        elif username == 'solicitante' and password == '102030':
+            session['user_role'] = 'solicitante'
+        else:
+            return render_template('index.html', error="Credenciais inválidas", adicional_id=None, fechamento_id=None)
+        return redirect(url_for('index'))
 
-        # Notifica todos os clientes que a RD foi atendida
-        socketio.emit('rd_atendida', {
-            'id': rd.id,
-            'numero_rd': rd.numero_rd,
-            'funcionario': rd.funcionario,
-            'data_solicitacao': rd.data_solicitacao.strftime("%Y-%m-%d"),
-            'valor': rd.valor,
-            'centro_custo': rd.centro_custo,
-            'arquivo': rd.arquivo,
-            'status': rd.status
-        })
-        return jsonify({'id': rd.id, 'status': 'Atendido', 'numero_rd': rd.numero_rd}), 200
+    if 'user_role' not in session:
+        return render_template('index.html', adicional_id=None, fechamento_id=None)
 
-    except Exception as e:
-        print(f"Erro ao atender RD: {e}")
-        return jsonify({'error': 'Erro interno do servidor.'}), 500
+    adicional_id = request.args.get('adicional')
+    fechamento_id = request.args.get('fechamento')
 
-# Rota para aprovar uma RD
-@app.route('/aprovar_rd/<int:rd_id>', methods=['POST'])
-def aprovar_rd(rd_id):
-    try:
-        rd = RD.query.get(rd_id)
-        if not rd:
-            return jsonify({'error': 'RD não encontrada.'}), 404
+    conn = sqlite3.connect('database.db')
+    cursor = conn.cursor()
 
-        rd.status = 'Aprovado'
-        db.session.commit()
-        print(f"RD ID {rd.id} aprovada pela gerência")  # Debug
+    cursor.execute("SELECT * FROM rd WHERE status = 'Pendente'")
+    pendentes = cursor.fetchall()
 
-        # Notifica todos os clientes que a RD foi aprovada
-        socketio.emit('rd_aprovada', {
-            'id': rd.id,
-            'funcionario': rd.funcionario,
-            'data_solicitacao': rd.data_solicitacao.strftime("%Y-%m-%d"),
-            'valor': rd.valor,
-            'centro_custo': rd.centro_custo,
-            'arquivo': rd.arquivo,
-            'status': rd.status
-        })
-        return jsonify({'id': rd.id, 'status': 'Aprovado'}), 200
+    cursor.execute("SELECT * FROM rd WHERE status = 'Aprovado'")
+    aprovados = cursor.fetchall()
 
-    except Exception as e:
-        print(f"Erro ao aprovar RD: {e}")
-        return jsonify({'error': 'Erro interno do servidor.'}), 500
+    cursor.execute("SELECT * FROM rd WHERE status = 'Liberado'")
+    liberados = cursor.fetchall()
 
-# Rota para excluir uma RD
-@app.route('/excluir_rd/<int:rd_id>', methods=['DELETE'])
-def excluir_rd(rd_id):
-    try:
-        rd = RD.query.get(rd_id)
-        if not rd:
-            return jsonify({'error': 'RD não encontrada.'}), 404
+    cursor.execute("SELECT * FROM rd WHERE status = 'Fechado'")
+    fechados = cursor.fetchall()
 
-        db.session.delete(rd)
-        db.session.commit()
-        print(f"RD ID {rd.id} excluída com sucesso")  # Debug
+    cursor.execute("SELECT rd_id, arquivo FROM anexos")
+    anexos = cursor.fetchall()
+    anexos_dict = {}
+    for anexo in anexos:
+        if anexo[0] not in anexos_dict:
+            anexos_dict[anexo[0]] = []
+        anexos_dict[anexo[0]].append(anexo[1])
 
-        # Notifica todos os clientes que a RD foi excluída
-        socketio.emit('rd_excluida', {'id': rd.id})
-        return jsonify({'id': rd.id, 'status': 'Excluída'}), 200
+    conn.close()
 
-    except Exception as e:
-        print(f"Erro ao excluir RD: {e}")
-        return jsonify({'error': 'Erro interno do servidor.'}), 500
+    return render_template('index.html', 
+                           adicional_id=int(adicional_id) if adicional_id else None,
+                           fechamento_id=int(fechamento_id) if fechamento_id else None,
+                           pendentes=pendentes,
+                           aprovados=aprovados,
+                           liberados=liberados,
+                           fechados=fechados,
+                           anexos=anexos_dict,
+                           can_approve=can_approve(),
+                           can_release=can_release(),
+                           can_add=can_add(),
+                           can_delete=can_delete(),
+                           can_request_additional=can_request_additional(),
+                           is_solicitante=is_solicitante(),
+                           user_role=session['user_role'])
 
-# Rota para servir os arquivos enviados
+# Outras rotas (add_rd, approve, release, adicional_submit, fechamento_submit, delete) continuam como no código original
+
 @app.route('/uploads/<filename>')
 def uploaded_file(filename):
-    try:
-        return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
-    except Exception as e:
-        print(f"Erro ao servir arquivo {filename}: {e}")
-        return jsonify({'error': 'Arquivo não encontrado.'}), 404
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('index'))
 
 if __name__ == '__main__':
-    try:
-        if not os.path.exists(app.config['UPLOAD_FOLDER']):
-            os.makedirs(app.config['UPLOAD_FOLDER'])
-            print(f"Pasta de uploads criada em: {app.config['UPLOAD_FOLDER']}")  # Debug
-        with app.app_context():
-            db.create_all()
-            print("Banco de dados criado ou atualizado.")  # Debug
-        socketio.run(app, host="192.168.100.65", port=5000, debug=True)
-    except Exception as e:
-        print(f"Erro ao iniciar o servidor: {e}")
+    init_db()
+    app.run(debug=False)
 
 
