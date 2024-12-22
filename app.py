@@ -45,8 +45,11 @@ if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
 def init_db():
+    """Inicializa o banco, criando tabelas (se não existirem) e adicionando o campo 'valor_liberado' na rd (se necessário)."""
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
+
+    # Cria tabela RD
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS rd (
             id TEXT PRIMARY KEY,
@@ -67,6 +70,14 @@ def init_db():
         )
     ''')
 
+    # Verifica se a coluna valor_liberado existe; se não, cria
+    # (simples verificação por PRAGMA, para não recriar se já existir)
+    cursor.execute("PRAGMA table_info(rd)")
+    columns = [col[1] for col in cursor.fetchall()]
+    if 'valor_liberado' not in columns:
+        cursor.execute("ALTER TABLE rd ADD COLUMN valor_liberado REAL DEFAULT 0")
+
+    # Cria tabela saldo_global
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS saldo_global (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -170,9 +181,7 @@ def set_saldo_global(novo_saldo):
     conn.close()
 
 def format_currency(value):
-    # Converte um float (ex: 30000.0) para o formato brasileiro: "30.000,00"
     formatted = f"{value:,.2f}"  # Ex: "30,000.00"
-    # Agora trocamos a vírgula de milhar por ponto, e o ponto decimal por vírgula
     parts = formatted.split('.')
     left = parts[0].replace(',', '.')
     right = parts[1]
@@ -255,22 +264,18 @@ def add_rd():
             if file.filename:
                 filename = f"{custom_id}_{file.filename}"
                 local_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                
-                # 1) Salva localmente
                 file.save(local_path)
-                
-                # 2) Também envia para o R2
                 upload_file_to_r2(local_path, filename)
-
                 arquivos.append(filename)
     arquivos_str = ','.join(arquivos) if arquivos else None
 
+    # Insere no BD com valor_liberado = 0
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
     cursor.execute('''
         INSERT INTO rd (
-            id, solicitante, funcionario, data, centro_custo, valor, status, arquivos
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            id, solicitante, funcionario, data, centro_custo, valor, status, arquivos, valor_liberado
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
     ''', (custom_id, solicitante, funcionario, data, centro_custo, valor, 'Pendente', arquivos_str))
     conn.commit()
     conn.close()
@@ -304,7 +309,7 @@ def edit_submit(id):
     centro_custo = request.form['centro_custo']
     valor = float(request.form['valor'])
 
-    # Gerenciar novos arquivos
+    # Atualiza arquivos
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
     cursor.execute("SELECT arquivos FROM rd WHERE id=?", (id,))
@@ -316,12 +321,8 @@ def edit_submit(id):
             if file.filename:
                 filename = f"{id}_{file.filename}"
                 local_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                
-                # Salva localmente
                 file.save(local_path)
-                # Envia para R2
                 upload_file_to_r2(local_path, filename)
-
                 arquivos.append(filename)
 
     arquivos_str = ','.join(arquivos) if arquivos else None
@@ -338,15 +339,19 @@ def edit_submit(id):
 
 @app.route('/approve/<id>', methods=['POST'])
 def approve(id):
+    """Pendente->Aprovado (Gestor), Aprovado->Liberado (Financeiro).
+       Ao liberar, subtrai apenas a diferença não-liberada do saldo.
+    """
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    cursor.execute("SELECT status, valor, valor_adicional FROM rd WHERE id=?", (id,))
-    rd = cursor.fetchone()
-    if not rd:
+    cursor.execute("SELECT status, valor, valor_adicional, valor_liberado FROM rd WHERE id=?", (id,))
+    rd_info = cursor.fetchone()
+    if not rd_info:
         conn.close()
         flash("RD não encontrada.")
         return redirect(url_for('index'))
-    status, valor, valor_adic = rd
+    
+    status, valor, valor_adic, valor_liberado = rd_info
     if not can_approve(status):
         conn.close()
         flash("Acesso negado.")
@@ -354,152 +359,160 @@ def approve(id):
 
     current_date = datetime.now().strftime('%Y-%m-%d')
 
-    # Fluxo de aprovação:
-    # Pendente -> Aprovado (Gestor)
-    # Aprovado -> Liberado (Financeiro)
     if status == 'Pendente' and is_gestor():
+        # Passa para 'Aprovado'
         new_status = 'Aprovado'
-        aprovado_data = current_date
-        cursor.execute("UPDATE rd SET status=?, aprovado_data=? WHERE id=?", (new_status, aprovado_data, id))
+        cursor.execute(
+            "UPDATE rd SET status=?, aprovado_data=? WHERE id=?",
+            (new_status, current_date, id)
+        )
+
     elif status == 'Aprovado' and is_financeiro():
+        # Liberar: subtrair apenas o delta (valor_total - valor_liberado)
         new_status = 'Liberado'
-        liberado_data = current_date
-        # Subtrair valor_total do saldo global
-        total = valor + (valor_adic if valor_adic else 0)
-        saldo = get_saldo_global()
-        if total > saldo:
-            conn.close()
-            flash('Saldo global insuficiente.')
-            return redirect(url_for('index'))
-        set_saldo_global(saldo - total)
-        cursor.execute("UPDATE rd SET status=?, liberado_data=? WHERE id=?", (new_status, liberado_data, id))
+        valor_total = valor + (valor_adic or 0)
+        falta_liberar = valor_total - (valor_liberado or 0)
+        
+        if falta_liberar > 0:
+            saldo = get_saldo_global()
+            if falta_liberar > saldo:
+                conn.close()
+                flash('Saldo global insuficiente para liberar a diferença adicional.')
+                return redirect(url_for('index'))
+            # Subtrai do saldo
+            set_saldo_global(saldo - falta_liberar)
+            # Atualiza o valor_liberado para o total atual
+            valor_liberado = valor_total
+        
+        # Atualiza BD
+        cursor.execute(
+            "UPDATE rd SET status=?, liberado_data=?, valor_liberado=? WHERE id=?",
+            (new_status, current_date, valor_liberado, id)
+        )
+
     else:
         conn.close()
-        flash("Não é possível aprovar esta RD.")
+        flash("Não é possível aprovar/liberar esta RD.")
         return redirect(url_for('index'))
 
     conn.commit()
     conn.close()
-    flash('RD aprovada com sucesso.')
+    flash('Operação realizada com sucesso.')
     return redirect(url_for('index'))
 
 @app.route('/delete/<id>', methods=['POST'])
 def delete_rd(id):
+    """Se RD estava Liberado, devolve ao saldo o valor_liberado (que já saiu do caixa)."""
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    cursor.execute("SELECT solicitante, status, valor, valor_adicional FROM rd WHERE id=?", (id,))
+    cursor.execute("SELECT solicitante, status, valor_liberado FROM rd WHERE id=?", (id,))
     rd = cursor.fetchone()
     if not rd:
         conn.close()
         flash("RD não encontrada.")
         return redirect(url_for('index'))
-    rd_solicitante, rd_status, rd_valor, rd_valad = rd
 
+    rd_solicitante, rd_status, rd_liberado = rd
     if not can_delete(rd_status, rd_solicitante):
         conn.close()
         flash("Acesso negado.")
         return redirect(url_for('index'))
 
-    # Se RD estava 'Liberado', devolver o valor total ao saldo global antes de deletar
-    if rd_status == 'Liberado':
-        total = rd_valor + (rd_valad if rd_valad else 0)
+    # Se RD estava 'Liberado', devolvemos o que foi liberado ao saldo global
+    if rd_status == 'Liberado' and rd_liberado and rd_liberado > 0:
         saldo = get_saldo_global()
-        set_saldo_global(saldo + total)
+        set_saldo_global(saldo + rd_liberado)
 
-    # Deletar arquivos associados
+    # Exclui arquivos associados
     cursor.execute("SELECT arquivos FROM rd WHERE id=?", (id,))
     arquivos = cursor.fetchone()[0]
     if arquivos:
         for arquivo in arquivos.split(','):
-            # Remove do sistema de arquivos local
+            # Remove do local
             arquivo_path = os.path.join(app.config['UPLOAD_FOLDER'], arquivo)
             if os.path.exists(arquivo_path):
                 os.remove(arquivo_path)
-            # Remove também do R2
+            # Remove do R2
             delete_file_from_r2(arquivo)
 
+    # Deleta do BD
     cursor.execute("DELETE FROM rd WHERE id=?", (id,))
     conn.commit()
     conn.close()
     flash('RD excluída com sucesso.')
     return redirect(url_for('index'))
 
-# ---- AQUI ESTÁ O CÓDIGO DE ADICIONAL COM UPLOAD ----
 @app.route('/adicional_submit/<id>', methods=['POST'])
 def adicional_submit(id):
+    """Solicita adicional: agora NÃO devolvemos nada ao saldo;
+       apenas voltamos a RD para Pendente e somamos valor_adicional.
+    """
     if not can_request_additional_status(id):
         flash("Acesso negado.")
         return redirect(url_for('index'))
 
-    # 1) Se houver arquivos enviados, salvamos e subimos ao R2
+    # Se houver arquivos, faz upload
     if 'arquivo' in request.files:
         conn = sqlite3.connect('database.db')
         cursor = conn.cursor()
-        # Busca a lista atual de arquivos
         cursor.execute("SELECT arquivos FROM rd WHERE id=?", (id,))
         rd_atual = cursor.fetchone()
         arquivos_atuais = rd_atual[0].split(',') if (rd_atual and rd_atual[0]) else []
 
-        # Para cada arquivo enviado
         for file in request.files.getlist('arquivo'):
             if file.filename:
                 filename = f"{id}_{file.filename}"
                 local_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                # Salva localmente
                 file.save(local_path)
-                # Sobe para o R2
                 upload_file_to_r2(local_path, filename)
-                # Adiciona na lista
                 arquivos_atuais.append(filename)
 
-        # Atualiza o campo de arquivos no BD
         arquivos_atuais_str = ','.join(arquivos_atuais) if arquivos_atuais else None
         cursor.execute("UPDATE rd SET arquivos=? WHERE id=?", (arquivos_atuais_str, id))
         conn.commit()
         conn.close()
 
-    # 2) Ler o valor adicional do formulário
+    # Valor adicional
     try:
-        valor_adicional = float(request.form['valor_adicional'])
+        valor_adicional_novo = float(request.form['valor_adicional'])
     except (ValueError, KeyError):
         flash('Valor adicional inválido.')
         return redirect(url_for('index'))
 
-    # 3) Reabrir conexão para atualizar status e saldo
+    # Atualiza RD (status -> Pendente, soma o adicional)
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    cursor.execute("SELECT status, valor, valor_adicional FROM rd WHERE id=?", (id,))
+    cursor.execute("SELECT status, valor_adicional FROM rd WHERE id=?", (id,))
     rd = cursor.fetchone()
     if not rd:
         conn.close()
         flash("RD não encontrada.")
         return redirect(url_for('index'))
-    status, valor, valor_adic_atual = rd
+    status_atual, valor_adic_atual = rd
 
-    if not can_request_additional(status):
+    if not can_request_additional(status_atual):
         conn.close()
         flash("Não é possível solicitar adicional neste momento.")
         return redirect(url_for('index'))
 
-    # Estamos em Liberado. Precisamos voltar para Pendente.
-    # Isso implica devolver o valor total atual ao saldo global, já que antes foi subtraído ao liberar.
-    total_atual = valor + (valor_adic_atual if valor_adic_atual else 0)
-    saldo = get_saldo_global()
-    set_saldo_global(saldo + total_atual)
-
-    # Atualiza a RD para adicionar o valor adicional e status 'Pendente'
-    novo_valor_adic = valor_adic_atual + valor_adicional if valor_adic_atual else valor_adicional
+    # A RD continua com valor_liberado do jeito que estava, pois não vamos devolver nada agora
+    novo_valor_adic = (valor_adic_atual or 0) + valor_adicional_novo
     adicional_data = datetime.now().strftime('%Y-%m-%d')
-    cursor.execute("UPDATE rd SET valor_adicional=?, adicional_data=?, status='Pendente' WHERE id=?",
-                   (novo_valor_adic, adicional_data, id))
+
+    cursor.execute("""
+        UPDATE rd
+        SET valor_adicional=?, adicional_data=?, status='Pendente'
+        WHERE id=?
+    """, (novo_valor_adic, adicional_data, id))
     conn.commit()
     conn.close()
-    flash('Crédito adicional solicitado com sucesso.')
+
+    flash('Crédito adicional solicitado com sucesso (sem devolver saldo).')
     return redirect(url_for('index'))
-# ---- FIM DO CÓDIGO DE ADICIONAL COM UPLOAD ----
 
 @app.route('/fechamento_submit/<id>', methods=['POST'])
 def fechamento_submit(id):
+    """No fechamento, devolve (valor_liberado - valor_despesa) ao saldo."""
     if not can_close_status(id):
         flash("Acesso negado.")
         return redirect(url_for('index'))
@@ -512,36 +525,40 @@ def fechamento_submit(id):
 
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    cursor.execute("SELECT status, valor, valor_adicional FROM rd WHERE id=?", (id,))
+    cursor.execute("SELECT status, valor_liberado FROM rd WHERE id=?", (id,))
     rd = cursor.fetchone()
     if not rd:
         conn.close()
         flash("RD não encontrada.")
         return redirect(url_for('index'))
-    status, valor, valor_adic = rd
+    status_atual, valor_liberado = rd
 
-    if not can_close(status):
+    if not can_close(status_atual):
         conn.close()
         flash("Não é possível fechar esta RD neste momento.")
         return redirect(url_for('index'))
 
-    valor_total = valor + (valor_adic if valor_adic else 0)
-    saldo_devolver = valor_total - valor_despesa
-    if saldo_devolver < 0:
+    if valor_liberado < valor_despesa:
         conn.close()
-        flash("Valor da despesa maior que o valor total da RD.")
+        flash("Valor da despesa maior que o valor liberado.")
         return redirect(url_for('index'))
 
     # Devolve a diferença ao saldo global
+    saldo_devolver = valor_liberado - valor_despesa
     saldo = get_saldo_global()
     set_saldo_global(saldo + saldo_devolver)
 
     data_fechamento = datetime.now().strftime('%Y-%m-%d')
-    cursor.execute("UPDATE rd SET valor_despesa=?, saldo_devolver=?, data_fechamento=?, status='Fechado' WHERE id=?",
-                   (valor_despesa, saldo_devolver, data_fechamento, id))
+
+    cursor.execute("""
+        UPDATE rd
+        SET valor_despesa=?, saldo_devolver=?, data_fechamento=?, status='Fechado'
+        WHERE id=?
+    """, (valor_despesa, saldo_devolver, data_fechamento, id))
+
     conn.commit()
     conn.close()
-    flash('RD fechada com sucesso.')
+    flash('RD fechada com sucesso. Saldo devolvido = R$%.2f' % saldo_devolver)
     return redirect(url_for('index'))
 
 @app.route('/edit_saldo', methods=['POST'])
@@ -591,17 +608,17 @@ def delete_file(id):
         flash('Arquivo não encontrado na RD especificada.')
         return redirect(request.referrer or url_for('index'))
 
-    # Remove o arquivo do sistema de arquivos local
+    # Remove do disco local
     arquivo_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     if os.path.exists(arquivo_path):
         os.remove(arquivo_path)
     else:
         flash('Arquivo não encontrado no servidor.')
 
-    # Remove também do R2
+    # Remove do R2
     delete_file_from_r2(filename)
 
-    # Remove o arquivo da lista e atualiza o banco de dados
+    # Atualiza banco
     arquivos.remove(filename)
     updated_arquivos = ','.join(arquivos) if arquivos else None
     cursor.execute("UPDATE rd SET arquivos=? WHERE id=?", (updated_arquivos, id))

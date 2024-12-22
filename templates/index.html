@@ -336,22 +336,58 @@
         {% endif %}
 
         {% macro mostrar_valores(rd) %}
+            {# Campos do banco (conforme sua tabela "rd"): #}
+            {#  rd[0] = id
+                rd[1] = solicitante
+                rd[2] = funcionario
+                rd[3] = data
+                rd[4] = centro_custo
+                rd[5] = valor (valor inicial)
+                rd[6] = status
+                rd[7] = valor_adicional
+                rd[8] = adicional_data
+                rd[9] = valor_despesa
+                rd[10] = saldo_devolver
+                rd[11] = data_fechamento
+                rd[12] = arquivos
+                rd[13] = aprovado_data
+                rd[14] = liberado_data
+            #}
+
             {% set valor = rd[5] %}
             {% set valor_adic = rd[7] if rd[7] else 0 %}
             {% set valor_total = valor + valor_adic %}
             {% set valor_despesa = rd[9] if rd[9] else 0 %}
             {% set saldo_devolver = rd[10] if rd[10] else (valor_total - valor_despesa) %}
-            {% set data_fechamento = rd[11] if rd[11] else 'N/A' %}
+            
             {% set adicional_data = rd[8] if rd[8] else 'N/A' %}
+            {% set data_fechamento = rd[11] if rd[11] else 'N/A' %}
             {% set aprovado_data = rd[13] if rd[13] else 'N/A' %}
             {% set liberado_data = rd[14] if rd[14] else 'N/A' %}
-            
-            Valor Total: R${{ format_currency(valor_total) }}<br>
-            Despesa: R${{ format_currency(valor_despesa) }}<br>
-            Saldo a Devolver: R${{ format_currency(saldo_devolver) }}<br>
+
+            {# Exibição formatada #}
+            <!-- Valor inicial e data da solicitação -->
+            <strong>Valor Solicitado:</strong> R${{ format_currency(valor) }}<br>
+            <strong>Data da Solicitação:</strong> {{ rd[3] }}<br>
+            <br>
+
+            <!-- Valor adicional, se houver -->
+            <strong>Valor Adicional:</strong> R${{ format_currency(valor_adic) }}<br>
             {% if adicional_data != 'N/A' %}
-                Adicional Solicitado em: {{ adicional_data }}<br>
+                <strong>Data do Adicional:</strong> {{ adicional_data }}<br>
             {% endif %}
+            <br>
+
+            <!-- Soma total -->
+            <strong>Total da RD:</strong> R${{ format_currency(valor_total) }}<br>
+            <br>
+
+            <!-- Despesa e saldo a devolver (após fechamento) -->
+            <strong>Valor Gasto (Despesa):</strong> R${{ format_currency(valor_despesa) }}<br>
+            <strong>Saldo a Devolver:</strong> R${{ format_currency(saldo_devolver) }}<br>
+            <br>
+
+            <!-- Datas de aprovação, liberação e fechamento -->
             {% if aprovado_data != 'N/A' %}
                 Aprovado em: {{ aprovado_data }}<br>
             {% endif %}
