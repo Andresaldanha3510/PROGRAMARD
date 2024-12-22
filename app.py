@@ -1,8 +1,42 @@
- # app.py
+# app.py
 from flask import Flask, render_template, request, redirect, url_for, send_from_directory, session, abort, flash
 import sqlite3
 import os
 from datetime import datetime
+
+# ---- INÍCIO: Imports e variáveis para o Cloudflare R2 ----
+import boto3
+from botocore.client import Config
+
+R2_ACCESS_KEY = 'f1893b9eac9e40f8b992ef50c2b657ca'
+R2_SECRET_KEY = '7ec391a97968077b15a9b1b886d803c5b6f6b9f8705bfb55c0ff7a7082132b5c'
+R2_ENDPOINT   = 'https://e5dfe58dd78702917f5bb5852970c6c2.r2.cloudflarestorage.com'
+R2_BUCKET_NAME = 'meu-bucket-r2'
+
+
+def upload_file_to_r2(local_file_path, object_name):
+    """Envia um arquivo local para o Bucket R2, usando boto3."""
+    s3 = boto3.client(
+        's3',
+        endpoint_url=R2_ENDPOINT,
+        aws_access_key_id=R2_ACCESS_KEY,
+        aws_secret_access_key=R2_SECRET_KEY,
+        config=Config(signature_version='s3v4')
+    )
+    s3.upload_file(local_file_path, R2_BUCKET_NAME, object_name)
+
+
+def delete_file_from_r2(object_name):
+    """Exclui um arquivo do Bucket R2, usando boto3."""
+    s3 = boto3.client(
+        's3',
+        endpoint_url=R2_ENDPOINT,
+        aws_access_key_id=R2_ACCESS_KEY,
+        aws_secret_access_key=R2_SECRET_KEY,
+        config=Config(signature_version='s3v4')
+    )
+    s3.delete_object(Bucket=R2_BUCKET_NAME, Key=object_name)
+# ---- FIM: Imports e variáveis para o Cloudflare R2 ----
 
 app = Flask(__name__)
 app.secret_key = 'chave_secreta'
@@ -142,7 +176,6 @@ def format_currency(value):
     formatted = f"{value:,.2f}"  # Ex: "30,000.00"
     # Agora trocamos a vírgula de milhar por ponto, e o ponto decimal por vírgula
     parts = formatted.split('.')
-    # parts[0] = "30,000", parts[1] = "00"
     left = parts[0].replace(',', '.')
     right = parts[1]
     return f"{left},{right}"
@@ -223,7 +256,14 @@ def add_rd():
         for file in request.files.getlist('arquivo'):
             if file.filename:
                 filename = f"{custom_id}_{file.filename}"
-                file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+                local_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                
+                # 1) Salva localmente
+                file.save(local_path)
+                
+                # 2) Também envia para o R2
+                upload_file_to_r2(local_path, filename)
+
                 arquivos.append(filename)
     arquivos_str = ','.join(arquivos) if arquivos else None
 
@@ -267,19 +307,23 @@ def edit_submit(id):
     valor = float(request.form['valor'])
 
     # Gerenciar novos arquivos
-    arquivos = []
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
     cursor.execute("SELECT arquivos FROM rd WHERE id=?", (id,))
     rd = cursor.fetchone()
-    if rd and rd[0]:
-        arquivos = rd[0].split(',')
+    arquivos = rd[0].split(',') if (rd and rd[0]) else []
 
     if 'arquivo' in request.files:
         for file in request.files.getlist('arquivo'):
             if file.filename:
                 filename = f"{id}_{file.filename}"
-                file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+                local_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                
+                # Salva localmente
+                file.save(local_path)
+                # Envia para R2
+                upload_file_to_r2(local_path, filename)
+
                 arquivos.append(filename)
 
     arquivos_str = ','.join(arquivos) if arquivos else None
@@ -369,9 +413,13 @@ def delete_rd(id):
     arquivos = cursor.fetchone()[0]
     if arquivos:
         for arquivo in arquivos.split(','):
+            # Remove do sistema de arquivos local
             arquivo_path = os.path.join(app.config['UPLOAD_FOLDER'], arquivo)
             if os.path.exists(arquivo_path):
                 os.remove(arquivo_path)
+            
+            # Remove também do R2
+            delete_file_from_r2(arquivo)
 
     cursor.execute("DELETE FROM rd WHERE id=?", (id,))
     conn.commit()
@@ -516,12 +564,15 @@ def delete_file(id):
         flash('Arquivo não encontrado na RD especificada.')
         return redirect(request.referrer or url_for('index'))
 
-    # Remove o arquivo do sistema de arquivos
+    # Remove o arquivo do sistema de arquivos local
     arquivo_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
     if os.path.exists(arquivo_path):
         os.remove(arquivo_path)
     else:
         flash('Arquivo não encontrado no servidor.')
+
+    # Remove também do R2
+    delete_file_from_r2(filename)
 
     # Remove o arquivo da lista e atualiza o banco de dados
     arquivos.remove(filename)
