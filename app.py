@@ -13,7 +13,6 @@ R2_SECRET_KEY = '7ec391a97968077b15a9b1b886d803c5b6f6b9f8705bfb55c0ff7a7082132b5
 R2_ENDPOINT   = 'https://e5dfe58dd78702917f5bb5852970c6c2.r2.cloudflarestorage.com'
 R2_BUCKET_NAME = 'meu-bucket-r2'
 
-
 def upload_file_to_r2(local_file_path, object_name):
     """Envia um arquivo local para o Bucket R2, usando boto3."""
     s3 = boto3.client(
@@ -24,7 +23,6 @@ def upload_file_to_r2(local_file_path, object_name):
         config=Config(signature_version='s3v4')
     )
     s3.upload_file(local_file_path, R2_BUCKET_NAME, object_name)
-
 
 def delete_file_from_r2(object_name):
     """Exclui um arquivo do Bucket R2, usando boto3."""
@@ -417,7 +415,6 @@ def delete_rd(id):
             arquivo_path = os.path.join(app.config['UPLOAD_FOLDER'], arquivo)
             if os.path.exists(arquivo_path):
                 os.remove(arquivo_path)
-            
             # Remove também do R2
             delete_file_from_r2(arquivo)
 
@@ -427,18 +424,48 @@ def delete_rd(id):
     flash('RD excluída com sucesso.')
     return redirect(url_for('index'))
 
+# ---- AQUI ESTÁ O CÓDIGO DE ADICIONAL COM UPLOAD ----
 @app.route('/adicional_submit/<id>', methods=['POST'])
 def adicional_submit(id):
     if not can_request_additional_status(id):
         flash("Acesso negado.")
         return redirect(url_for('index'))
 
+    # 1) Se houver arquivos enviados, salvamos e subimos ao R2
+    if 'arquivo' in request.files:
+        conn = sqlite3.connect('database.db')
+        cursor = conn.cursor()
+        # Busca a lista atual de arquivos
+        cursor.execute("SELECT arquivos FROM rd WHERE id=?", (id,))
+        rd_atual = cursor.fetchone()
+        arquivos_atuais = rd_atual[0].split(',') if (rd_atual and rd_atual[0]) else []
+
+        # Para cada arquivo enviado
+        for file in request.files.getlist('arquivo'):
+            if file.filename:
+                filename = f"{id}_{file.filename}"
+                local_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                # Salva localmente
+                file.save(local_path)
+                # Sobe para o R2
+                upload_file_to_r2(local_path, filename)
+                # Adiciona na lista
+                arquivos_atuais.append(filename)
+
+        # Atualiza o campo de arquivos no BD
+        arquivos_atuais_str = ','.join(arquivos_atuais) if arquivos_atuais else None
+        cursor.execute("UPDATE rd SET arquivos=? WHERE id=?", (arquivos_atuais_str, id))
+        conn.commit()
+        conn.close()
+
+    # 2) Ler o valor adicional do formulário
     try:
         valor_adicional = float(request.form['valor_adicional'])
     except (ValueError, KeyError):
         flash('Valor adicional inválido.')
         return redirect(url_for('index'))
 
+    # 3) Reabrir conexão para atualizar status e saldo
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
     cursor.execute("SELECT status, valor, valor_adicional FROM rd WHERE id=?", (id,))
@@ -458,7 +485,6 @@ def adicional_submit(id):
     # Isso implica devolver o valor total atual ao saldo global, já que antes foi subtraído ao liberar.
     total_atual = valor + (valor_adic_atual if valor_adic_atual else 0)
     saldo = get_saldo_global()
-    # Devolve o total atual ao saldo, pois vamos recomeçar o processo
     set_saldo_global(saldo + total_atual)
 
     # Atualiza a RD para adicionar o valor adicional e status 'Pendente'
@@ -470,6 +496,7 @@ def adicional_submit(id):
     conn.close()
     flash('Crédito adicional solicitado com sucesso.')
     return redirect(url_for('index'))
+# ---- FIM DO CÓDIGO DE ADICIONAL COM UPLOAD ----
 
 @app.route('/fechamento_submit/<id>', methods=['POST'])
 def fechamento_submit(id):
