@@ -1,1 +1,5 @@
-"uploads/" 
+__pycache__/
+*.pyc
+uploads/
+database.db
+.env
