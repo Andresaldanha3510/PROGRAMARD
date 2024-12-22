@@ -1,21 +1,47 @@
-# app.py
 from flask import Flask, render_template, request, redirect, url_for, send_from_directory, session, abort, flash
 import sqlite3
 import os
 from datetime import datetime
+import boto3
 
+# Definindo as credenciais do Cloudflare R2 diretamente no código
+R2_ACCESS_KEY = 'f1893b9eac9e40f8b992ef50c2b657ca'
+R2_SECRET_KEY = '7ec391a97968077b15a9b1b886d803c5b6f6b9f8705bfb55c0ff7a7082132b5c'
+R2_ENDPOINT = 'https://e5dfe58dd78702917f5bb5852970c6c2.r2.cloudflarestorage.com'
+R2_BUCKET_NAME = 'meu-bucket-r2'
+
+# Configuração do Flask
 app = Flask(__name__)
 app.secret_key = 'chave_secreta'
 
+# Configuração do diretório de uploads
 UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER)
 
+# Configuração do cliente S3 com as credenciais do Cloudflare R2
+r2_client = boto3.client(
+    's3',
+    endpoint_url=R2_ENDPOINT,
+    aws_access_key_id=R2_ACCESS_KEY,
+    aws_secret_access_key=R2_SECRET_KEY,
+)
+
+def upload_file_to_r2(file, filename):
+    """Função para enviar o arquivo para o Cloudflare R2."""
+    try:
+        r2_client.upload_fileobj(file, R2_BUCKET_NAME, filename)
+        return True
+    except Exception as e:
+        print(f"Erro ao enviar o arquivo para o R2: {e}")
+        return False
+
+# Funções de banco de dados
 def init_db():
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
-    cursor.execute('''
+    cursor.execute(''' 
         CREATE TABLE IF NOT EXISTS rd (
             id TEXT PRIMARY KEY,
             solicitante TEXT NOT NULL,
@@ -35,14 +61,13 @@ def init_db():
         )
     ''')
 
-    cursor.execute('''
+    cursor.execute(''' 
         CREATE TABLE IF NOT EXISTS saldo_global (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             saldo REAL DEFAULT 30000
         )
     ''')
 
-    # Inicializa saldo global caso não exista
     cursor.execute('SELECT COUNT(*) FROM saldo_global')
     if cursor.fetchone()[0] == 0:
         cursor.execute('INSERT INTO saldo_global (saldo) VALUES (30000)')
@@ -50,23 +75,7 @@ def init_db():
     conn.commit()
     conn.close()
 
-def generate_custom_id():
-    current_year = datetime.now().year % 100
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    cursor.execute("SELECT id FROM rd ORDER BY CAST(substr(id, 1, instr(id, '.') - 1) AS INTEGER) DESC LIMIT 1")
-    last_id = cursor.fetchone()
-    conn.close()
-
-    if not last_id:
-        return f"400.{current_year}"
-
-    last_str = last_id[0]
-    last_number_str, last_year_str = last_str.split('.')
-    last_number = int(last_number_str)
-
-    return f"{last_number + 1}.{current_year}"
-
+# Funções de controle de permissões
 def user_role():
     return session.get('user_role')
 
@@ -80,11 +89,9 @@ def is_financeiro():
     return user_role() == 'financeiro'
 
 def can_add():
-    # Solicitante, Gestor ou Financeiro podem adicionar
     return user_role() in ['solicitante', 'gestor', 'financeiro']
 
 def can_edit(status):
-    # Pode editar se não estiver Fechado e for gestor ou financeiro.
     if status == 'Fechado':
         return False
     if is_gestor() or is_financeiro():
@@ -92,10 +99,6 @@ def can_edit(status):
     return False
 
 def can_delete(status, solicitante):
-    # Regras:
-    # - Solicitante pode excluir enquanto estiver pendente e for dele mesmo.
-    # - Gestor e Financeiro podem excluir em Pendente, Aprovado e Liberado.
-    # - Ninguém pode excluir se Fechado.
     if status == 'Fechado':
         return False
     if status == 'Pendente' and is_solicitante():
@@ -105,9 +108,6 @@ def can_delete(status, solicitante):
     return False
 
 def can_approve(status):
-    # Aprovar:
-    # Pendente -> Aprovado (Gestor)
-    # Aprovado -> Liberado (Financeiro)
     if status == 'Pendente' and is_gestor():
         return True
     if status == 'Aprovado' and is_financeiro():
@@ -115,11 +115,9 @@ def can_approve(status):
     return False
 
 def can_request_additional(status):
-    # Solicitante solicita adicional se estiver Liberado
     return is_solicitante() and status == 'Liberado'
 
 def can_close(status):
-    # Solicitante pode fechar se estiver Liberado
     return is_solicitante() and status == 'Liberado'
 
 def get_saldo_global():
@@ -138,15 +136,13 @@ def set_saldo_global(novo_saldo):
     conn.close()
 
 def format_currency(value):
-    # Converte um float (ex: 30000.0) para o formato brasileiro: "30.000,00"
-    formatted = f"{value:,.2f}"  # Ex: "30,000.00"
-    # Agora trocamos a vírgula de milhar por ponto, e o ponto decimal por vírgula
+    formatted = f"{value:,.2f}"
     parts = formatted.split('.')
-    # parts[0] = "30,000", parts[1] = "00"
     left = parts[0].replace(',', '.')
     right = parts[1]
     return f"{left},{right}"
 
+# Rotas do Flask
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST' and 'action' not in request.form:
@@ -168,7 +164,6 @@ def index():
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
 
-    # Seleciona as RDs por status
     cursor.execute("SELECT * FROM rd WHERE status='Pendente'")
     pendentes = cursor.fetchall()
 
@@ -223,8 +218,14 @@ def add_rd():
         for file in request.files.getlist('arquivo'):
             if file.filename:
                 filename = f"{custom_id}_{file.filename}"
+                
+                # Salvar arquivo localmente
                 file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
                 arquivos.append(filename)
+                
+                # Enviar arquivo para o Cloudflare R2
+                upload_file_to_r2(file, filename)  # Envia para o R2 também
+
     arquivos_str = ','.join(arquivos) if arquivos else None
 
     conn = sqlite3.connect('database.db')
@@ -281,6 +282,9 @@ def edit_submit(id):
                 filename = f"{id}_{file.filename}"
                 file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
                 arquivos.append(filename)
+
+                # Enviar arquivo para o Cloudflare R2
+                upload_file_to_r2(file, filename)  # Envia para o R2 também
 
     arquivos_str = ','.join(arquivos) if arquivos else None
 
@@ -533,39 +537,7 @@ def delete_file(id):
     flash('Arquivo excluído com sucesso.')
     return redirect(request.referrer or url_for('index'))
 
-def can_edit_status(id):
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    cursor.execute("SELECT status FROM rd WHERE id=?", (id,))
-    rd = cursor.fetchone()
-    conn.close()
-    if not rd:
-        return False
-    status = rd[0]
-    return can_edit(status)
-
-def can_request_additional_status(id):
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    cursor.execute("SELECT status FROM rd WHERE id=?", (id,))
-    rd = cursor.fetchone()
-    conn.close()
-    if not rd:
-        return False
-    status = rd[0]
-    return can_request_additional(status)
-
-def can_close_status(id):
-    conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    cursor.execute("SELECT status FROM rd WHERE id=?", (id,))
-    rd = cursor.fetchone()
-    conn.close()
-    if not rd:
-        return False
-    status = rd[0]
-    return can_close(status)
-
 if __name__ == '__main__':
     init_db()
     app.run(debug=True)
+
