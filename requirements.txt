@@ -48,3 +48,4 @@ urllib3==2.3.0
 Werkzeug==3.1.2
 wsproto==1.2.0
 XlsxWriter==3.2.0
+gunicorn
