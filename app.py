@@ -45,8 +45,18 @@ import io
 import xlsxwriter
 # ---- FIM: Imports para geração de Excel ----
 
+# Configuração do logging
+import logging
+logging.basicConfig(level=logging.DEBUG)
+
 app = Flask(__name__)
-app.secret_key = os.getenv('SECRET_KEY', 'chave_padrao')  # Utilize a variável de ambiente
+
+# Configuração do SECRET_KEY
+secret_key = os.getenv('SECRET_KEY')
+if not secret_key:
+    raise ValueError("SECRET_KEY não está definida no ambiente.")
+app.secret_key = secret_key
+logging.debug(f"SECRET_KEY carregado corretamente.")
 
 UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -71,7 +81,7 @@ def get_pg_connection():
         )
         return conn
     except psycopg2.Error as e:
-        print(f"Erro ao conectar ao PostgreSQL: {e}")
+        logging.error(f"Erro ao conectar ao PostgreSQL: {e}")
         sys.exit(1)
 
 def init_db():
@@ -229,21 +239,35 @@ def format_currency(value):
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
-    if request.method == 'POST' and 'action' not in request.form:
-        username = request.form.get('username')
-        password = request.form.get('password')
+    if request.method == 'POST':
+        logging.debug(f"Dados do formulário: {request.form}")
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '').strip()
+        logging.debug(f"Tentativa de login com username: '{username}' e password: '{password}'")
+        
         if username == 'gestor' and password == '115289':
             session['user_role'] = 'gestor'
+            flash('Login como gestor bem-sucedido.')
+            logging.debug("Login como gestor bem-sucedido.")
         elif username == 'financeiro' and password == '351073':
             session['user_role'] = 'financeiro'
+            flash('Login como financeiro bem-sucedido.')
+            logging.debug("Login como financeiro bem-sucedido.")
         elif username == 'solicitante' and password == '102030':
             session['user_role'] = 'solicitante'
+            flash('Login como solicitante bem-sucedido.')
+            logging.debug("Login como solicitante bem-sucedido.")
         else:
+            flash('Credenciais inválidas.')
+            logging.warning("Tentativa de login com credenciais inválidas.")
             return render_template('index.html', error="Credenciais inválidas", format_currency=format_currency)
         return redirect(url_for('index'))
 
     if 'user_role' not in session:
+        logging.debug("Usuário não autenticado. Mostrando formulário de login.")
         return render_template('index.html', error=None, format_currency=format_currency)
+
+    logging.debug(f"Usuário autenticado como: {session['user_role']}")
 
     conn = get_pg_connection()
     cursor = conn.cursor()
@@ -288,13 +312,18 @@ def index():
 @app.route('/add', methods=['POST'])
 def add_rd():
     if not can_add():
+        flash("Acesso negado.")
         return "Acesso negado", 403
 
-    solicitante = request.form['solicitante']
-    funcionario = request.form['funcionario']
-    data = request.form['data']
-    centro_custo = request.form['centro_custo']
-    valor = float(request.form['valor'])
+    solicitante = request.form['solicitante'].strip()
+    funcionario = request.form['funcionario'].strip()
+    data = request.form['data'].strip()
+    centro_custo = request.form['centro_custo'].strip()
+    try:
+        valor = float(request.form['valor'])
+    except ValueError:
+        flash('Valor inválido.')
+        return redirect(url_for('index'))
     custom_id = generate_custom_id()
 
     # Gerenciar arquivos
@@ -318,6 +347,7 @@ def add_rd():
         ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 0)
     ''', (custom_id, solicitante, funcionario, data, centro_custo, valor, 'Pendente', arquivos_str))
     conn.commit()
+    cursor.close()
     conn.close()
     flash('RD adicionada com sucesso.')
     return redirect(url_for('index'))
@@ -331,9 +361,11 @@ def edit_form(id):
     conn.close()
 
     if not rd:
+        flash('RD não encontrada.')
         return "RD não encontrada", 404
     status = rd[6]  # Índice da coluna 'status'
     if not can_edit(status):
+        flash('Acesso negado.')
         return "Acesso negado", 403
 
     return render_template('edit_form.html', rd=rd)
@@ -341,13 +373,18 @@ def edit_form(id):
 @app.route('/edit_submit/<id>', methods=['POST'])
 def edit_submit(id):
     if not can_edit_status(id):
+        flash('Acesso negado.')
         return "Acesso negado", 403
 
-    solicitante = request.form['solicitante']
-    funcionario = request.form['funcionario']
-    data = request.form['data']
-    centro_custo = request.form['centro_custo']
-    valor = float(request.form['valor'])
+    solicitante = request.form['solicitante'].strip()
+    funcionario = request.form['funcionario'].strip()
+    data = request.form['data'].strip()
+    centro_custo = request.form['centro_custo'].strip()
+    try:
+        valor = float(request.form['valor'])
+    except ValueError:
+        flash('Valor inválido.')
+        return redirect(url_for('index'))
 
     # Atualiza arquivos
     conn = get_pg_connection()
@@ -373,6 +410,7 @@ def edit_submit(id):
         WHERE id=%s
     ''', (solicitante, funcionario, data, centro_custo, valor, arquivos_str, id))
     conn.commit()
+    cursor.close()
     conn.close()
     flash('RD atualizada com sucesso.')
     return redirect(url_for('index'))
@@ -468,16 +506,19 @@ def delete_rd(id):
     arquivos = cursor.fetchone()[0]
     if arquivos:
         for arquivo in arquivos.split(','):
-            # Remove do local
+            # Remove do disco local
             arquivo_path = os.path.join(app.config['UPLOAD_FOLDER'], arquivo)
             if os.path.exists(arquivo_path):
                 os.remove(arquivo_path)
+            else:
+                flash('Arquivo não encontrado no servidor.')
             # Remove do R2
             delete_file_from_r2(arquivo)
 
     # Deleta do BD
     cursor.execute("DELETE FROM rd WHERE id=%s", (id,))
     conn.commit()
+    cursor.close()
     conn.close()
     flash('RD excluída com sucesso.')
     return redirect(url_for('index'))
@@ -510,6 +551,7 @@ def adicional_submit(id):
         arquivos_atuais_str = ','.join(arquivos_atuais) if arquivos_atuais else None
         cursor.execute("UPDATE rd SET arquivos=%s WHERE id=%s", (arquivos_atuais_str, id))
         conn.commit()
+        cursor.close()
         conn.close()
 
     # Valor adicional
@@ -544,6 +586,7 @@ def adicional_submit(id):
         WHERE id=%s
     """, (novo_valor_adic, adicional_data, id))
     conn.commit()
+    cursor.close()
     conn.close()
 
     flash('Crédito adicional solicitado com sucesso (sem devolver saldo).')
@@ -578,6 +621,7 @@ def fechamento_submit(id):
         arquivos_atuais_str = ','.join(arquivos_atuais) if arquivos_atuais else None
         cursor.execute("UPDATE rd SET arquivos=%s WHERE id=%s", (arquivos_atuais_str, id))
         conn.commit()
+        cursor.close()
         conn.close()
 
     # 3) Captura e valida o valor da despesa informado
@@ -623,6 +667,7 @@ def fechamento_submit(id):
     """, (valor_despesa, saldo_devolver, data_fechamento, id))
 
     conn.commit()
+    cursor.close()
     conn.close()
     flash('RD fechada com sucesso. Saldo devolvido = R$%.2f' % saldo_devolver)
     return redirect(url_for('index'))
@@ -646,6 +691,7 @@ def edit_saldo():
 @app.route('/logout')
 def logout():
     session.clear()
+    flash('Logout realizado com sucesso.')
     return redirect(url_for('index'))
 
 @app.route('/uploads/<filename>')
@@ -689,6 +735,7 @@ def delete_file(id):
     updated_arquivos = ','.join(arquivos) if arquivos else None
     cursor.execute("UPDATE rd SET arquivos=%s WHERE id=%s", (updated_arquivos, id))
     conn.commit()
+    cursor.close()
     conn.close()
 
     flash('Arquivo excluído com sucesso.')
