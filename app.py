@@ -16,6 +16,12 @@ R2_ACCESS_KEY = os.getenv('R2_ACCESS_KEY', 'your_r2_access_key')
 R2_SECRET_KEY = os.getenv('R2_SECRET_KEY', 'your_r2_secret_key')
 R2_ENDPOINT   = 'https://e5dfe58dd78702917f5bb5852970c6c2.r2.cloudflarestorage.com'
 R2_BUCKET_NAME = 'meu-bucket-r2'
+R2_PUBLIC_URL = "https://pub-1e6f8559bc2b413c889fbf4860462599.r2.dev"
+
+def get_r2_public_url(object_name):
+    """Retorna o URL público de um objeto no R2."""
+    return f"{R2_PUBLIC_URL}/{object_name}"
+
 
 def upload_file_to_r2(local_file_path, object_name):
     """Envia um arquivo local para o Bucket R2, usando boto3."""
