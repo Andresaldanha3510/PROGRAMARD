@@ -1,16 +1,18 @@
-from flask import Flask, render_template, request, redirect, url_for, send_from_directory, session, abort, flash, send_file
+from flask import Flask, render_template, request, redirect, url_for, session, abort, flash, send_file
 import psycopg2
 from psycopg2 import sql
 import os
 from datetime import datetime
-
-# Carrega variáveis de ambiente
+import logging
+import io
+import xlsxwriter
 from dotenv import load_dotenv
-load_dotenv()  # Carrega as variáveis do arquivo .env
 
 # ---- INÍCIO: Imports e variáveis para o Cloudflare R2 ----
 import boto3
 from botocore.client import Config
+
+load_dotenv()  # Carrega as variáveis do arquivo .env
 
 R2_ACCESS_KEY = os.getenv('R2_ACCESS_KEY', 'your_r2_access_key')
 R2_SECRET_KEY = os.getenv('R2_SECRET_KEY', 'your_r2_secret_key')
@@ -40,13 +42,24 @@ def delete_file_from_r2(object_name):
     s3.delete_object(Bucket=R2_BUCKET_NAME, Key=object_name)
 # ---- FIM: Imports e variáveis para o Cloudflare R2 ----
 
-# ---- INÍCIO: Imports para geração de Excel ----
-import io
-import xlsxwriter
-# ---- FIM: Imports para geração de Excel ----
+# Se o bucket for realmente público, seu link seria algo como:
+# f"{R2_ENDPOINT}/{R2_BUCKET_NAME}/{nome_do_arquivo}"
+#
+# Se ele for privado, você pode gerar Presigned URL. Exemplo:
+# def generate_presigned_url(object_name, expires_in=3600):
+#     s3 = boto3.client(
+#         's3',
+#         endpoint_url=R2_ENDPOINT,
+#         aws_access_key_id=R2_ACCESS_KEY,
+#         aws_secret_access_key=R2_SECRET_KEY,
+#         config=Config(signature_version='s3v4')
+#     )
+#     return s3.generate_presigned_url(
+#         'get_object',
+#         Params={'Bucket': R2_BUCKET_NAME, 'Key': object_name},
+#         ExpiresIn=expires_in
+#     )
 
-# Configuração do logging
-import logging
 logging.basicConfig(level=logging.DEBUG)
 
 app = Flask(__name__)
@@ -58,17 +71,21 @@ if not secret_key:
 app.secret_key = secret_key
 logging.debug(f"SECRET_KEY carregado corretamente.")
 
-UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
+# Definimos uma pasta local temporária (efêmera) para upload antes de enviar ao R2
+# No Render, esse local não é persistente, mas funciona para upload em tempo de execução.
+TEMP_FOLDER = os.path.join(os.getcwd(), 'temp_uploads')
+if not os.path.exists(TEMP_FOLDER):
+    os.makedirs(TEMP_FOLDER)
 
 # Configurações do PostgreSQL
-PG_HOST = os.getenv('PG_HOST', 'dpg-ctjqnsdds78s73erdqi0-a.oregon-postgres.render.com')
+PG_HOST = os.getenv('PG_HOST', '...')
 PG_PORT = os.getenv('PG_PORT', '5432')
 PG_DB = os.getenv('PG_DB', 'programard_db')
 PG_USER = os.getenv('PG_USER', 'programard_db_user')
-PG_PASSWORD = os.getenv('PG_PASSWORD', 'hU9wJmIfgiyCg02KFQ3a4AropKSMopXr')  # Mude isso imediatamente
+PG_PASSWORD = os.getenv('PG_PASSWORD', '...')
+
+import sys
+import psycopg2
 
 def get_pg_connection():
     try:
@@ -85,11 +102,10 @@ def get_pg_connection():
         sys.exit(1)
 
 def init_db():
-    """Inicializa o banco no PostgreSQL, criando tabelas (se não existirem) e adicionando o campo 'valor_liberado' na rd (se necessário)."""
+    """Inicializa o banco no PostgreSQL, criando tabelas (se não existirem)"""
     conn = get_pg_connection()
     cursor = conn.cursor()
 
-    # Cria tabela RD
     create_rd_table = """
     CREATE TABLE IF NOT EXISTS rd (
         id TEXT PRIMARY KEY,
@@ -121,7 +137,6 @@ def init_db():
     if not cursor.fetchone():
         cursor.execute("ALTER TABLE rd ADD COLUMN valor_liberado NUMERIC(15, 2) DEFAULT 0;")
 
-    # Cria tabela saldo_global
     create_saldo_global_table = """
     CREATE TABLE IF NOT EXISTS saldo_global (
         id SERIAL PRIMARY KEY,
@@ -130,7 +145,6 @@ def init_db():
     """
     cursor.execute(create_saldo_global_table)
 
-    # Inicializa saldo global caso não exista
     cursor.execute("SELECT COUNT(*) FROM saldo_global")
     if cursor.fetchone()[0] == 0:
         cursor.execute("INSERT INTO saldo_global (saldo) VALUES (30000)")
@@ -138,6 +152,8 @@ def init_db():
     conn.commit()
     cursor.close()
     conn.close()
+
+from datetime import datetime
 
 def generate_custom_id():
     current_year = datetime.now().year % 100
@@ -157,7 +173,6 @@ def generate_custom_id():
     last_str = last_id[0]
     last_number_str, last_year_str = last_str.split('.')
     last_number = int(last_number_str)
-
     return f"{last_number + 1}.{current_year}"
 
 def user_role():
@@ -173,22 +188,14 @@ def is_financeiro():
     return user_role() == 'financeiro'
 
 def can_add():
-    # Solicitante, Gestor ou Financeiro podem adicionar
     return user_role() in ['solicitante', 'gestor', 'financeiro']
 
 def can_edit(status):
-    # Pode editar se não estiver Fechado e for gestor ou financeiro.
     if status == 'Fechado':
         return False
-    if is_gestor() or is_financeiro():
-        return True
-    return False
+    return (is_gestor() or is_financeiro())
 
 def can_delete(status, solicitante):
-    # Regras:
-    # - Solicitante pode excluir enquanto estiver pendente e for dele mesmo.
-    # - Gestor e Financeiro podem excluir em Pendente, Aprovado e Liberado.
-    # - Ninguém pode excluir se Fechado.
     if status == 'Fechado':
         return False
     if status == 'Pendente' and is_solicitante():
@@ -198,9 +205,6 @@ def can_delete(status, solicitante):
     return False
 
 def can_approve(status):
-    # Aprovar:
-    # Pendente -> Aprovado (Gestor)
-    # Aprovado -> Liberado (Financeiro)
     if status == 'Pendente' and is_gestor():
         return True
     if status == 'Aprovado' and is_financeiro():
@@ -208,11 +212,9 @@ def can_approve(status):
     return False
 
 def can_request_additional(status):
-    # Solicitante solicita adicional se estiver Liberado
     return is_solicitante() and status == 'Liberado'
 
 def can_close(status):
-    # Solicitante pode fechar se estiver Liberado
     return is_solicitante() and status == 'Liberado'
 
 def get_saldo_global():
@@ -231,48 +233,40 @@ def set_saldo_global(novo_saldo):
     conn.close()
 
 def format_currency(value):
-    formatted = f"{value:,.2f}"  # Ex: "30,000.00"
+    formatted = f"{value:,.2f}"
     parts = formatted.split('.')
     left = parts[0].replace(',', '.')
     right = parts[1]
     return f"{left},{right}"
 
+from flask import request, render_template, redirect, url_for, flash
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
-        logging.debug(f"Dados do formulário: {request.form}")
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '').strip()
-        logging.debug(f"Tentativa de login com username: '{username}' e password: '{password}'")
         
         if username == 'gestor' and password == '115289':
             session['user_role'] = 'gestor'
             flash('Login como gestor bem-sucedido.')
-            logging.debug("Login como gestor bem-sucedido.")
         elif username == 'financeiro' and password == '351073':
             session['user_role'] = 'financeiro'
             flash('Login como financeiro bem-sucedido.')
-            logging.debug("Login como financeiro bem-sucedido.")
         elif username == 'solicitante' and password == '102030':
             session['user_role'] = 'solicitante'
             flash('Login como solicitante bem-sucedido.')
-            logging.debug("Login como solicitante bem-sucedido.")
         else:
             flash('Credenciais inválidas.')
-            logging.warning("Tentativa de login com credenciais inválidas.")
             return render_template('index.html', error="Credenciais inválidas", format_currency=format_currency)
         return redirect(url_for('index'))
 
     if 'user_role' not in session:
-        logging.debug("Usuário não autenticado. Mostrando formulário de login.")
         return render_template('index.html', error=None, format_currency=format_currency)
-
-    logging.debug(f"Usuário autenticado como: {session['user_role']}")
 
     conn = get_pg_connection()
     cursor = conn.cursor()
 
-    # Seleciona as RDs por status
     cursor.execute("SELECT * FROM rd WHERE status='Pendente'")
     pendentes = cursor.fetchall()
 
@@ -326,19 +320,24 @@ def add_rd():
         return redirect(url_for('index'))
     custom_id = generate_custom_id()
 
-    # Gerenciar arquivos
+    # Gerencia arquivos: agora só salva localmente de forma TEMPORÁRIA (em TEMP_FOLDER)
+    # depois do upload para R2, exclui localmente.
     arquivos = []
     if 'arquivo' in request.files:
         for file in request.files.getlist('arquivo'):
             if file.filename:
                 filename = f"{custom_id}_{file.filename}"
-                local_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                local_path = os.path.join(TEMP_FOLDER, filename)
                 file.save(local_path)
+                # Envia para R2
                 upload_file_to_r2(local_path, filename)
+                # Remove arquivo local
+                os.remove(local_path)
+                # Armazena o nome do arquivo (que está agora no R2)
                 arquivos.append(filename)
     arquivos_str = ','.join(arquivos) if arquivos else None
 
-    # Insere no BD com valor_liberado = 0
+    # Insere no BD
     conn = get_pg_connection()
     cursor = conn.cursor()
     cursor.execute('''
@@ -363,7 +362,7 @@ def edit_form(id):
     if not rd:
         flash('RD não encontrada.')
         return "RD não encontrada", 404
-    status = rd[6]  # Índice da coluna 'status'
+    status = rd[6]  # coluna 'status'
     if not can_edit(status):
         flash('Acesso negado.')
         return "Acesso negado", 403
@@ -386,7 +385,6 @@ def edit_submit(id):
         flash('Valor inválido.')
         return redirect(url_for('index'))
 
-    # Atualiza arquivos
     conn = get_pg_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT arquivos FROM rd WHERE id=%s", (id,))
@@ -397,9 +395,10 @@ def edit_submit(id):
         for file in request.files.getlist('arquivo'):
             if file.filename:
                 filename = f"{id}_{file.filename}"
-                local_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                local_path = os.path.join(TEMP_FOLDER, filename)
                 file.save(local_path)
                 upload_file_to_r2(local_path, filename)
+                os.remove(local_path)
                 arquivos.append(filename)
 
     arquivos_str = ','.join(arquivos) if arquivos else None
@@ -415,11 +414,19 @@ def edit_submit(id):
     flash('RD atualizada com sucesso.')
     return redirect(url_for('index'))
 
+def can_edit_status(id):
+    conn = get_pg_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT status FROM rd WHERE id=%s", (id,))
+    rd = cursor.fetchone()
+    conn.close()
+    if not rd:
+        return False
+    status = rd[0]
+    return can_edit(status)
+
 @app.route('/approve/<id>', methods=['POST'])
 def approve(id):
-    """Pendente->Aprovado (Gestor), Aprovado->Liberado (Financeiro).
-       Ao liberar, subtrai apenas a diferença não-liberada do saldo.
-    """
     conn = get_pg_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT status, valor, valor_adicional, valor_liberado FROM rd WHERE id=%s", (id,))
@@ -438,15 +445,12 @@ def approve(id):
     current_date = datetime.now().strftime('%Y-%m-%d')
 
     if status == 'Pendente' and is_gestor():
-        # Passa para 'Aprovado'
         new_status = 'Aprovado'
         cursor.execute(
             "UPDATE rd SET status=%s, aprovado_data=%s WHERE id=%s",
             (new_status, current_date, id)
         )
-
     elif status == 'Aprovado' and is_financeiro():
-        # Liberar: subtrair apenas o delta (valor_total - valor_liberado)
         new_status = 'Liberado'
         valor_total = valor + (valor_adic or 0)
         falta_liberar = valor_total - (valor_liberado or 0)
@@ -457,17 +461,13 @@ def approve(id):
                 conn.close()
                 flash('Saldo global insuficiente para liberar a diferença adicional.')
                 return redirect(url_for('index'))
-            # Subtrai do saldo
             set_saldo_global(saldo - falta_liberar)
-            # Atualiza o valor_liberado para o total atual
             valor_liberado = valor_total
 
-        # Atualiza BD
         cursor.execute(
             "UPDATE rd SET status=%s, liberado_data=%s, valor_liberado=%s WHERE id=%s",
             (new_status, current_date, valor_liberado, id)
         )
-
     else:
         conn.close()
         flash("Não é possível aprovar/liberar esta RD.")
@@ -501,17 +501,11 @@ def delete_rd(id):
         saldo = get_saldo_global()
         set_saldo_global(saldo + rd_liberado)
 
-    # Exclui arquivos associados
+    # Exclui arquivos associados no R2
     cursor.execute("SELECT arquivos FROM rd WHERE id=%s", (id,))
     arquivos = cursor.fetchone()[0]
     if arquivos:
         for arquivo in arquivos.split(','):
-            # Remove do disco local
-            arquivo_path = os.path.join(app.config['UPLOAD_FOLDER'], arquivo)
-            if os.path.exists(arquivo_path):
-                os.remove(arquivo_path)
-            else:
-                flash('Arquivo não encontrado no servidor.')
             # Remove do R2
             delete_file_from_r2(arquivo)
 
@@ -525,34 +519,32 @@ def delete_rd(id):
 
 @app.route('/adicional_submit/<id>', methods=['POST'])
 def adicional_submit(id):
-    """Solicita adicional: agora NÃO devolvemos nada ao saldo;
-       apenas voltamos a RD para Pendente e somamos valor_adicional.
-    """
     if not can_request_additional_status(id):
         flash("Acesso negado.")
         return redirect(url_for('index'))
 
-    # Se houver arquivos, faz upload
-    if 'arquivo' in request.files:
-        conn = get_pg_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT arquivos FROM rd WHERE id=%s", (id,))
-        rd_atual = cursor.fetchone()
-        arquivos_atuais = rd_atual[0].split(',') if (rd_atual and rd_atual[0]) else []
+    # Se houver arquivos, faz upload para R2
+    conn = get_pg_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT arquivos FROM rd WHERE id=%s", (id,))
+    rd_atual = cursor.fetchone()
+    arquivos_atuais = rd_atual[0].split(',') if (rd_atual and rd_atual[0]) else []
 
+    if 'arquivo' in request.files:
         for file in request.files.getlist('arquivo'):
             if file.filename:
                 filename = f"{id}_{file.filename}"
-                local_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                local_path = os.path.join(TEMP_FOLDER, filename)
                 file.save(local_path)
                 upload_file_to_r2(local_path, filename)
+                os.remove(local_path)
                 arquivos_atuais.append(filename)
 
-        arquivos_atuais_str = ','.join(arquivos_atuais) if arquivos_atuais else None
-        cursor.execute("UPDATE rd SET arquivos=%s WHERE id=%s", (arquivos_atuais_str, id))
-        conn.commit()
-        cursor.close()
-        conn.close()
+    arquivos_atuais_str = ','.join(arquivos_atuais) if arquivos_atuais else None
+    cursor.execute("UPDATE rd SET arquivos=%s WHERE id=%s", (arquivos_atuais_str, id))
+    conn.commit()
+    cursor.close()
+    conn.close()
 
     # Valor adicional
     try:
@@ -561,7 +553,7 @@ def adicional_submit(id):
         flash('Valor adicional inválido.')
         return redirect(url_for('index'))
 
-    # Atualiza RD (status -> Pendente, soma o adicional)
+    # Atualiza RD -> status Pendente
     conn = get_pg_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT status, valor_adicional FROM rd WHERE id=%s", (id,))
@@ -592,46 +584,54 @@ def adicional_submit(id):
     flash('Crédito adicional solicitado com sucesso (sem devolver saldo).')
     return redirect(url_for('index'))
 
+def can_request_additional_status(id):
+    conn = get_pg_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT status FROM rd WHERE id=%s", (id,))
+    rd = cursor.fetchone()
+    conn.close()
+    if not rd:
+        return False
+    status = rd[0]
+    return can_request_additional(status)
+
 @app.route('/fechamento_submit/<id>', methods=['POST'])
 def fechamento_submit(id):
-    """No fechamento, devolve (valor_liberado - valor_despesa) ao saldo.
-       E também faz upload de arquivos ao Cloudflare R2, caso enviados.
-    """
-    # 1) Verifica se o usuário pode fechar
     if not can_close_status(id):
         flash("Acesso negado.")
         return redirect(url_for('index'))
 
-    # 2) Se houver arquivos, faz upload
-    if 'arquivo' in request.files:
-        conn = get_pg_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT arquivos FROM rd WHERE id=%s", (id,))
-        rd_atual = cursor.fetchone()
-        arquivos_atuais = rd_atual[0].split(',') if (rd_atual and rd_atual[0]) else []
+    # Se houver arquivos, faz upload ao R2
+    conn = get_pg_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT arquivos FROM rd WHERE id=%s", (id,))
+    rd_atual = cursor.fetchone()
+    arquivos_atuais = rd_atual[0].split(',') if (rd_atual and rd_atual[0]) else []
 
+    if 'arquivo' in request.files:
         for file in request.files.getlist('arquivo'):
             if file.filename:
                 filename = f"{id}_{file.filename}"
-                local_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                local_path = os.path.join(TEMP_FOLDER, filename)
                 file.save(local_path)
                 upload_file_to_r2(local_path, filename)
+                os.remove(local_path)
                 arquivos_atuais.append(filename)
 
-        arquivos_atuais_str = ','.join(arquivos_atuais) if arquivos_atuais else None
-        cursor.execute("UPDATE rd SET arquivos=%s WHERE id=%s", (arquivos_atuais_str, id))
-        conn.commit()
-        cursor.close()
-        conn.close()
+    arquivos_atuais_str = ','.join(arquivos_atuais) if arquivos_atuais else None
+    cursor.execute("UPDATE rd SET arquivos=%s WHERE id=%s", (arquivos_atuais_str, id))
+    conn.commit()
+    cursor.close()
+    conn.close()
 
-    # 3) Captura e valida o valor da despesa informado
+    # Captura valor da despesa
     try:
         valor_despesa = float(request.form['valor_despesa'])
     except (ValueError, KeyError):
         flash('Valor da despesa inválido.')
         return redirect(url_for('index'))
 
-    # 4) Busca dados da RD
+    # Busca dados da RD
     conn = get_pg_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT status, valor_liberado FROM rd WHERE id=%s", (id,))
@@ -652,38 +652,48 @@ def fechamento_submit(id):
         flash("Valor da despesa maior que o valor liberado.")
         return redirect(url_for('index'))
 
-    # 5) Devolve a diferença ao saldo global
+    # Devolve a diferença ao saldo global
     saldo_devolver = valor_liberado - valor_despesa
     saldo = get_saldo_global()
     set_saldo_global(saldo + saldo_devolver)
 
     data_fechamento = datetime.now().strftime('%Y-%m-%d')
 
-    # 6) Atualiza campos de fechamento na base de dados
     cursor.execute("""
         UPDATE rd
         SET valor_despesa=%s, saldo_devolver=%s, data_fechamento=%s, status='Fechado'
         WHERE id=%s
     """, (valor_despesa, saldo_devolver, data_fechamento, id))
-
     conn.commit()
     cursor.close()
     conn.close()
-    flash('RD fechada com sucesso. Saldo devolvido = R$%.2f' % saldo_devolver)
+
+    flash(f'RD fechada com sucesso. Saldo devolvido = R${saldo_devolver:.2f}')
     return redirect(url_for('index'))
+
+def can_close_status(id):
+    conn = get_pg_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT status FROM rd WHERE id=%s", (id,))
+    rd = cursor.fetchone()
+    conn.close()
+    if not rd:
+        return False
+    status = rd[0]
+    return can_close(status)
 
 @app.route('/edit_saldo', methods=['POST'])
 def edit_saldo():
     if not is_financeiro():
         flash('Acesso negado.')
         return redirect(url_for('index'))
-    
+
     try:
         novo_saldo = float(request.form['saldo_global'])
     except (ValueError, KeyError):
         flash('Saldo inválido.')
         return redirect(url_for('index'))
-    
+
     set_saldo_global(novo_saldo)
     flash('Saldo Global atualizado com sucesso.')
     return redirect(url_for('index'))
@@ -694,12 +704,11 @@ def logout():
     flash('Logout realizado com sucesso.')
     return redirect(url_for('index'))
 
-@app.route('/uploads/<filename>')
-def uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+# Removido o send_from_directory e a rota /uploads/<filename>, pois não servimos arquivos localmente.
 
 @app.route('/delete_file/<id>', methods=['POST'])
 def delete_file(id):
+    """Exclui um arquivo específico do Cloudflare R2 e remove-o da lista 'arquivos' da RD."""
     filename = request.form.get('filename')
     if not filename:
         flash('Nenhum arquivo especificado para exclusão.')
@@ -720,13 +729,6 @@ def delete_file(id):
         flash('Arquivo não encontrado na RD especificada.')
         return redirect(request.referrer or url_for('index'))
 
-    # Remove do disco local
-    arquivo_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    if os.path.exists(arquivo_path):
-        os.remove(arquivo_path)
-    else:
-        flash('Arquivo não encontrado no servidor.')
-
     # Remove do R2
     delete_file_from_r2(filename)
 
@@ -741,75 +743,20 @@ def delete_file(id):
     flash('Arquivo excluído com sucesso.')
     return redirect(request.referrer or url_for('index'))
 
-def can_edit_status(id):
-    conn = get_pg_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT status FROM rd WHERE id=%s", (id,))
-    rd = cursor.fetchone()
-    conn.close()
-    if not rd:
-        return False
-    status = rd[0]
-    return can_edit(status)
-
-def can_request_additional_status(id):
-    conn = get_pg_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT status FROM rd WHERE id=%s", (id,))
-    rd = cursor.fetchone()
-    conn.close()
-    if not rd:
-        return False
-    status = rd[0]
-    return can_request_additional(status)
-
-def can_close_status(id):
-    conn = get_pg_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT status FROM rd WHERE id=%s", (id,))
-    rd = cursor.fetchone()
-    conn.close()
-    if not rd:
-        return False
-    status = rd[0]
-    return can_close(status)
-
-# -----------------------------------------------------------------------
-# ROTA PARA EXPORTAR DADOS EM EXCEL
-# -----------------------------------------------------------------------
 @app.route('/export_excel', methods=['GET'])
 def export_excel():
-    """
-    Exporta as RDs para um relatório em Excel com as colunas:
-    - Número da RD (id)
-    - Data da Solicitação (data)
-    - Solicitante
-    - Funcionário
-    - Valor Solicitado
-    - Valor Adicional
-    - Data do Adicional
-    - Centro de Custo
-    - Valor Gasto (Despesa)
-    - Saldo a Devolver
-    - Data de Fechamento
-    - Saldo Global (atual, no momento da exportação)
-    """
     conn = get_pg_connection()
     cursor = conn.cursor()
-    
-    # Vamos buscar todas as RDs
+
     cursor.execute("SELECT * FROM rd ORDER BY id ASC")
     rd_list = cursor.fetchall()
 
-    # Pega o saldo global atual
     saldo_global = get_saldo_global()
 
-    # Montamos o Excel em memória
     output = io.BytesIO()
     workbook = xlsxwriter.Workbook(output, {'in_memory': True})
     worksheet = workbook.add_worksheet('Relatorio')
 
-    # Cabeçalho
     header = [
         "Número RD",
         "Data Solicitação",
@@ -827,13 +774,12 @@ def export_excel():
     for col, h in enumerate(header):
         worksheet.write(0, col, h)
 
-    # Índices de cada campo na tupla retornada por fetchall().
-    # (id, solicitante, funcionario, data, centro_custo, valor, status,
-    #  valor_adicional, adicional_data, valor_despesa, saldo_devolver,
-    #  data_fechamento, arquivos, aprovado_data, liberado_data, valor_liberado)
-    # Lembrando que a ordem exata depende de como a tabela foi criada.
     row_number = 1
     for rd_row in rd_list:
+        # Lembrando a estrutura da tabela:
+        # (id, solicitante, funcionario, data, centro_custo, valor, status,
+        #  valor_adicional, adicional_data, valor_despesa, saldo_devolver,
+        #  data_fechamento, arquivos, aprovado_data, liberado_data, valor_liberado)
         rd_id              = rd_row[0]
         rd_solicitante     = rd_row[1]
         rd_funcionario     = rd_row[2]
@@ -846,25 +792,24 @@ def export_excel():
         rd_saldo_devolver  = rd_row[10]
         rd_data_fechamento = rd_row[11]
 
-        worksheet.write(row_number, 0, rd_id)                # Número RD
-        worksheet.write(row_number, 1, rd_data)              # Data Solicitação
-        worksheet.write(row_number, 2, rd_solicitante)       # Solicitante
-        worksheet.write(row_number, 3, rd_funcionario)       # Funcionário
-        worksheet.write(row_number, 4, rd_valor)             # Valor Solicitado
-        worksheet.write(row_number, 5, rd_valor_adicional)   # Valor Adicional
-        worksheet.write(row_number, 6, rd_adicional_data)    # Data do Adicional
-        worksheet.write(row_number, 7, rd_centro_custo)      # Centro de custo
-        worksheet.write(row_number, 8, rd_valor_despesa)     # Valor Gasto (Despesa)
-        worksheet.write(row_number, 9, rd_saldo_devolver)    # Saldo a Devolver
-        worksheet.write(row_number, 10, rd_data_fechamento)  # Data de Fechamento
-        worksheet.write(row_number, 11, saldo_global)        # Saldo Global atual
+        worksheet.write(row_number, 0, rd_id)
+        worksheet.write(row_number, 1, rd_data)
+        worksheet.write(row_number, 2, rd_solicitante)
+        worksheet.write(row_number, 3, rd_funcionario)
+        worksheet.write(row_number, 4, rd_valor)
+        worksheet.write(row_number, 5, rd_valor_adicional)
+        worksheet.write(row_number, 6, rd_adicional_data)
+        worksheet.write(row_number, 7, rd_centro_custo)
+        worksheet.write(row_number, 8, rd_valor_despesa)
+        worksheet.write(row_number, 9, rd_saldo_devolver)
+        worksheet.write(row_number, 10, rd_data_fechamento)
+        worksheet.write(row_number, 11, saldo_global)
         row_number += 1
 
     workbook.close()
     output.seek(0)
     conn.close()
 
-    # Retorna o arquivo Excel como anexo para download
     return send_file(
         output,
         as_attachment=True,
