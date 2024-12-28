@@ -22,9 +22,11 @@ def get_r2_public_url(object_name):
     """Retorna o URL público de um objeto no R2."""
     return f"{R2_PUBLIC_URL}/{object_name}"
 
-
-def upload_file_to_r2(local_file_path, object_name):
-    """Envia um arquivo local para o Bucket R2, usando boto3."""
+def upload_file_to_r2(file_obj, object_name):
+    """
+    Envia um arquivo para o Bucket R2 diretamente do objeto em memória,
+    usando upload_fileobj (sem salvar localmente).
+    """
     s3 = boto3.client(
         's3',
         endpoint_url=R2_ENDPOINT,
@@ -32,7 +34,9 @@ def upload_file_to_r2(local_file_path, object_name):
         aws_secret_access_key=R2_SECRET_KEY,
         config=Config(signature_version='s3v4')
     )
-    s3.upload_file(local_file_path, R2_BUCKET_NAME, object_name)
+    # file_obj é do tipo FileStorage (Flask), então podemos usar .seek(0) antes:
+    file_obj.seek(0)
+    s3.upload_fileobj(file_obj, R2_BUCKET_NAME, object_name)
 
 def delete_file_from_r2(object_name):
     """Exclui um arquivo do Bucket R2, usando boto3."""
@@ -64,10 +68,11 @@ if not secret_key:
 app.secret_key = secret_key
 logging.debug(f"SECRET_KEY carregado corretamente.")
 
-UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
+# REMOVIDO: Pasta de uploads local
+# UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')
+# app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+# if not os.path.exists(UPLOAD_FOLDER):
+#     os.makedirs(UPLOAD_FOLDER)
 
 # Configurações do PostgreSQL
 PG_HOST = os.getenv('PG_HOST', 'dpg-ctjqnsdds78s73erdqi0-a.oregon-postgres.render.com')
@@ -88,6 +93,7 @@ def get_pg_connection():
         return conn
     except psycopg2.Error as e:
         logging.error(f"Erro ao conectar ao PostgreSQL: {e}")
+        import sys
         sys.exit(1)
 
 def init_db():
@@ -332,16 +338,16 @@ def add_rd():
         return redirect(url_for('index'))
     custom_id = generate_custom_id()
 
-    # Gerenciar arquivos
+    # Gerenciar arquivos: agora só envia para R2
     arquivos = []
     if 'arquivo' in request.files:
         for file in request.files.getlist('arquivo'):
             if file.filename:
                 filename = f"{custom_id}_{file.filename}"
-                local_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                file.save(local_path)
-                upload_file_to_r2(local_path, filename)
+                # Enviar diretamente para R2 (sem salvar localmente)
+                upload_file_to_r2(file, filename)
                 arquivos.append(filename)
+
     arquivos_str = ','.join(arquivos) if arquivos else None
 
     # Insere no BD com valor_liberado = 0
@@ -403,9 +409,8 @@ def edit_submit(id):
         for file in request.files.getlist('arquivo'):
             if file.filename:
                 filename = f"{id}_{file.filename}"
-                local_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                file.save(local_path)
-                upload_file_to_r2(local_path, filename)
+                # Upload direto para R2
+                upload_file_to_r2(file, filename)
                 arquivos.append(filename)
 
     arquivos_str = ','.join(arquivos) if arquivos else None
@@ -507,17 +512,11 @@ def delete_rd(id):
         saldo = get_saldo_global()
         set_saldo_global(saldo + rd_liberado)
 
-    # Exclui arquivos associados
+    # Exclui arquivos associados (apenas no R2)
     cursor.execute("SELECT arquivos FROM rd WHERE id=%s", (id,))
     arquivos = cursor.fetchone()[0]
     if arquivos:
         for arquivo in arquivos.split(','):
-            # Remove do disco local
-            arquivo_path = os.path.join(app.config['UPLOAD_FOLDER'], arquivo)
-            if os.path.exists(arquivo_path):
-                os.remove(arquivo_path)
-            else:
-                flash('Arquivo não encontrado no servidor.')
             # Remove do R2
             delete_file_from_r2(arquivo)
 
@@ -531,14 +530,12 @@ def delete_rd(id):
 
 @app.route('/adicional_submit/<id>', methods=['POST'])
 def adicional_submit(id):
-    """Solicita adicional: agora NÃO devolvemos nada ao saldo;
-       apenas voltamos a RD para Pendente e somamos valor_adicional.
-    """
+    """Solicita adicional: volta a RD para 'Pendente' e soma valor_adicional."""
     if not can_request_additional_status(id):
         flash("Acesso negado.")
         return redirect(url_for('index'))
 
-    # Se houver arquivos, faz upload
+    # Se houver arquivos, faz upload diretamente para R2
     if 'arquivo' in request.files:
         conn = get_pg_connection()
         cursor = conn.cursor()
@@ -549,9 +546,7 @@ def adicional_submit(id):
         for file in request.files.getlist('arquivo'):
             if file.filename:
                 filename = f"{id}_{file.filename}"
-                local_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                file.save(local_path)
-                upload_file_to_r2(local_path, filename)
+                upload_file_to_r2(file, filename)
                 arquivos_atuais.append(filename)
 
         arquivos_atuais_str = ','.join(arquivos_atuais) if arquivos_atuais else None
@@ -600,15 +595,16 @@ def adicional_submit(id):
 
 @app.route('/fechamento_submit/<id>', methods=['POST'])
 def fechamento_submit(id):
-    """No fechamento, devolve (valor_liberado - valor_despesa) ao saldo.
-       E também faz upload de arquivos ao Cloudflare R2, caso enviados.
+    """
+    No fechamento, devolve (valor_liberado - valor_despesa) ao saldo,
+    atualiza a RD para 'Fechado' e faz upload de eventuais arquivos.
     """
     # 1) Verifica se o usuário pode fechar
     if not can_close_status(id):
         flash("Acesso negado.")
         return redirect(url_for('index'))
 
-    # 2) Se houver arquivos, faz upload
+    # 2) Se houver arquivos, faz upload para R2
     if 'arquivo' in request.files:
         conn = get_pg_connection()
         cursor = conn.cursor()
@@ -619,9 +615,7 @@ def fechamento_submit(id):
         for file in request.files.getlist('arquivo'):
             if file.filename:
                 filename = f"{id}_{file.filename}"
-                local_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                file.save(local_path)
-                upload_file_to_r2(local_path, filename)
+                upload_file_to_r2(file, filename)
                 arquivos_atuais.append(filename)
 
         arquivos_atuais_str = ','.join(arquivos_atuais) if arquivos_atuais else None
@@ -700,9 +694,10 @@ def logout():
     flash('Logout realizado com sucesso.')
     return redirect(url_for('index'))
 
-@app.route('/uploads/<filename>')
-def uploaded_file(filename):
-    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
+# REMOVIDO: Rota que servia arquivos localmente
+# @app.route('/uploads/<filename>')
+# def uploaded_file(filename):
+#     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 @app.route('/delete_file/<id>', methods=['POST'])
 def delete_file(id):
@@ -725,13 +720,6 @@ def delete_file(id):
         conn.close()
         flash('Arquivo não encontrado na RD especificada.')
         return redirect(request.referrer or url_for('index'))
-
-    # Remove do disco local
-    arquivo_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-    if os.path.exists(arquivo_path):
-        os.remove(arquivo_path)
-    else:
-        flash('Arquivo não encontrado no servidor.')
 
     # Remove do R2
     delete_file_from_r2(filename)
@@ -837,7 +825,6 @@ def export_excel():
     # (id, solicitante, funcionario, data, centro_custo, valor, status,
     #  valor_adicional, adicional_data, valor_despesa, saldo_devolver,
     #  data_fechamento, arquivos, aprovado_data, liberado_data, valor_liberado)
-    # Lembrando que a ordem exata depende de como a tabela foi criada.
     row_number = 1
     for rd_row in rd_list:
         rd_id              = rd_row[0]
@@ -853,17 +840,17 @@ def export_excel():
         rd_data_fechamento = rd_row[11]
 
         worksheet.write(row_number, 0, rd_id)                # Número RD
-        worksheet.write(row_number, 1, rd_data)              # Data Solicitação
+        worksheet.write(row_number, 1, str(rd_data))         # Data Solicitação
         worksheet.write(row_number, 2, rd_solicitante)       # Solicitante
         worksheet.write(row_number, 3, rd_funcionario)       # Funcionário
-        worksheet.write(row_number, 4, rd_valor)             # Valor Solicitado
-        worksheet.write(row_number, 5, rd_valor_adicional)   # Valor Adicional
-        worksheet.write(row_number, 6, rd_adicional_data)    # Data do Adicional
-        worksheet.write(row_number, 7, rd_centro_custo)      # Centro de custo
-        worksheet.write(row_number, 8, rd_valor_despesa)     # Valor Gasto (Despesa)
-        worksheet.write(row_number, 9, rd_saldo_devolver)    # Saldo a Devolver
-        worksheet.write(row_number, 10, rd_data_fechamento)  # Data de Fechamento
-        worksheet.write(row_number, 11, saldo_global)        # Saldo Global atual
+        worksheet.write(row_number, 4, float(rd_valor or 0)) # Valor Solicitado
+        worksheet.write(row_number, 5, float(rd_valor_adicional or 0))  # Valor Adicional
+        worksheet.write(row_number, 6, str(rd_adicional_data or ''))    # Data do Adicional
+        worksheet.write(row_number, 7, rd_centro_custo)                # Centro de custo
+        worksheet.write(row_number, 8, float(rd_valor_despesa or 0))    # Valor Gasto (Despesa)
+        worksheet.write(row_number, 9, float(rd_saldo_devolver or 0))   # Saldo a Devolver
+        worksheet.write(row_number, 10, str(rd_data_fechamento or ''))  # Data de Fechamento
+        worksheet.write(row_number, 11, float(saldo_global))            # Saldo Global atual
         row_number += 1
 
     workbook.close()
