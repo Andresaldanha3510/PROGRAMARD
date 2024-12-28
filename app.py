@@ -61,6 +61,9 @@ logging.basicConfig(level=logging.DEBUG)
 
 app = Flask(__name__)
 
+app.jinja_env.globals.update(get_r2_public_url=get_r2_public_url)
+
+
 # Configuração do SECRET_KEY
 secret_key = os.getenv('SECRET_KEY')
 if not secret_key:
