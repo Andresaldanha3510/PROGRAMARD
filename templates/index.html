@@ -282,8 +282,14 @@
             </ul>
           {% endif %}
         {% endwith %}
-        <h1>Gerenciamento de RDs TECSUL</h1>
 
+        <div style="text-align:center; margin-top: 20px;">
+            <img src="{{ url_for('static', filename='imagens/download.png') }}"
+                 alt="Logo Tecsul"
+                 style="max-width: 200px; height: auto;">
+        </div>
+        <h1>Gerenciamento de RDs TECSUL</h1>
+        
         {% if user_role is not defined %}
         <!-- Formulário de Login -->
         <form action="/" method="POST" class="main-form">
