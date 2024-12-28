@@ -1,4 +1,3 @@
-<!-- templates/index.html -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -168,18 +167,18 @@
         .btn-fechamento:hover { background-color: #7d3c98; }
 
         .btn-success {
-        background-color: #28a745;
-        color: #fff;
-        padding: 10px 20px;
-        border-radius: 5px;
-        text-decoration: none;
-        display: inline-block;
-        transition: background-color 0.3s ease;
-    }
+            background-color: #28a745;
+            color: #fff;
+            padding: 10px 20px;
+            border-radius: 5px;
+            text-decoration: none;
+            display: inline-block;
+            transition: background-color 0.3s ease;
+        }
 
-    .btn-success:hover {
-        background-color: #218838;
-    }
+        .btn-success:hover {
+            background-color: #218838;
+        }
 
         .btn-delete-rd { 
             background-color: #e74c3c;
@@ -351,11 +350,11 @@
         {% endif %}
 
         <!-- Botão de Exportar para Excel -->
-    <div class="export-section" style="text-align: center; margin: 20px 0;">
-        <a href="{{ url_for('export_excel') }}" class="btn btn-success">
-            Exportar para Excel
-        </a>
-    </div>
+        <div class="export-section" style="text-align: center; margin: 20px 0;">
+            <a href="{{ url_for('export_excel') }}" class="btn btn-success">
+                Exportar para Excel
+            </a>
+        </div>
 
         {% macro mostrar_valores(rd) %}
             {# Campos do banco (conforme sua tabela "rd"): #}
@@ -465,7 +464,8 @@
                         {% if rd[12] %}
                             {% for arquivo in rd[12].split(',') %}
                                 <div class="arquivo-container">
-                                    <a href="{{ url_for('uploaded_file', filename=arquivo) }}" class="arquivo-link" target="_blank">{{ arquivo }}</a>
+                                    <!-- Substituir 'uploaded_file' por get_r2_public_url -->
+                                    <a href="{{ get_r2_public_url(arquivo) }}" class="arquivo-link" target="_blank">{{ arquivo }}</a>
                                     <form action="{{ url_for('delete_file', id=rd_id) }}" method="POST" style="display:inline;">
                                         <input type="hidden" name="filename" value="{{ arquivo }}">
                                         <button type="submit" class="btn btn-delete-file" title="Excluir Arquivo">X</button>
@@ -523,7 +523,7 @@
                         {% if rd[12] %}
                             {% for arquivo in rd[12].split(',') %}
                                 <div class="arquivo-container">
-                                    <a href="{{ url_for('uploaded_file', filename=arquivo) }}" class="arquivo-link" target="_blank">{{ arquivo }}</a>
+                                    <a href="{{ get_r2_public_url(arquivo) }}" class="arquivo-link" target="_blank">{{ arquivo }}</a>
                                     <form action="{{ url_for('delete_file', id=rd_id) }}" method="POST" style="display:inline;">
                                         <input type="hidden" name="filename" value="{{ arquivo }}">
                                         <button type="submit" class="btn btn-delete-file" title="Excluir Arquivo">X</button>
@@ -588,7 +588,7 @@
                         {% if rd[12] %}
                             {% for arquivo in rd[12].split(',') %}
                                 <div class="arquivo-container">
-                                    <a href="{{ url_for('uploaded_file', filename=arquivo) }}" class="arquivo-link" target="_blank">{{ arquivo }}</a>
+                                    <a href="{{ get_r2_public_url(arquivo) }}" class="arquivo-link" target="_blank">{{ arquivo }}</a>
                                     <form action="{{ url_for('delete_file', id=rd_id) }}" method="POST" style="display:inline;">
                                         <input type="hidden" name="filename" value="{{ arquivo }}">
                                         <button type="submit" class="btn btn-delete-file" title="Excluir Arquivo">X</button>
@@ -634,7 +634,7 @@
                         {% if rd[12] %}
                             {% for arquivo in rd[12].split(',') %}
                                 <div class="arquivo-container">
-                                    <a href="{{ url_for('uploaded_file', filename=arquivo) }}" class="arquivo-link" target="_blank">{{ arquivo }}</a>
+                                    <a href="{{ get_r2_public_url(arquivo) }}" class="arquivo-link" target="_blank">{{ arquivo }}</a>
                                     <form action="{{ url_for('delete_file', id=rd_id) }}" method="POST" style="display:inline;">
                                         <input type="hidden" name="filename" value="{{ arquivo }}">
                                         <button type="submit" class="btn btn-delete-file" title="Excluir Arquivo">X</button>
