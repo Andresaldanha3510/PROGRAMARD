@@ -62,11 +62,11 @@ secret_key = os.getenv('SECRET_KEY', 'secret_key_para_exemplo')
 app.secret_key = secret_key
 
 # Configurações do PostgreSQL
-PG_HOST = os.getenv('PG_HOST', 'localhost')
+PG_HOST = os.getenv('PG_HOST', 'dpg-ctjqnsdds78s73erdqi0-a.oregon-postgres.render.com')
 PG_PORT = os.getenv('PG_PORT', '5432')
 PG_DB = os.getenv('PG_DB', 'programard_db')
 PG_USER = os.getenv('PG_USER', 'programard_db_user')
-PG_PASSWORD = os.getenv('PG_PASSWORD', 'SENHA_SUPER_SECRETA')
+PG_PASSWORD = os.getenv('PG_PASSWORD', 'hU9wJmIfgiyCg02KFQ3a4AropKSMopXr')  # Mude isso imediatamente
 
 def get_pg_connection():
     """Retorna a conexão com o banco de dados PostgreSQL."""
