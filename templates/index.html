@@ -474,16 +474,29 @@
         <form action="/add" method="POST" enctype="multipart/form-data" class="main-form">
             <label for="solicitante">Solicitante:</label>
             <input type="text" id="solicitante" name="solicitante" required aria-label="Solicitante">
+
             <label for="funcionario">Funcionário:</label>
             <input type="text" id="funcionario" name="funcionario" required aria-label="Funcionário">
+
             <label for="data">Data:</label>
             <input type="date" id="data" name="data" required aria-label="Data">
+
             <label for="centro_custo">Centro de Custo:</label>
             <input type="text" id="centro_custo" name="centro_custo" required aria-label="Centro de Custo">
+
             <label for="valor">Valor (R$):</label>
             <input type="number" id="valor" name="valor" step="0.01" required aria-label="Valor">
+
+            <!-- Início do Checkbox Reembolso -->
+            <div>
+                <input type="checkbox" id="is_reembolso" name="is_reembolso" value="on">
+                <label for="is_reembolso">É reembolso?</label>
+            </div>
+            <!-- Fim do Checkbox Reembolso -->
+
             <label for="arquivo">Anexar Arquivos:</label>
             <input type="file" id="arquivo" name="arquivo" multiple aria-label="Anexar Arquivos">
+
             <button type="submit"><i class="fas fa-plus-circle"></i> Adicionar RD</button>
         </form>
         {% endif %}
