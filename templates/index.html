@@ -13,7 +13,7 @@
             --primary-color: #3498db; /* Azul */
             --secondary-color: #f39c12; /* Laranja */
             --success-color: #2ecc71; /* Verde */
-            --danger-color: #e74c3c; /* Vermelho */
+            --danger-color: #e74c3c;  /* Vermelho */
             --warning-color: #f1c40f; /* Amarelo */
             --background-color: #f2f3f5;
             --header-color: #34495e;
@@ -398,6 +398,14 @@
             font-size: 0.85rem;
             margin-bottom: 15px;
         }
+
+        /* Para alinhar o checkbox "É reembolso?" */
+        .checkbox-container {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
@@ -487,12 +495,11 @@
             <label for="valor">Valor (R$):</label>
             <input type="number" id="valor" name="valor" step="0.01" required aria-label="Valor">
 
-            <!-- Início do Checkbox Reembolso -->
-            <div>
+            <!-- Checkbox para "É reembolso?" -->
+            <div class="checkbox-container">
                 <input type="checkbox" id="is_reembolso" name="is_reembolso" value="on">
                 <label for="is_reembolso">É reembolso?</label>
             </div>
-            <!-- Fim do Checkbox Reembolso -->
 
             <label for="arquivo">Anexar Arquivos:</label>
             <input type="file" id="arquivo" name="arquivo" multiple aria-label="Anexar Arquivos">
@@ -517,23 +524,16 @@
             </a>
         </div>
 
+        {# ----------------------------------------------------------------------------
+           MACRO QUE EXIBE OS VALORES. AQUI FICA A LÓGICA PARA CASO SEJA REEMBOLSO
+           ---------------------------------------------------------------------------- #}
         {% macro mostrar_valores(rd) %}
-            {# Campos do banco (conforme sua tabela "rd"): #}
-            {#  rd[0] = id
-                rd[1] = solicitante
-                rd[2] = funcionario
-                rd[3] = data
-                rd[4] = centro_custo
-                rd[5] = valor (valor inicial)
-                rd[6] = status
-                rd[7] = valor_adicional
-                rd[8] = adicional_data
-                rd[9] = valor_despesa
-                rd[10] = saldo_devolver
-                rd[11] = data_fechamento
-                rd[12] = arquivos
-                rd[13] = aprovado_data
-                rd[14] = liberado_data
+            {# Indices:
+               0=id, 1=solicitante, 2=funcionario, 3=data, 4=centro_custo,
+               5=valor, 6=status, 7=valor_adicional, 8=adicional_data,
+               9=valor_despesa, 10=saldo_devolver, 11=data_fechamento,
+               12=arquivos, 13=aprovado_data, 14=liberado_data, 15=valor_liberado,
+               16=is_reembolso (se for a 17ª coluna).
             #}
 
             {% set valor = rd[5] %}
@@ -541,43 +541,51 @@
             {% set valor_total = valor + valor_adic %}
             {% set valor_despesa = rd[9] if rd[9] else 0 %}
             {% set saldo_devolver = rd[10] if rd[10] else (valor_total - valor_despesa) %}
-            
             {% set adicional_data = rd[8] if rd[8] else 'N/A' %}
             {% set data_fechamento = rd[11] if rd[11] else 'N/A' %}
             {% set aprovado_data = rd[13] if rd[13] else 'N/A' %}
             {% set liberado_data = rd[14] if rd[14] else 'N/A' %}
+            {% set is_reembolso = rd[16] if rd|length > 16 else false %}
 
-            {# Exibição formatada #}
-            <!-- Valor inicial e data da solicitação -->
-            <strong>Valor Solicitado:</strong> R${{ format_currency(valor) }}<br>
-            <strong>Data da Solicitação:</strong> {{ rd[3] }}<br>
-            <br>
+            {% if is_reembolso %}
+                <!-- SE FOR REEMBOLSO -->
+                <div style="color: red; font-weight: bold; font-size: 1.1rem;">
+                    REEMBOLSO
+                </div>
+                <strong>Valor Solicitado:</strong> R${{ format_currency(valor) }}<br>
+                <strong>Data da Solicitação:</strong> {{ rd[3] }}<br>
+                <br>
+                <!-- Retira "Valor Adicional", "Total da RD", "Valor Gasto", etc.
+                     e exibe "Saldo a Reembolsar" -->
+                <strong>Saldo a Reembolsar:</strong> R${{ format_currency(valor) }}
+            {% else %}
+                <!-- SE NÃO FOR REEMBOLSO (lógica original) -->
+                <strong>Valor Solicitado:</strong> R${{ format_currency(valor) }}<br>
+                <strong>Data da Solicitação:</strong> {{ rd[3] }}<br>
+                <br>
 
-            <!-- Valor adicional, se houver -->
-            <strong>Valor Adicional:</strong> R${{ format_currency(valor_adic) }}<br>
-            {% if adicional_data != 'N/A' %}
-                <strong>Data do Adicional:</strong> {{ adicional_data }}<br>
-            {% endif %}
-            <br>
+                <strong>Valor Adicional:</strong> R${{ format_currency(valor_adic) }}<br>
+                {% if adicional_data != 'N/A' %}
+                    <strong>Data do Adicional:</strong> {{ adicional_data }}<br>
+                {% endif %}
+                <br>
 
-            <!-- Soma total -->
-            <strong>Total da RD:</strong> R${{ format_currency(valor_total) }}<br>
-            <br>
+                <strong>Total da RD:</strong> R${{ format_currency(valor_total) }}<br>
+                <br>
 
-            <!-- Despesa e saldo a devolver (após fechamento) -->
-            <strong>Valor Gasto (Despesa):</strong> R${{ format_currency(valor_despesa) }}<br>
-            <strong>Saldo a Devolver:</strong> R${{ format_currency(saldo_devolver) }}<br>
-            <br>
+                <strong>Valor Gasto (Despesa):</strong> R${{ format_currency(valor_despesa) }}<br>
+                <strong>Saldo a Devolver:</strong> R${{ format_currency(saldo_devolver) }}<br>
+                <br>
 
-            <!-- Datas de aprovação, liberação e fechamento -->
-            {% if aprovado_data != 'N/A' %}
-                <strong>Aprovado em:</strong> {{ aprovado_data }}<br>
-            {% endif %}
-            {% if liberado_data != 'N/A' %}
-                <strong>Liberado em:</strong> {{ liberado_data }}<br>
-            {% endif %}
-            {% if data_fechamento != 'N/A' %}
-                <strong>Fechado em:</strong> {{ data_fechamento }}
+                {% if aprovado_data != 'N/A' %}
+                    <strong>Aprovado em:</strong> {{ aprovado_data }}<br>
+                {% endif %}
+                {% if liberado_data != 'N/A' %}
+                    <strong>Liberado em:</strong> {{ liberado_data }}<br>
+                {% endif %}
+                {% if data_fechamento != 'N/A' %}
+                    <strong>Fechado em:</strong> {{ data_fechamento }}
+                {% endif %}
             {% endif %}
         {% endmacro %}
 
@@ -627,7 +635,7 @@
                             </button>
                         </form>
                         {% endif %}
-                        <!-- Link para arquivos anexados com opção de exclusão -->
+                        <!-- Link para arquivos anexados -->
                         {% if rd[12] %}
                             {% for arquivo in rd[12].split(',') %}
                                 <div class="arquivo-container">
@@ -693,7 +701,6 @@
                             </button>
                         </form>
                         {% endif %}
-                        <!-- Link para arquivos anexados com opção de exclusão -->
                         {% if rd[12] %}
                             {% for arquivo in rd[12].split(',') %}
                                 <div class="arquivo-container">
@@ -768,7 +775,6 @@
                             </button>
                         </form>
                         {% endif %}
-                        <!-- Link para arquivos anexados com opção de exclusão -->
                         {% if rd[12] %}
                             {% for arquivo in rd[12].split(',') %}
                                 <div class="arquivo-container">
@@ -816,7 +822,6 @@
                     <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
                     <td data-label="Ações">
                         <!-- Fechado: não editar, não excluir -->
-                        <!-- Link para arquivos anexados com opção de exclusão -->
                         {% if rd[12] %}
                             {% for arquivo in rd[12].split(',') %}
                                 <div class="arquivo-container">
