@@ -34,7 +34,6 @@ def upload_file_to_r2(file_obj, object_name):
         aws_secret_access_key=R2_SECRET_KEY,
         config=Config(signature_version='s3v4')
     )
-    # file_obj é do tipo FileStorage (Flask), então podemos usar .seek(0) antes:
     file_obj.seek(0)
     s3.upload_fileobj(file_obj, R2_BUCKET_NAME, object_name)
 
@@ -60,9 +59,7 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 app = Flask(__name__)
-
 app.jinja_env.globals.update(get_r2_public_url=get_r2_public_url)
-
 
 # Configuração do SECRET_KEY
 secret_key = os.getenv('SECRET_KEY')
@@ -70,12 +67,6 @@ if not secret_key:
     raise ValueError("SECRET_KEY não está definida no ambiente.")
 app.secret_key = secret_key
 logging.debug(f"SECRET_KEY carregado corretamente.")
-
-# REMOVIDO: Pasta de uploads local
-# UPLOAD_FOLDER = os.path.join(os.getcwd(), 'uploads')
-# app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-# if not os.path.exists(UPLOAD_FOLDER):
-#     os.makedirs(UPLOAD_FOLDER)
 
 # Configurações do PostgreSQL
 PG_HOST = os.getenv('PG_HOST', 'dpg-ctjqnsdds78s73erdqi0-a.oregon-postgres.render.com')
@@ -100,7 +91,8 @@ def get_pg_connection():
         sys.exit(1)
 
 def init_db():
-    """Inicializa o banco no PostgreSQL, criando tabelas (se não existirem) e adicionando o campo 'valor_liberado' na rd (se necessário)."""
+    """Inicializa o banco no PostgreSQL, criando tabelas (se não existirem)
+       e adicionando colunas (se necessário)."""
     conn = get_pg_connection()
     cursor = conn.cursor()
 
@@ -123,11 +115,12 @@ def init_db():
         aprovado_data DATE,
         liberado_data DATE,
         valor_liberado NUMERIC(15, 2) DEFAULT 0
+        -- A coluna is_reembolso será adicionada abaixo, se não existir
     );
     """
     cursor.execute(create_rd_table)
 
-    # Verifica se a coluna 'valor_liberado' existe
+    # Verifica se a coluna 'valor_liberado' existe (já consta no seu código):
     cursor.execute("""
         SELECT column_name
         FROM information_schema.columns
@@ -136,7 +129,16 @@ def init_db():
     if not cursor.fetchone():
         cursor.execute("ALTER TABLE rd ADD COLUMN valor_liberado NUMERIC(15, 2) DEFAULT 0;")
 
-    # Cria tabela saldo_global
+    # Verifica se a coluna 'is_reembolso' existe; se não, cria:
+    cursor.execute("""
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_name = 'rd' AND column_name = 'is_reembolso';
+    """)
+    if not cursor.fetchone():
+        cursor.execute("ALTER TABLE rd ADD COLUMN is_reembolso BOOLEAN DEFAULT FALSE;")
+
+    # Cria tabela saldo_global, se não existir
     create_saldo_global_table = """
     CREATE TABLE IF NOT EXISTS saldo_global (
         id SERIAL PRIMARY KEY,
@@ -145,7 +147,7 @@ def init_db():
     """
     cursor.execute(create_saldo_global_table)
 
-    # Inicializa saldo global caso não exista
+    # Inicializa saldo_global caso não exista nenhuma linha
     cursor.execute("SELECT COUNT(*) FROM saldo_global")
     if cursor.fetchone()[0] == 0:
         cursor.execute("INSERT INTO saldo_global (saldo) VALUES (30000)")
@@ -172,7 +174,6 @@ def generate_custom_id():
     last_str = last_id[0]
     last_number_str, last_year_str = last_str.split('.')
     last_number = int(last_number_str)
-
     return f"{last_number + 1}.{current_year}"
 
 def user_role():
@@ -263,26 +264,19 @@ def index():
         if username == 'gestor' and password == '115289':
             session['user_role'] = 'gestor'
             flash('Login como gestor bem-sucedido.')
-            logging.debug("Login como gestor bem-sucedido.")
         elif username == 'financeiro' and password == '351073':
             session['user_role'] = 'financeiro'
             flash('Login como financeiro bem-sucedido.')
-            logging.debug("Login como financeiro bem-sucedido.")
         elif username == 'solicitante' and password == '102030':
             session['user_role'] = 'solicitante'
             flash('Login como solicitante bem-sucedido.')
-            logging.debug("Login como solicitante bem-sucedido.")
         else:
             flash('Credenciais inválidas.')
-            logging.warning("Tentativa de login com credenciais inválidas.")
             return render_template('index.html', error="Credenciais inválidas", format_currency=format_currency)
         return redirect(url_for('index'))
 
     if 'user_role' not in session:
-        logging.debug("Usuário não autenticado. Mostrando formulário de login.")
         return render_template('index.html', error=None, format_currency=format_currency)
-
-    logging.debug(f"Usuário autenticado como: {session['user_role']}")
 
     conn = get_pg_connection()
     cursor = conn.cursor()
@@ -324,6 +318,9 @@ def index():
                            is_solicitante=is_solicitante(),
                            format_currency=format_currency)
 
+# ---------------------------------------------------------------
+# ROTA PARA INSERIR NOVA RD (AGORA COM CHECKBOX "IS_REEMBOLSO")
+# ---------------------------------------------------------------
 @app.route('/add', methods=['POST'])
 def add_rd():
     if not can_add():
@@ -334,33 +331,41 @@ def add_rd():
     funcionario = request.form['funcionario'].strip()
     data = request.form['data'].strip()
     centro_custo = request.form['centro_custo'].strip()
+
     try:
         valor = float(request.form['valor'])
     except ValueError:
         flash('Valor inválido.')
         return redirect(url_for('index'))
+
+    # Lê o checkbox "is_reembolso"
+    is_reembolso = request.form.get('is_reembolso')
+    is_reembolso_bool = True if is_reembolso == 'on' else False
+
     custom_id = generate_custom_id()
 
-    # Gerenciar arquivos: agora só envia para R2
     arquivos = []
     if 'arquivo' in request.files:
         for file in request.files.getlist('arquivo'):
             if file.filename:
                 filename = f"{custom_id}_{file.filename}"
-                # Enviar diretamente para R2 (sem salvar localmente)
                 upload_file_to_r2(file, filename)
                 arquivos.append(filename)
 
     arquivos_str = ','.join(arquivos) if arquivos else None
 
-    # Insere no BD com valor_liberado = 0
     conn = get_pg_connection()
     cursor = conn.cursor()
     cursor.execute('''
         INSERT INTO rd (
-            id, solicitante, funcionario, data, centro_custo, valor, status, arquivos, valor_liberado
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 0)
-    ''', (custom_id, solicitante, funcionario, data, centro_custo, valor, 'Pendente', arquivos_str))
+            id, solicitante, funcionario, data, centro_custo,
+            valor, status, arquivos, valor_liberado, is_reembolso
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 0, %s)
+    ''', (
+        custom_id, solicitante, funcionario, data, centro_custo,
+        valor, 'Pendente', arquivos_str, is_reembolso_bool
+    ))
     conn.commit()
     cursor.close()
     conn.close()
@@ -378,13 +383,17 @@ def edit_form(id):
     if not rd:
         flash('RD não encontrada.')
         return "RD não encontrada", 404
-    status = rd[6]  # Índice da coluna 'status'
+
+    status = rd[6]  # Índice da coluna 'status' na tupla
     if not can_edit(status):
         flash('Acesso negado.')
         return "Acesso negado", 403
 
     return render_template('edit_form.html', rd=rd)
 
+# ---------------------------------------------------------------
+# SUBMIT DA EDIÇÃO (AGORA COM CHECKBOX "IS_REEMBOLSO")
+# ---------------------------------------------------------------
 @app.route('/edit_submit/<id>', methods=['POST'])
 def edit_submit(id):
     if not can_edit_status(id):
@@ -401,18 +410,20 @@ def edit_submit(id):
         flash('Valor inválido.')
         return redirect(url_for('index'))
 
-    # Atualiza arquivos
+    # Lê o checkbox "is_reembolso"
+    is_reembolso = request.form.get('is_reembolso')
+    is_reembolso_bool = True if is_reembolso == 'on' else False
+
     conn = get_pg_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT arquivos FROM rd WHERE id=%s", (id,))
-    rd = cursor.fetchone()
-    arquivos = rd[0].split(',') if (rd and rd[0]) else []
+    rd_current = cursor.fetchone()
+    arquivos = rd_current[0].split(',') if (rd_current and rd_current[0]) else []
 
     if 'arquivo' in request.files:
         for file in request.files.getlist('arquivo'):
             if file.filename:
                 filename = f"{id}_{file.filename}"
-                # Upload direto para R2
                 upload_file_to_r2(file, filename)
                 arquivos.append(filename)
 
@@ -420,30 +431,42 @@ def edit_submit(id):
 
     cursor.execute('''
         UPDATE rd
-        SET solicitante=%s, funcionario=%s, data=%s, centro_custo=%s, valor=%s, arquivos=%s
+        SET solicitante=%s, funcionario=%s, data=%s,
+            centro_custo=%s, valor=%s, arquivos=%s,
+            is_reembolso=%s
         WHERE id=%s
-    ''', (solicitante, funcionario, data, centro_custo, valor, arquivos_str, id))
+    ''', (
+        solicitante, funcionario, data, centro_custo,
+        valor, arquivos_str, is_reembolso_bool, id
+    ))
     conn.commit()
     cursor.close()
     conn.close()
     flash('RD atualizada com sucesso.')
     return redirect(url_for('index'))
 
+# ---------------------------------------------------------------
+# APROVAR/LIBERAR (AGORA IGNORANDO SALDO CASO "IS_REEMBOLSO=TRUE")
+# ---------------------------------------------------------------
 @app.route('/approve/<id>', methods=['POST'])
 def approve(id):
     """Pendente->Aprovado (Gestor), Aprovado->Liberado (Financeiro).
-       Ao liberar, subtrai apenas a diferença não-liberada do saldo.
-    """
+       Ao liberar, subtrai apenas a diferença não-liberada do saldo,
+       exceto se for reembolso."""
     conn = get_pg_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT status, valor, valor_adicional, valor_liberado FROM rd WHERE id=%s", (id,))
+    cursor.execute("""
+        SELECT status, valor, valor_adicional, valor_liberado, is_reembolso
+        FROM rd
+        WHERE id=%s
+    """, (id,))
     rd_info = cursor.fetchone()
     if not rd_info:
         conn.close()
         flash("RD não encontrada.")
         return redirect(url_for('index'))
 
-    status, valor, valor_adic, valor_liberado = rd_info
+    status, valor, valor_adic, valor_liberado, is_reembolso = rd_info
     if not can_approve(status):
         conn.close()
         flash("Acesso negado.")
@@ -458,30 +481,36 @@ def approve(id):
             "UPDATE rd SET status=%s, aprovado_data=%s WHERE id=%s",
             (new_status, current_date, id)
         )
-
     elif status == 'Aprovado' and is_financeiro():
-        # Liberar: subtrair apenas o delta (valor_total - valor_liberado)
+        # Liberar: subtrair apenas o delta (valor_total - valor_liberado), se NÃO for reembolso
         new_status = 'Liberado'
-        valor_total = valor + (valor_adic or 0)
-        falta_liberar = valor_total - (valor_liberado or 0)
 
-        if falta_liberar > 0:
-            saldo = get_saldo_global()
-            if falta_liberar > saldo:
-                conn.close()
-                flash('Saldo global insuficiente para liberar a diferença adicional.')
-                return redirect(url_for('index'))
-            # Subtrai do saldo
-            set_saldo_global(saldo - falta_liberar)
-            # Atualiza o valor_liberado para o total atual
-            valor_liberado = valor_total
+        if not is_reembolso:
+            valor_total = (valor or 0) + (valor_adic or 0)
+            falta_liberar = valor_total - (valor_liberado or 0)
 
-        # Atualiza BD
-        cursor.execute(
-            "UPDATE rd SET status=%s, liberado_data=%s, valor_liberado=%s WHERE id=%s",
-            (new_status, current_date, valor_liberado, id)
-        )
+            if falta_liberar > 0:
+                saldo = get_saldo_global()
+                if falta_liberar > saldo:
+                    conn.close()
+                    flash('Saldo global insuficiente para liberar a diferença adicional.')
+                    return redirect(url_for('index'))
 
+                set_saldo_global(saldo - falta_liberar)
+                valor_liberado = valor_total
+
+            cursor.execute("""
+                UPDATE rd
+                SET status=%s, liberado_data=%s, valor_liberado=%s
+                WHERE id=%s
+            """, (new_status, current_date, valor_liberado, id))
+        else:
+            # Se for reembolso, não mexe no saldo nem no valor_liberado
+            cursor.execute("""
+                UPDATE rd
+                SET status=%s, liberado_data=%s
+                WHERE id=%s
+            """, (new_status, current_date, id))
     else:
         conn.close()
         flash("Não é possível aprovar/liberar esta RD.")
@@ -492,26 +521,29 @@ def approve(id):
     flash('Operação realizada com sucesso.')
     return redirect(url_for('index'))
 
+# ---------------------------------------------------------------
+# EXCLUIR RD (AGORA IGNORANDO DEVOLUÇÃO DE SALDO SE "IS_REEMBOLSO=TRUE")
+# ---------------------------------------------------------------
 @app.route('/delete/<id>', methods=['POST'])
 def delete_rd(id):
-    """Se RD estava Liberado, devolve ao saldo o valor_liberado (que já saiu do caixa)."""
+    """Se RD estava Liberado e não for reembolso, devolve ao saldo o valor_liberado."""
     conn = get_pg_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT solicitante, status, valor_liberado FROM rd WHERE id=%s", (id,))
+    cursor.execute("SELECT solicitante, status, valor_liberado, is_reembolso FROM rd WHERE id=%s", (id,))
     rd = cursor.fetchone()
     if not rd:
         conn.close()
         flash("RD não encontrada.")
         return redirect(url_for('index'))
 
-    rd_solicitante, rd_status, rd_liberado = rd
+    rd_solicitante, rd_status, rd_liberado, is_reembolso = rd
     if not can_delete(rd_status, rd_solicitante):
         conn.close()
         flash("Acesso negado.")
         return redirect(url_for('index'))
 
-    # Se RD estava 'Liberado', devolvemos o que foi liberado ao saldo global
-    if rd_status == 'Liberado' and rd_liberado and rd_liberado > 0:
+    # Se RD estava 'Liberado', devolvemos o que foi liberado ao saldo global, se NÃO for reembolso
+    if rd_status == 'Liberado' and rd_liberado and rd_liberado > 0 and not is_reembolso:
         saldo = get_saldo_global()
         set_saldo_global(saldo + rd_liberado)
 
@@ -520,7 +552,6 @@ def delete_rd(id):
     arquivos = cursor.fetchone()[0]
     if arquivos:
         for arquivo in arquivos.split(','):
-            # Remove do R2
             delete_file_from_r2(arquivo)
 
     # Deleta do BD
@@ -531,9 +562,11 @@ def delete_rd(id):
     flash('RD excluída com sucesso.')
     return redirect(url_for('index'))
 
+# ---------------------------------------------------------------
+# SOLICITAR ADICIONAL (mesma lógica, sem mexer no saldo)
+# ---------------------------------------------------------------
 @app.route('/adicional_submit/<id>', methods=['POST'])
 def adicional_submit(id):
-    """Solicita adicional: volta a RD para 'Pendente' e soma valor_adicional."""
     if not can_request_additional_status(id):
         flash("Acesso negado.")
         return redirect(url_for('index'))
@@ -596,13 +629,15 @@ def adicional_submit(id):
     flash('Crédito adicional solicitado com sucesso (sem devolver saldo).')
     return redirect(url_for('index'))
 
+# ---------------------------------------------------------------
+# FECHAMENTO (AGORA IGNORANDO DEVOLUÇÃO DE SALDO SE "IS_REEMBOLSO=TRUE")
+# ---------------------------------------------------------------
 @app.route('/fechamento_submit/<id>', methods=['POST'])
 def fechamento_submit(id):
     """
     No fechamento, devolve (valor_liberado - valor_despesa) ao saldo,
-    atualiza a RD para 'Fechado' e faz upload de eventuais arquivos.
+    exceto se for reembolso (is_reembolso=TRUE).
     """
-    # 1) Verifica se o usuário pode fechar
     if not can_close_status(id):
         flash("Acesso negado.")
         return redirect(url_for('index'))
@@ -637,13 +672,13 @@ def fechamento_submit(id):
     # 4) Busca dados da RD
     conn = get_pg_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT status, valor_liberado FROM rd WHERE id=%s", (id,))
+    cursor.execute("SELECT status, valor_liberado, is_reembolso FROM rd WHERE id=%s", (id,))
     rd = cursor.fetchone()
     if not rd:
         conn.close()
         flash("RD não encontrada.")
         return redirect(url_for('index'))
-    status_atual, valor_liberado = rd
+    status_atual, valor_liberado, is_reembolso = rd
 
     if not can_close(status_atual):
         conn.close()
@@ -655,14 +690,15 @@ def fechamento_submit(id):
         flash("Valor da despesa maior que o valor liberado.")
         return redirect(url_for('index'))
 
-    # 5) Devolve a diferença ao saldo global
-    saldo_devolver = valor_liberado - valor_despesa
-    saldo = get_saldo_global()
-    set_saldo_global(saldo + saldo_devolver)
+    # 5) Devolve a diferença ao saldo global somente se NÃO for reembolso
+    saldo_devolver = valor_liberado - valor_despesa if not is_reembolso else 0
+    if not is_reembolso:
+        saldo = get_saldo_global()
+        set_saldo_global(saldo + saldo_devolver)
 
     data_fechamento = datetime.now().strftime('%Y-%m-%d')
 
-    # 6) Atualiza campos de fechamento na base de dados
+    # 6) Atualiza campos de fechamento
     cursor.execute("""
         UPDATE rd
         SET valor_despesa=%s, saldo_devolver=%s, data_fechamento=%s, status='Fechado'
@@ -697,11 +733,9 @@ def logout():
     flash('Logout realizado com sucesso.')
     return redirect(url_for('index'))
 
-# REMOVIDO: Rota que servia arquivos localmente
-# @app.route('/uploads/<filename>')
-# def uploaded_file(filename):
-#     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
-
+# ---------------------------------------------------------------
+# EXCLUIR ARQUIVO ESPECÍFICO (sem alterações para reembolso)
+# ---------------------------------------------------------------
 @app.route('/delete_file/<id>', methods=['POST'])
 def delete_file(id):
     filename = request.form.get('filename')
@@ -724,10 +758,7 @@ def delete_file(id):
         flash('Arquivo não encontrado na RD especificada.')
         return redirect(request.referrer or url_for('index'))
 
-    # Remove do R2
     delete_file_from_r2(filename)
-
-    # Atualiza banco
     arquivos.remove(filename)
     updated_arquivos = ','.join(arquivos) if arquivos else None
     cursor.execute("UPDATE rd SET arquivos=%s WHERE id=%s", (updated_arquivos, id))
@@ -772,41 +803,21 @@ def can_close_status(id):
     return can_close(status)
 
 # -----------------------------------------------------------------------
-# ROTA PARA EXPORTAR DADOS EM EXCEL
+# ROTA PARA EXPORTAR DADOS EM EXCEL (sem alteração no is_reembolso)
 # -----------------------------------------------------------------------
 @app.route('/export_excel', methods=['GET'])
 def export_excel():
-    """
-    Exporta as RDs para um relatório em Excel com as colunas:
-    - Número da RD (id)
-    - Data da Solicitação (data)
-    - Solicitante
-    - Funcionário
-    - Valor Solicitado
-    - Valor Adicional
-    - Data do Adicional
-    - Centro de Custo
-    - Valor Gasto (Despesa)
-    - Saldo a Devolver
-    - Data de Fechamento
-    - Saldo Global (atual, no momento da exportação)
-    """
     conn = get_pg_connection()
     cursor = conn.cursor()
-    
-    # Vamos buscar todas as RDs
     cursor.execute("SELECT * FROM rd ORDER BY id ASC")
     rd_list = cursor.fetchall()
 
-    # Pega o saldo global atual
     saldo_global = get_saldo_global()
 
-    # Montamos o Excel em memória
     output = io.BytesIO()
     workbook = xlsxwriter.Workbook(output, {'in_memory': True})
     worksheet = workbook.add_worksheet('Relatorio')
 
-    # Cabeçalho
     header = [
         "Número RD",
         "Data Solicitação",
@@ -819,15 +830,13 @@ def export_excel():
         "Valor Gasto",
         "Saldo a Devolver",
         "Data de Fechamento",
-        "Saldo Global"
+        "Saldo Global",
+        # Opcional: você pode incluir a flag "is_reembolso"
     ]
+
     for col, h in enumerate(header):
         worksheet.write(0, col, h)
 
-    # Índices de cada campo na tupla retornada por fetchall().
-    # (id, solicitante, funcionario, data, centro_custo, valor, status,
-    #  valor_adicional, adicional_data, valor_despesa, saldo_devolver,
-    #  data_fechamento, arquivos, aprovado_data, liberado_data, valor_liberado)
     row_number = 1
     for rd_row in rd_list:
         rd_id              = rd_row[0]
@@ -841,26 +850,26 @@ def export_excel():
         rd_valor_despesa   = rd_row[9]
         rd_saldo_devolver  = rd_row[10]
         rd_data_fechamento = rd_row[11]
+        # Se quiser incluir is_reembolso, está em rd_row[16] (ou onde estiver)
 
-        worksheet.write(row_number, 0, rd_id)                # Número RD
-        worksheet.write(row_number, 1, str(rd_data))         # Data Solicitação
-        worksheet.write(row_number, 2, rd_solicitante)       # Solicitante
-        worksheet.write(row_number, 3, rd_funcionario)       # Funcionário
-        worksheet.write(row_number, 4, float(rd_valor or 0)) # Valor Solicitado
-        worksheet.write(row_number, 5, float(rd_valor_adicional or 0))  # Valor Adicional
-        worksheet.write(row_number, 6, str(rd_adicional_data or ''))    # Data do Adicional
-        worksheet.write(row_number, 7, rd_centro_custo)                # Centro de custo
-        worksheet.write(row_number, 8, float(rd_valor_despesa or 0))    # Valor Gasto (Despesa)
-        worksheet.write(row_number, 9, float(rd_saldo_devolver or 0))   # Saldo a Devolver
-        worksheet.write(row_number, 10, str(rd_data_fechamento or ''))  # Data de Fechamento
-        worksheet.write(row_number, 11, float(saldo_global))            # Saldo Global atual
+        worksheet.write(row_number, 0, rd_id)
+        worksheet.write(row_number, 1, str(rd_data))
+        worksheet.write(row_number, 2, rd_solicitante)
+        worksheet.write(row_number, 3, rd_funcionario)
+        worksheet.write(row_number, 4, float(rd_valor or 0))
+        worksheet.write(row_number, 5, float(rd_valor_adicional or 0))
+        worksheet.write(row_number, 6, str(rd_adicional_data or ''))
+        worksheet.write(row_number, 7, rd_centro_custo)
+        worksheet.write(row_number, 8, float(rd_valor_despesa or 0))
+        worksheet.write(row_number, 9, float(rd_saldo_devolver or 0))
+        worksheet.write(row_number, 10, str(rd_data_fechamento or ''))
+        worksheet.write(row_number, 11, float(saldo_global))
         row_number += 1
 
     workbook.close()
     output.seek(0)
     conn.close()
 
-    # Retorna o arquivo Excel como anexo para download
     return send_file(
         output,
         as_attachment=True,
