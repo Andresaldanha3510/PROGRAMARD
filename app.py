@@ -334,6 +334,7 @@ def add_rd():
     funcionario = request.form['funcionario'].strip()
     data = request.form['data'].strip()
     centro_custo = request.form['centro_custo'].strip()
+    observacao = request.form.get('observacao', '').strip()
     try:
         valor = float(request.form['valor'])
     except ValueError:
@@ -358,8 +359,8 @@ def add_rd():
     cursor = conn.cursor()
     cursor.execute('''
         INSERT INTO rd (
-            id, solicitante, funcionario, data, centro_custo, valor, status, arquivos, valor_liberado
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 0)
+            id, solicitante, funcionario, data, centro_custo, valor, status, arquivos, valor_liberado, observacao
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 0,%s)
     ''', (custom_id, solicitante, funcionario, data, centro_custo, valor, 'Pendente', arquivos_str))
     conn.commit()
     cursor.close()
@@ -395,6 +396,7 @@ def edit_submit(id):
     funcionario = request.form['funcionario'].strip()
     data = request.form['data'].strip()
     centro_custo = request.form['centro_custo'].strip()
+     observacao = request.form.get('observacao', '').strip()
     try:
         valor = float(request.form['valor'])
     except ValueError:
@@ -420,9 +422,9 @@ def edit_submit(id):
 
     cursor.execute('''
         UPDATE rd
-        SET solicitante=%s, funcionario=%s, data=%s, centro_custo=%s, valor=%s, arquivos=%s
+        SET solicitante=%s, funcionario=%s, data=%s, centro_custo=%s, valor=%s, arquivos=%s, observacao=%s
         WHERE id=%s
-    ''', (solicitante, funcionario, data, centro_custo, valor, arquivos_str, id))
+    ''', (solicitante, funcionario, data, centro_custo, valor, arquivos_str, observacao, id))
     conn.commit()
     cursor.close()
     conn.close()
