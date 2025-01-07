@@ -321,12 +321,9 @@
         .tabs {
             margin-top: 20px;
         }
-
-        /* Escondemos os inputs dos tabs */
         .tabs input[type="radio"] {
             display: none;
         }
-
         .tab-labels {
             display: flex;
             justify-content: center;
@@ -345,8 +342,6 @@
         .tab-labels label:hover {
             background-color: #ddd;
         }
-
-        /* Conteúdo das abas */
         .tab-content {
             display: none;
         }
@@ -354,7 +349,7 @@
             background-color: var(--primary-color);
             color: #fff;
         }
-        /* Quando o input está marcado, mostramos o bloco */
+        /* Quando o input está marcado, exibimos o conteúdo: */
         #tab1:checked ~ .content #content1,
         #tab2:checked ~ .content #content2,
         #tab3:checked ~ .content #content3,
@@ -446,16 +441,26 @@
         <form action="/add" method="POST" enctype="multipart/form-data" class="main-form">
             <label for="solicitante">Solicitante:</label>
             <input type="text" id="solicitante" name="solicitante" required>
+            
             <label for="funcionario">Funcionário:</label>
             <input type="text" id="funcionario" name="funcionario" required>
+            
             <label for="data">Data:</label>
             <input type="date" id="data" name="data" required>
+            
             <label for="centro_custo">Centro de Custo:</label>
             <input type="text" id="centro_custo" name="centro_custo" required>
+            
             <label for="valor">Valor (R$):</label>
             <input type="number" id="valor" name="valor" step="0.01" required>
+
+            <!-- CAMPO DE OBSERVAÇÃO (NOVO) -->
+            <label for="observacao">Observação:</label>
+            <textarea id="observacao" name="observacao" rows="3"></textarea>
+
             <label for="arquivo">Anexar Arquivos:</label>
             <input type="file" id="arquivo" name="arquivo" multiple>
+            
             <button type="submit"><i class="fas fa-plus-circle"></i> Adicionar RD</button>
         </form>
         {% endif %}
@@ -478,7 +483,6 @@
         </div>
 
         {% macro mostrar_valores(rd) %}
-            {# Macro original, apenas exibindo os valores formatados #}
             {% set valor = rd[5] %}
             {% set valor_adic = rd[7] if rd[7] else 0 %}
             {% set valor_total = valor + valor_adic %}
@@ -532,7 +536,6 @@
                 <label for="tab4">Fechados</label>
             </div>
 
-            <!-- Conteúdo das abas -->
             <div class="content">
                 <!-- Pendentes -->
                 <div class="tab-content" id="content1">
@@ -544,6 +547,8 @@
                                 <th>Funcionário</th>
                                 <th>Data</th>
                                 <th>Centro de Custo</th>
+                                <!-- NOVO: Coluna para Observação -->
+                                <th>Observação</th>
                                 <th>Valores</th>
                                 <th>Ações</th>
                             </tr>
@@ -559,6 +564,12 @@
                                 <td data-label="Funcionário">{{ rd[2] }}</td>
                                 <td data-label="Data">{{ rd[3] }}</td>
                                 <td data-label="Centro de Custo">{{ rd[4] }}</td>
+
+                                <!-- Observação (campo está no índice 17, assumindo 'observacao' seja a última coluna) -->
+                                <td data-label="Observação">
+                                    {{ rd[16] if rd|length > 16 else '' }}
+                                </td>
+
                                 <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
                                 <td data-label="Ações">
                                     {% if can_approve_func(status) %}
@@ -610,6 +621,7 @@
                                 <th>Funcionário</th>
                                 <th>Data</th>
                                 <th>Centro de Custo</th>
+                                <th>Observação</th>
                                 <th>Valores</th>
                                 <th>Ações</th>
                             </tr>
@@ -625,6 +637,12 @@
                                 <td data-label="Funcionário">{{ rd[2] }}</td>
                                 <td data-label="Data">{{ rd[3] }}</td>
                                 <td data-label="Centro de Custo">{{ rd[4] }}</td>
+
+                                <!-- Observação -->
+                                <td data-label="Observação">
+                                    {{ rd[16] if rd|length > 16 else '' }}
+                                </td>
+
                                 <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
                                 <td data-label="Ações">
                                     {% if can_approve_func(status) %}
@@ -676,6 +694,7 @@
                                 <th>Funcionário</th>
                                 <th>Data</th>
                                 <th>Centro de Custo</th>
+                                <th>Observação</th>
                                 <th>Valores</th>
                                 <th>Ações</th>
                             </tr>
@@ -691,6 +710,12 @@
                                 <td data-label="Funcionário">{{ rd[2] }}</td>
                                 <td data-label="Data">{{ rd[3] }}</td>
                                 <td data-label="Centro de Custo">{{ rd[4] }}</td>
+
+                                <!-- Observação -->
+                                <td data-label="Observação">
+                                    {{ rd[16] if rd|length > 16 else '' }}
+                                </td>
+
                                 <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
                                 <td data-label="Ações">
                                     {% if can_edit_func(status) %}
@@ -751,6 +776,7 @@
                                 <th>Funcionário</th>
                                 <th>Data</th>
                                 <th>Centro de Custo</th>
+                                <th>Observação</th>
                                 <th>Valores</th>
                                 <th>Ações</th>
                             </tr>
@@ -766,6 +792,12 @@
                                 <td data-label="Funcionário">{{ rd[2] }}</td>
                                 <td data-label="Data">{{ rd[3] }}</td>
                                 <td data-label="Centro de Custo">{{ rd[4] }}</td>
+
+                                <!-- Observação -->
+                                <td data-label="Observação">
+                                    {{ rd[16] if rd|length > 16 else '' }}
+                                </td>
+
                                 <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
                                 <td data-label="Ações">
                                     <!-- RD Fechado: não editar, não excluir, mas pode mostrar arquivos -->
