@@ -334,7 +334,7 @@ def add_rd():
     funcionario = request.form['funcionario'].strip()
     data = request.form['data'].strip()
     centro_custo = request.form['centro_custo'].strip()
-     observacao = request.form.get('observacao', '').strip()
+    observacao = request.form.get('observacao', '').strip()
     try:
         valor = float(request.form['valor'])
     except ValueError:
