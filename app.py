@@ -721,11 +721,11 @@ cursor.execute("""
     SET valor_despesa=%s, saldo_devolver=%s, status='Pendente de Aprovação de Fechamento'
     WHERE id=%s
 """, (valor_despesa, saldo_devolver, id))
-    conn.commit()
-    cursor.close()
-    conn.close()
-    flash('RD fechada com sucesso. Saldo devolvido = R$%.2f' % saldo_devolver)
-    return redirect(url_for('index'))
+conn.commit()  # ✅ Alinhado com o cursor.execute
+cursor.close()  # ✅ Alinhado com o cursor.execute
+conn.close()    # ✅ Alinhado com o cursor.execute
+flash(f'RD fechada com sucesso. Saldo devolvido = R${saldo_devolver:.2f}')  # ✅ Alinhado
+return redirect(url_for('index'))  # ✅ Alinhado
 
 @app.route('/edit_saldo', methods=['POST'])
 def edit_saldo():
