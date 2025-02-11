@@ -765,59 +765,6 @@
                         </tbody>
                     </table>
                 </div>
-                <!-- Pendentes de Aprovação de Fechamento -->
-<div class="tab-content" id="content5">
-    <table id="tabela-pendentes-aprovacao-fechamento" class="display">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Solicitante</th>
-                <th>Funcionário</th>
-                <th>Data</th>
-                <th>Centro de Custo</th>
-                <th>Observação</th>
-                <th>Valores</th>
-                <th>Ações</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for rd in pendentes_aprovacao_fechamento %}
-            {% set rd_id = rd[0] %}
-            {% set rd_solic = rd[1] %}
-            {% set status = rd[6] %}
-            <tr>
-                <td data-label="ID">{{ rd_id }}</td>
-                <td data-label="Solicitante">{{ rd[1] }}</td>
-                <td data-label="Funcionário">{{ rd[2] }}</td>
-                <td data-label="Data">{{ rd[3] }}</td>
-                <td data-label="Centro_de_Custo">{{ rd[4] }}</td>
-                <td data-label="Observação">
-                    {{ rd[16] if rd|length > 16 else '' }}
-                </td>
-                <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
-                <td data-label="Ações">
-                    <!-- Botão para aprovar fechamento -->
-                    {% if can_approve_fechamento(status) %}
-                        <a href="{{ url_for('approve_fechamento', id=rd_id) }}" class="btn btn-approve">Aprovar Fechamento</a>
-                    {% endif %}
-                    <!-- Exibir arquivos associados -->
-                    {% if rd[12] %}
-                        {% for arquivo in rd[12].split(',') %}
-                            <div class="arquivo-container">
-                                <a href="{{ get_r2_public_url(arquivo) }}" class="arquivo-link" target="_blank">{{ arquivo }}</a>
-                                <form action="{{ url_for('delete_file', id=rd_id) }}" method="POST" style="display:inline;">
-                                    <input type="hidden" name="filename" value="{{ arquivo }}">
-                                    <button type="submit" class="btn btn-delete-file" title="Excluir Arquivo">Excluir</button>
-                                </form>
-                            </div>
-                        {% endfor %}
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
 
                 <!-- Fechados -->
                 <div class="tab-content" id="content4">
