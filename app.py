@@ -13,11 +13,10 @@ import xlsxwriter
 load_dotenv()  # Carrega as variáveis do arquivo .env
 
 # ---- INÍCIO: Imports e variáveis para o Cloudflare R2 ----
-R2_ACCESS_KEY = os.getenv('R2_ACCESS_KEY', 'your_r2_access_key')
-R2_SECRET_KEY = os.getenv('R2_SECRET_KEY', 'your_r2_secret_key')
-R2_ENDPOINT = 'https://.r2.cloudflarestorage.com'
+R2_ACCESS_KEY = 'f1893b9eac9e40f8b992ef50c2b657ca'
+R2_SECRET_KEY = '7ec391a97968077b15a9b1b886d803c5b6f6b9f8705bfb55c0ff7a7082132b5c'
+R2_ENDPOINT   = 'https://e5dfe58dd78702917f5bb5852970c6c2.r2.cloudflarestorage.com'
 R2_BUCKET_NAME = 'meu-bucket-r2'
-R2_PUBLIC_URL = "https://pub-.r2.dev"
 
 def get_r2_public_url(object_name):
     """Retorna o URL público de um objeto no R2."""
