@@ -916,11 +916,11 @@ def export_excel():
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
-@@app.route('/fechamento_submit/<id>', methods=['POST'])
+@app.route('/fechamento_submit/<id>', methods=['POST'])
 def fechamento_submit(id):
     """
     No fechamento, devolve (valor_liberado - valor_despesa) ao saldo,
-    atualiza a RD para 'Pendente de Aprovação de Fechamento' e faz upload de eventuais arquivos.
+    atualiza a RD para 'Fechado' e faz upload de eventuais arquivos.
     """
     # 1) Verifica se o usuário pode fechar
     if not can_close_status(id):
@@ -934,11 +934,13 @@ def fechamento_submit(id):
         cursor.execute("SELECT arquivos FROM rd WHERE id=%s", (id,))
         rd_atual = cursor.fetchone()
         arquivos_atuais = rd_atual[0].split(',') if (rd_atual and rd_atual[0]) else []
+
         for file in request.files.getlist('arquivo'):
             if file.filename:
                 filename = f"{id}_{file.filename}"
                 upload_file_to_r2(file, filename)
                 arquivos_atuais.append(filename)
+
         arquivos_atuais_str = ','.join(arquivos_atuais) if arquivos_atuais else None
         cursor.execute("UPDATE rd SET arquivos=%s WHERE id=%s", (arquivos_atuais_str, id))
         conn.commit()
@@ -980,12 +982,10 @@ def fechamento_submit(id):
         SET valor_despesa=%s, saldo_devolver=%s, status='Pendente de Aprovação de Fechamento'
         WHERE id=%s
     """, (valor_despesa, saldo_devolver, id))
-
-    conn.commit()  # Linha corrigida: removida a indentação excessiva
+    conn.commit()  # ✅ Indentação corrigida
     cursor.close()
     conn.close()
-
-    flash('RD enviada para aprovação de fechamento.')
+    flash(f'RD fechada com sucesso. Saldo devolvido = R${saldo_devolver:.2f}')
     return redirect(url_for('index'))
 
 if __name__ == '__main__':
