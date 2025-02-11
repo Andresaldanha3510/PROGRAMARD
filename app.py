@@ -916,7 +916,7 @@ def export_excel():
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
-    @app.route('/approve_fechamento/<id>', methods=['POST'])
+@app.route('/approve_fechamento/<id>', methods=['POST'])
 def approve_fechamento(id):
     """
     Aprova o fechamento do RD, movendo-o para 'Fechado'.
