@@ -530,12 +530,10 @@
 
             <!-- Rótulos (labels) das abas -->
             <div class="tab-labels">
-                <label for="tab1">Solicitação pendentes de liberação do gestor</label>
+                <label for="tab1">Pendentes de liberação do gestor</label>
                 <label for="tab2">Aprovados pelo gestor</label>
                 <label for="tab3">Liberados pelo financeiro</label>
-                <label for="tab5">Fechamento pendente de liberação gestor</label>
                 <label for="tab4">Fechados</label>
-                
             </div>
 
             <div class="content">
@@ -767,37 +765,6 @@
                         </tbody>
                     </table>
                 </div>
-                <h2>Aprovação de Fechamento</h2>
-                <table>
-                    <tr>
-                        <th>ID</th>
-                        <th>Solicitante</th>
-                        <th>Funcionário</th>
-                        <th>Data</th>
-                        <th>Centro de Custo</th>
-                        <th>Observação</th>
-                        <th>Valores</th>
-                        <th>Ações</th>
-                    </tr>
-                    {% for rd in aguardando_fechamento %}
-                    <tr>
-                        <td>{{ rd.id }}</td>
-                        <td>{{ rd.solicitante }}</td>
-                        <td>{{ rd.funcionario }}</td>
-                        <td>{{ rd.data }}</td>
-                        <td>{{ rd.centro_custo }}</td>
-                        <td>{{ rd.observacao if rd.observacao else '' }}</td>
-                        <td>{{ mostrar_valores(rd) }}</td>
-                        <td>
-                            {% if is_gestor() %}
-                            <form action="{{ url_for('approve_fechamento', id=rd.id) }}" method="POST">
-                                <button type="submit">Aprovar Fechamento</button>
-                            </form>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </table>
 
                 <!-- Fechados -->
                 <div class="tab-content" id="content4">
