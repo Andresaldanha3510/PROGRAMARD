@@ -916,6 +916,12 @@ def export_excel():
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
+from flask import Flask, request, redirect, url_for, flash
+from database import get_pg_connection  # Supondo que a função esteja em outro módulo
+from utils import can_close_status, upload_file_to_r2, can_close
+
+app = Flask(__name__)
+
 @app.route('/fechamento_submit/<id>', methods=['POST'])
 def fechamento_submit(id):
     """
@@ -927,67 +933,64 @@ def fechamento_submit(id):
         flash("Acesso negado.")
         return redirect(url_for('index'))
 
-    # 2) Se houver arquivos, faz upload para R2
-    if 'arquivo' in request.files:
-        conn = get_pg_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT arquivos FROM rd WHERE id=%s", (id,))
-        rd_atual = cursor.fetchone()
-        arquivos_atuais = rd_atual[0].split(',') if (rd_atual and rd_atual[0]) else []
-
-        for file in request.files.getlist('arquivo'):
-            if file.filename:
-                filename = f"{id}_{file.filename}"
-                upload_file_to_r2(file, filename)
-                arquivos_atuais.append(filename)
-
-        arquivos_atuais_str = ','.join(arquivos_atuais) if arquivos_atuais else None
-        cursor.execute("UPDATE rd SET arquivos=%s WHERE id=%s", (arquivos_atuais_str, id))
-        conn.commit()
-        cursor.close()
-        conn.close()
-
-    # 3) Captura e valida o valor da despesa informado
     try:
-        valor_despesa = float(request.form['valor_despesa'])
-    except (ValueError, KeyError):
-        flash('Valor da despesa inválido.')
-        return redirect(url_for('index'))
+        with get_pg_connection() as conn:
+            with conn.cursor() as cursor:
+                # 2) Se houver arquivos, faz upload para R2
+                if 'arquivo' in request.files:
+                    cursor.execute("SELECT arquivos FROM rd WHERE id=%s", (id,))
+                    rd_atual = cursor.fetchone()
+                    arquivos_atuais = rd_atual[0].split(',') if (rd_atual and rd_atual[0]) else []
 
-    # 4) Busca dados da RD
-    conn = get_pg_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT status, valor_liberado FROM rd WHERE id=%s", (id,))
-    rd = cursor.fetchone()
-    if not rd:
-        conn.close()
-        flash("RD não encontrada.")
-        return redirect(url_for('index'))
+                    for file in request.files.getlist('arquivo'):
+                        if file.filename:
+                            filename = f"{id}_{file.filename}"
+                            upload_file_to_r2(file, filename)
+                            arquivos_atuais.append(filename)
 
-    status_atual, valor_liberado = rd
-    if not can_close(status_atual):
-        conn.close()
-        flash("Não é possível fechar esta RD neste momento.")
-        return redirect(url_for('index'))
+                    arquivos_atuais_str = ','.join(arquivos_atuais) if arquivos_atuais else None
+                    cursor.execute("UPDATE rd SET arquivos=%s WHERE id=%s", (arquivos_atuais_str, id))
+                
+                # 3) Captura e valida o valor da despesa informado
+                try:
+                    valor_despesa = float(request.form['valor_despesa'])
+                except (ValueError, KeyError):
+                    flash('Valor da despesa inválido.')
+                    return redirect(url_for('index'))
 
-    if valor_liberado < valor_despesa:
-        conn.close()
-        flash("Valor da despesa maior que o valor liberado.")
-        return redirect(url_for('index'))
+                # 4) Busca dados da RD
+                cursor.execute("SELECT status, valor_liberado FROM rd WHERE id=%s", (id,))
+                rd = cursor.fetchone()
+                if not rd:
+                    flash("RD não encontrada.")
+                    return redirect(url_for('index'))
 
-    # Atualiza o status para 'Pendente de Aprovação de Fechamento'
-    saldo_devolver = valor_liberado - valor_despesa
-    cursor.execute("""
-        UPDATE rd
-        SET valor_despesa=%s, saldo_devolver=%s, status='Pendente de Aprovação de Fechamento'
-        WHERE id=%s
-    """, (valor_despesa, saldo_devolver, id))
-    conn.commit()  # ✅ Indentação corrigida
-    cursor.close()
-    conn.close()
-    flash(f'RD fechada com sucesso. Saldo devolvido = R${saldo_devolver:.2f}')
-    return redirect(url_for('index'))
+                status_atual, valor_liberado = rd
+                if not can_close(status_atual):
+                    flash("Não é possível fechar esta RD neste momento.")
+                    return redirect(url_for('index'))
+
+                if valor_liberado < valor_despesa:
+                    flash("Valor da despesa maior que o valor liberado.")
+                    return redirect(url_for('index'))
+
+                # Atualiza o status para 'Pendente de Aprovação de Fechamento'
+                saldo_devolver = valor_liberado - valor_despesa
+                cursor.execute("""
+                    UPDATE rd
+                    SET valor_despesa=%s, saldo_devolver=%s, status='Pendente de Aprovação de Fechamento'
+                    WHERE id=%s
+                """, (valor_despesa, saldo_devolver, id))
+                
+                conn.commit()  # ✅ Confirma todas as mudanças no banco
+
+                flash(f'RD fechada com sucesso. Saldo devolvido = R${saldo_devolver:.2f}')
+                return redirect(url_for('index'))
+
+    except Exception as e:
+        flash(f"Erro ao fechar RD: {str(e)}")
+        return redirect(url_for('index'))
 
 if __name__ == '__main__':
-    init_db()
     app.run(debug=True)
+
