@@ -647,28 +647,6 @@ def adicional_submit(id):
     flash('Crédito adicional solicitado com sucesso (sem devolver saldo).')
     return redirect(url_for('index'))
 
-@app.route('/approve_fechamento/<id>', methods=['POST'])
-def approve_fechamento(id):
-    # Verifica se o usuário é gestor
-    if not is_gestor():
-        flash("Acesso negado.")
-        return redirect(url_for('index'))
-    
-    # Atualiza o status para "Fechado"
-    conn = get_pg_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-        UPDATE rd
-        SET status='Fechado'
-        WHERE id=%s AND status='Aguardando Aprovação de Fechamento'
-    """, (id,))
-    conn.commit()
-    cursor.close()
-    conn.close()
-    
-    flash('Fechamento da RD aprovado com sucesso.')
-    return redirect(url_for('index'))
-
 @app.route('/fechamento_submit/<id>', methods=['POST'])
 def fechamento_submit(id):
     """
@@ -738,14 +716,14 @@ def fechamento_submit(id):
     # 6) Atualiza campos de fechamento na base de dados
     cursor.execute("""
         UPDATE rd
-        SET valor_despesa=%s, saldo_devolver=%s, data_fechamento=%s, status='Aguardando Aprovação de Fechamento'
+        SET valor_despesa=%s, saldo_devolver=%s, data_fechamento=%s, status='Fechado'
         WHERE id=%s
     """, (valor_despesa, saldo_devolver, data_fechamento, id))
 
     conn.commit()
     cursor.close()
     conn.close()
-    flash('RD enviada para aprovação de fechamento.')
+    flash('RD fechada com sucesso. Saldo devolvido = R$%.2f' % saldo_devolver)
     return redirect(url_for('index'))
 
 @app.route('/edit_saldo', methods=['POST'])
