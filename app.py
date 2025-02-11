@@ -236,8 +236,16 @@ def can_request_additional(status):
     return is_solicitante() and status == 'Liberado'
 
 def can_close(status):
-    # Solicitante pode fechar se estiver Liberado
+    """
+    Solicitante pode enviar para 'Pendente de Aprovação de Fechamento' se estiver Liberado.
+    """
     return is_solicitante() and status == 'Liberado'
+
+def can_approve_fechamento(status):
+    """
+    Gestor pode aprovar o fechamento se o status for 'Pendente de Aprovação de Fechamento'.
+    """
+    return is_gestor() and status == 'Pendente de Aprovação de Fechamento'
 
 def get_saldo_global():
     conn = get_pg_connection()
@@ -706,20 +714,13 @@ def fechamento_submit(id):
         flash("Valor da despesa maior que o valor liberado.")
         return redirect(url_for('index'))
 
-    # 5) Devolve a diferença ao saldo global
-    saldo_devolver = valor_liberado - valor_despesa
-    saldo = get_saldo_global()
-    set_saldo_global(saldo + saldo_devolver)
-
-    data_fechamento = datetime.now().strftime('%Y-%m-%d')
-
-    # 6) Atualiza campos de fechamento na base de dados
-    cursor.execute("""
-        UPDATE rd
-        SET valor_despesa=%s, saldo_devolver=%s, data_fechamento=%s, status='Fechado'
-        WHERE id=%s
-    """, (valor_despesa, saldo_devolver, data_fechamento, id))
-
+    # Atualiza o status para 'Pendente de Aprovação de Fechamento'
+saldo_devolver = valor_liberado - valor_despesa
+cursor.execute("""
+    UPDATE rd
+    SET valor_despesa=%s, saldo_devolver=%s, status='Pendente de Aprovação de Fechamento'
+    WHERE id=%s
+""", (valor_despesa, saldo_devolver, id))
     conn.commit()
     cursor.close()
     conn.close()
@@ -914,6 +915,43 @@ def export_excel():
         download_name=f"Relatorio_RD_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
+    @app.route('/approve_fechamento/<id>', methods=['POST'])
+def approve_fechamento(id):
+    """
+    Aprova o fechamento do RD, movendo-o para 'Fechado'.
+    """
+    if not can_approve_fechamento_status(id):
+        flash("Acesso negado.")
+        return redirect(url_for('index'))
+
+    # Devolve o saldo ao saldo global
+    conn = get_pg_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT valor_despesa, saldo_devolver FROM rd WHERE id=%s", (id,))
+    rd = cursor.fetchone()
+    if not rd:
+        conn.close()
+        flash("RD não encontrada.")
+        return redirect(url_for('index'))
+
+    valor_despesa, saldo_devolver = rd
+    saldo_global = get_saldo_global()
+    set_saldo_global(saldo_global + saldo_devolver)
+
+    # Atualiza o status para 'Fechado'
+    data_fechamento = datetime.now().strftime('%Y-%m-%d')
+    cursor.execute("""
+        UPDATE rd
+        SET status='Fechado', data_fechamento=%s
+        WHERE id=%s
+    """, (data_fechamento, id))
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    flash('RD fechada com sucesso. Saldo devolvido = R$%.2f' % saldo_devolver)
+    return redirect(url_for('index'))
 
 if __name__ == '__main__':
     init_db()
