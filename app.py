@@ -60,14 +60,28 @@ logging.basicConfig(level=logging.DEBUG)
 
 app = Flask(__name__)
 
-app.jinja_env.globals.update(get_r2_public_url=get_r2_public_url)
+# Register custom function in Jinja2: mostrar_valores
+def mostrar_valores(rd):
+    """
+    Exibe os valores da RD.
+    Este é um exemplo simples que retorna o valor da coluna 'valor'.
+    Ajuste a lógica conforme sua necessidade.
+    """
+    # Supondo que "valor" esteja na posição 5 do tupla retornada da query
+    try:
+        return rd[5]
+    except (IndexError, TypeError):
+        return "N/A"
+
+# Adiciona a função mostrar_valores ao ambiente global do Jinja
+app.jinja_env.globals.update(get_r2_public_url=get_r2_public_url, mostrar_valores=mostrar_valores)
 
 # Configuração do SECRET_KEY
 secret_key = os.getenv('SECRET_KEY')
 if not secret_key:
     raise ValueError("SECRET_KEY não está definida no ambiente.")
 app.secret_key = secret_key
-logging.debug(f"SECRET_KEY carregado corretamente.")
+logging.debug("SECRET_KEY carregado corretamente.")
 
 # Configurações do PostgreSQL
 PG_HOST = os.getenv('PG_HOST', 'dpg-ctjqnsdds78s73erdqi0-a.oregon-postgres.render.com')
