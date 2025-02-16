@@ -2,865 +2,859 @@
 <html lang="pt-BR">
 
 <head>
-    <meta charset="UTF-8">
-    <title>Gerenciamento de RDs</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8">
+  <title>Gerenciamento de RDs</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <!-- Fonte e FontAwesome -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
-        integrity="sha512-Fo3rlrQkTy1nY+5DF3Gq+jKJ7tDmY3k3yVkxIrZGHJ7uZ1eGb9oSmiHaqX3UVp1xxeOunR4e0P/5TmFWw6bFw=="
-        crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <!-- Fonte e FontAwesome -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    integrity="sha512-Fo3rlrQkTy1nY+5DF3Gq+jKJ7tDmY3k3yVkxIrZGHJ7uZ1eGb9oSmiHaqX3UVp1xxeOunR4e0P/5TmFWw6bFw=="
+    crossorigin="anonymous" referrerpolicy="no-referrer" />
 
-    <!-- Estilos do DataTables -->
-    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css" />
+  <!-- Estilos do DataTables -->
+  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css" />
 
-    <style>
-        /* ==================== CORES E VARIÁVEIS ==================== */
-        :root {
-            --primary-color: #3498db;
-            --secondary-color: #f39c12;
-            --success-color: #2ecc71;
-            --danger-color: #e74c3c;
-            --warning-color: #f1c40f;
-            --background-color: #f2f3f5;
-            --header-color: #34495e;
-            --text-color: #2c3e50;
-            --footer-background: #2c3e50;
-            --footer-text: #ecf0f1;
-            --border-color: #dddddd;
-            --input-border: #dcdde1;
-        }
+  <style>
+    /* ==================== CORES E VARIÁVEIS ==================== */
+    :root {
+      --primary-color: #3498db;
+      --secondary-color: #f39c12;
+      --success-color: #2ecc71;
+      --danger-color: #e74c3c;
+      --warning-color: #f1c40f;
+      --background-color: #f2f3f5;
+      --header-color: #34495e;
+      --text-color: #2c3e50;
+      --footer-background: #2c3e50;
+      --footer-text: #ecf0f1;
+      --border-color: #dddddd;
+      --input-border: #dcdde1;
+    }
 
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--background-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 0;
-        }
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--background-color);
+      color: var(--text-color);
+      margin: 0;
+      padding: 0;
+    }
 
-        .top-bar {
-            background: var(--header-color);
-            padding: 10px 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            color: #ffffff;
-        }
+    .top-bar {
+      background: var(--header-color);
+      padding: 10px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #ffffff;
+    }
 
-        .top-bar .user-info {
-            font-weight: 600;
-        }
+    .top-bar .user-info {
+      font-weight: 600;
+    }
 
-        .top-bar a {
-            color: #ffffff;
-            margin-left: 10px;
-            display: inline-flex;
-            align-items: center;
-            text-decoration: none;
-        }
+    .top-bar a {
+      color: #ffffff;
+      margin-left: 10px;
+      display: inline-flex;
+      align-items: center;
+      text-decoration: none;
+    }
 
-        .top-bar a:hover {
-            text-decoration: underline;
-        }
+    .top-bar a:hover {
+      text-decoration: underline;
+    }
 
-        h1,
-        h2 {
-            text-align: center;
-            margin: 20px 0;
-            font-weight: 700;
-        }
+    h1,
+    h2 {
+      text-align: center;
+      margin: 20px 0;
+      font-weight: 700;
+    }
 
-        h1 {
-            font-size: 1.5rem;
-        }
+    h1 {
+      font-size: 1.5rem;
+    }
 
-        h2 {
-            font-size: 1.2rem;
-        }
+    h2 {
+      font-size: 1.2rem;
+    }
 
-        .container {
-            max-width: 1000px;
-            margin: 20px auto;
-            padding: 20px;
-            background: #ffffff;
-            border-radius: 10px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-        }
+    .container {
+      max-width: 1000px;
+      margin: 20px auto;
+      padding: 20px;
+      background: #ffffff;
+      border-radius: 10px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+    }
 
-        .main-form {
-            background: #fff;
-            margin-bottom: 20px;
-            border: 1px solid var(--border-color);
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
-        }
+    .main-form {
+      background: #fff;
+      margin-bottom: 20px;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+    }
 
-        .main-form label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 600;
-            color: var(--header-color);
-        }
+    .main-form label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 600;
+      color: var(--header-color);
+    }
 
-        .main-form input,
-        .main-form select,
-        .main-form textarea {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 15px;
-            border: 1px solid var(--input-border);
-            border-radius: 5px;
-            font-size: 0.9rem;
-            box-sizing: border-box;
-        }
+    .main-form input,
+    .main-form select,
+    .main-form textarea {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 15px;
+      border: 1px solid var(--input-border);
+      border-radius: 5px;
+      font-size: 0.9rem;
+      box-sizing: border-box;
+    }
 
-        .main-form button {
-            background-color: var(--primary-color);
-            color: #fff;
-            padding: 10px 20px;
-            border: none;
-            border-radius: 5px;
-            font-weight: 600;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-        }
+    .main-form button {
+      background-color: var(--primary-color);
+      color: #fff;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+    }
 
-        .main-form button:hover {
-            background-color: #2980b9;
-        }
+    .main-form button:hover {
+      background-color: #2980b9;
+    }
 
-        button,
-        .btn {
-            padding: 8px 15px;
-            border: none;
-            border-radius: 5px;
-            font-size: 0.9rem;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            transition: background-color 0.3s ease, transform 0.2s ease;
-        }
+    button,
+    .btn {
+      padding: 8px 15px;
+      border: none;
+      border-radius: 5px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background-color 0.3s ease, transform 0.2s ease;
+    }
 
-        .btn-primary {
-            background-color: var(--primary-color);
-            color: #fff;
-        }
+    .btn-primary {
+      background-color: var(--primary-color);
+      color: #fff;
+    }
 
-        .btn-primary:hover {
-            background-color: #2980b9;
-            transform: translateY(-2px);
-        }
+    .btn-primary:hover {
+      background-color: #2980b9;
+      transform: translateY(-2px);
+    }
 
-        .btn-secondary {
-            background-color: var(--secondary-color);
-            color: #fff;
-        }
+    .btn-secondary {
+      background-color: var(--secondary-color);
+      color: #fff;
+    }
 
-        .btn-secondary:hover {
-            background-color: #d68910;
-            transform: translateY(-2px);
-        }
+    .btn-secondary:hover {
+      background-color: #d68910;
+      transform: translateY(-2px);
+    }
 
-        .btn-success {
-            background-color: var(--success-color);
-            color: #fff;
-        }
+    .btn-success {
+      background-color: var(--success-color);
+      color: #fff;
+    }
 
-        .btn-success:hover {
-            background-color: #27ae60;
-            transform: translateY(-2px);
-        }
+    .btn-success:hover {
+      background-color: #27ae60;
+      transform: translateY(-2px);
+    }
 
-        .btn-danger {
-            background-color: var(--danger-color);
-            color: #fff;
-        }
+    .btn-danger {
+      background-color: var(--danger-color);
+      color: #fff;
+    }
 
-        .btn-danger:hover {
-            background-color: #c0392b;
-            transform: translateY(-2px);
-        }
+    .btn-danger:hover {
+      background-color: #c0392b;
+      transform: translateY(-2px);
+    }
 
-        .btn-warning {
-            background-color: var(--warning-color);
-            color: #34495e;
-        }
+    .btn-warning {
+      background-color: var(--warning-color);
+      color: #34495e;
+    }
 
-        .btn-warning:hover {
-            background-color: #d4ac0d;
-            color: #fff;
-            transform: translateY(-2px);
-        }
+    .btn-warning:hover {
+      background-color: #d4ac0d;
+      color: #fff;
+      transform: translateY(-2px);
+    }
 
-        .btn-approve {
-            background-color: var(--success-color);
-        }
+    .btn-approve {
+      background-color: var(--success-color);
+    }
 
-        .btn-approve:hover {
-            background-color: #27ae60;
-        }
+    .btn-approve:hover {
+      background-color: #27ae60;
+    }
 
-        .btn-additional {
-            background-color: var(--secondary-color);
-        }
+    .btn-additional {
+      background-color: var(--secondary-color);
+    }
 
-        .btn-additional:hover {
-            background-color: #d68910;
-        }
+    .btn-additional:hover {
+      background-color: #d68910;
+    }
 
-        .btn-fechamento {
-            background-color: #8e44ad;
-        }
+    .btn-fechamento {
+      background-color: #8e44ad;
+    }
 
-        .btn-fechamento:hover {
-            background-color: #7d3c98;
-        }
+    .btn-fechamento:hover {
+      background-color: #7d3c98;
+    }
 
-        .btn-delete-rd {
-            background-color: var(--danger-color);
-            padding: 6px 12px;
-            font-size: 0.75rem;
-            color: #fff;
-        }
+    .btn-delete-rd {
+      background-color: var(--danger-color);
+      padding: 6px 12px;
+      font-size: 0.75rem;
+      color: #fff;
+    }
 
-        .btn-delete-rd:hover {
-            background-color: #c0392b;
-        }
+    .btn-delete-rd:hover {
+      background-color: #c0392b;
+    }
 
-        .btn-delete-file {
-            background-color: var(--danger-color);
-            padding: 2px 6px;
-            font-size: 0.7rem;
-            border-radius: 50%;
-            height: 20px;
-            width: 20px;
-            margin-left: 5px;
-        }
+    .btn-delete-file {
+      background-color: var(--danger-color);
+      padding: 2px 6px;
+      font-size: 0.7rem;
+      border-radius: 50%;
+      height: 20px;
+      width: 20px;
+      margin-left: 5px;
+    }
 
-        .btn-delete-file:hover {
-            background-color: #c0392b;
-        }
+    .btn-delete-file:hover {
+      background-color: #c0392b;
+    }
 
-        .btn-edit {
-            background-color: #f1c40f;
-            color: #34495e;
-        }
+    .btn-edit {
+      background-color: #f1c40f;
+      color: #34495e;
+    }
 
-        .btn-edit:hover {
-            background-color: #d4ac0d;
-            color: #fff;
-        }
+    .btn-edit:hover {
+      background-color: #d4ac0d;
+      color: #fff;
+    }
 
-        table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            margin-top: 20px;
-            background-color: #fff;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-        }
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      margin-top: 20px;
+      background-color: #fff;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
 
-        th,
-        td {
-            padding: 10px;
-            text-align: left;
-            border-bottom: 1px solid var(--border-color);
-        }
+    th,
+    td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+    }
 
-        th {
-            background-color: var(--primary-color);
-            color: #fff;
-            font-weight: 600;
-        }
+    th {
+      background-color: var(--primary-color);
+      color: #fff;
+      font-weight: 600;
+    }
 
-        tr:hover {
-            background-color: #f9f9f9;
-        }
+    tr:hover {
+      background-color: #f9f9f9;
+    }
 
-        @media (max-width: 768px) {
-            table,
-            thead,
-            tbody,
-            th,
-            td,
-            tr {
-                display: block;
-            }
+    @media (max-width: 768px) {
+      table,
+      thead,
+      tbody,
+      th,
+      td,
+      tr {
+        display: block;
+      }
 
-            th {
-                position: absolute;
-                top: -9999px;
-                left: -9999px;
-            }
+      th {
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+      }
 
-            tr {
-                margin-bottom: 15px;
-            }
+      tr {
+        margin-bottom: 15px;
+      }
 
-            td {
-                border: none;
-                position: relative;
-                padding-left: 50%;
-                white-space: pre-wrap;
-            }
+      td {
+        border: none;
+        position: relative;
+        padding-left: 50%;
+        white-space: pre-wrap;
+      }
 
-            td::before {
-                content: attr(data-label);
-                position: absolute;
-                left: 15px;
-                font-weight: 600;
-            }
+      td::before {
+        content: attr(data-label);
+        position: absolute;
+        left: 15px;
+        font-weight: 600;
+      }
 
-            .btn,
-            .btn-delete-rd {
-                width: 100%;
-                margin-bottom: 10px;
-            }
-        }
+      .btn,
+      .btn-delete-rd {
+        width: 100%;
+        margin-bottom: 10px;
+      }
+    }
 
-        .arquivo-container {
-            display: flex;
-            align-items: center;
-            margin-top: 5px;
-        }
+    .arquivo-container {
+      display: flex;
+      align-items: center;
+      margin-top: 5px;
+    }
 
-        .arquivo-link {
-            text-decoration: none;
-            color: var(--primary-color);
-            font-size: 0.9rem;
-            margin-right: 10px;
-        }
+    .arquivo-link {
+      text-decoration: none;
+      color: var(--primary-color);
+      font-size: 0.9rem;
+      margin-right: 10px;
+    }
 
-        .arquivo-link:hover {
-            text-decoration: underline;
-        }
+    .arquivo-link:hover {
+      text-decoration: underline;
+    }
 
-        .error-message {
-            color: var(--danger-color);
-            font-size: 0.85rem;
-            margin-bottom: 15px;
-        }
+    .error-message {
+      color: var(--danger-color);
+      font-size: 0.85rem;
+      margin-bottom: 15px;
+    }
 
-        footer {
-            text-align: center;
-            color: var(--footer-text);
-            font-size: 0.85rem;
-            padding: 10px 0;
-            background-color: var(--footer-background);
-            position: fixed;
-            width: 100%;
-            bottom: 0;
-        }
+    footer {
+      text-align: center;
+      color: var(--footer-text);
+      font-size: 0.85rem;
+      padding: 10px 0;
+      background-color: var(--footer-background);
+      position: fixed;
+      width: 100%;
+      bottom: 0;
+    }
 
-        .tabs {
-            margin-top: 20px;
-        }
+    .tabs {
+      margin-top: 20px;
+    }
 
-        .tabs input[type="radio"] {
-            display: none;
-        }
+    .tabs input[type="radio"] {
+      display: none;
+    }
 
-        .tab-labels {
-            display: flex;
-            justify-content: center;
-            margin-bottom: 10px;
-            flex-wrap: wrap;
-        }
+    .tab-labels {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
 
-        .tab-labels label {
-            background-color: #ecf0f1;
-            padding: 8px 15px;
-            margin: 2px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s;
-            font-weight: 600;
-        }
+    .tab-labels label {
+      background-color: #ecf0f1;
+      padding: 8px 15px;
+      margin: 2px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+      font-weight: 600;
+    }
 
-        .tab-labels label:hover {
-            background-color: #ddd;
-        }
+    .tab-labels label:hover {
+      background-color: #ddd;
+    }
 
-        .tab-content {
-            display: none;
-        }
+    .tab-content {
+      display: none;
+    }
 
-        input[type="radio"]:checked+label {
-            background-color: var(--primary-color);
-            color: #fff;
-        }
+    input[type="radio"]:checked+label {
+      background-color: var(--primary-color);
+      color: #fff;
+    }
 
-        #tab1:checked~.content #content1,
-        #tab2:checked~.content #content2,
-        #tab3:checked~.content #content3,
-        #tab4:checked~.content #content4 {
-            display: block;
-        }
-    </style>
+    #tab1:checked~.content #content1,
+    #tab2:checked~.content #content2,
+    #tab3:checked~.content #content3,
+    #tab4:checked~.content #content4 {
+      display: block;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
 </head>
 
 <body>
-
-    {% if user_role is defined %}
-    <div class="top-bar">
-        <div class="user-info">
-            Bem-vindo, {{ user_role }} |
-            <a href="{{ url_for('logout') }}">Sair</a>
-        </div>
-        {% if saldo_global is defined and saldo_global is not none %}
-        <div class="saldo-info">
-            Saldo Global: R${{ format_currency(saldo_global) }}
-        </div>
-        {% endif %}
+  {% if user_role is defined %}
+  <div class="top-bar">
+    <div class="user-info">
+      Bem-vindo, {{ user_role }} |
+      <a href="{{ url_for('logout') }}">Sair</a>
+    </div>
+    {% if saldo_global is defined and saldo_global is not none %}
+    <div class="saldo-info">
+      Saldo Global: R${{ format_currency(saldo_global) }}
     </div>
     {% endif %}
+  </div>
+  {% endif %}
 
-    <div class="container">
-
-        {% with messages = get_flashed_messages() %}
-        {% if messages %}
-        <ul>
-            {% for message in messages %}
-            <li class="error-message">{{ message }}</li>
-            {% endfor %}
-        </ul>
-        {% endif %}
-        {% endwith %}
-
-        <div style="text-align:center; margin-top: 20px;">
-            <img src="https://pub-1e6f8559bc2b413c889fbf4860462599.r2.dev/download.png" alt="Logo Tecsul"
-                style="max-width: 200px; height: auto;">
-        </div>
-        <h1>Gerenciamento de RDs</h1>
-
-        {% if user_role is not defined %}
-        <form action="/" method="POST" class="main-form">
-            {% if error %}
-            <p class="error-message">{{ error }}</p>
-            {% endif %}
-            <label for="username">Usuário:</label>
-            <input type="text" id="username" name="username" required>
-            <label for="password">Senha:</label>
-            <input type="password" id="password" name="password" required>
-            <button type="submit"><i class="fas fa-sign-in-alt"></i> Entrar</button>
-        </form>
-
-        {% elif adicional_id %}
-        <div class="form-adicional">
-            <h2>Solicitar Crédito Adicional para RD #{{ adicional_id }}</h2>
-            <form action="/adicional_submit/{{ adicional_id }}" method="POST" enctype="multipart/form-data"
-                class="main-form">
-                <label for="valor_adicional">Valor Adicional (R$):</label>
-                <input type="number" id="valor_adicional" name="valor_adicional" step="0.01" required>
-                <label for="arquivo">Anexar Arquivos Adicionais (opcional):</label>
-                <input type="file" id="arquivo" name="arquivo" multiple>
-                <button type="submit"><i class="fas fa-paper-plane"></i> Solicitar Adicional</button>
-            </form>
-        </div>
-
-        {% elif fechamento_id %}
-        <div class="form-fechamento">
-            <h2>Fechamento do RD #{{ fechamento_id }}</h2>
-            <form action="/fechamento_submit/{{ fechamento_id }}" method="POST" enctype="multipart/form-data"
-                class="main-form">
-                <label for="valor_despesa">Valor da Despesa (R$):</label>
-                <input type="number" id="valor_despesa" name="valor_despesa" step="0.01" required>
-                <label for="arquivo">Anexar Arquivos Finais (opcional):</label>
-                <input type="file" id="arquivo" name="arquivo" multiple>
-                <button type="submit"><i class="fas fa-check-circle"></i> Fechar RD</button>
-            </form>
-        </div>
-
-        {% else %}
-
-        {% if can_add %}
-        <form action="/add" method="POST" enctype="multipart/form-data" class="main-form">
-            <label for="solicitante">Solicitante:</label>
-            <input type="text" id="solicitante" name="solicitante" required>
-
-            <label for="funcionario">Funcionário:</label>
-            <input type="text" id="funcionario" name="funcionario" required>
-
-            <label for="data">Data:</label>
-            <input type="date" id="data" name="data" required>
-
-            <label for="centro_custo">Centro de Custo:</label>
-            <input type="text" id="centro_custo" name="centro_custo" required>
-
-            <label for="valor">Valor (R$):</label>
-            <input type="number" id="valor" name="valor" step="0.01" required>
-
-            <label for="observacao">Observação:</label>
-            <textarea id="observacao" name="observacao" rows="3"></textarea>
-
-            <label for="arquivo">Anexar Arquivos:</label>
-            <input type="file" id="arquivo" name="arquivo" multiple>
-
-            <button type="submit"><i class="fas fa-plus-circle"></i> Adicionar RD</button>
-        </form>
-        {% endif %}
-
-        {% if user_role == 'financeiro' %}
-        <h2>Editar Saldo Global</h2>
-        <form action="{{ url_for('edit_saldo') }}" method="POST" class="main-form">
-            <label for="saldo_global">Saldo Global (R$):</label>
-            <input type="number" id="saldo_global" name="saldo_global" step="0.01" value="{{ saldo_global }}" required>
-            <button type="submit"><i class="fas fa-sync-alt"></i> Atualizar Saldo</button>
-        </form>
-        {% endif %}
-
-        <div style="text-align: center; margin: 20px 0;">
-            <a href="{{ url_for('export_excel') }}" class="btn btn-success">
-                <i class="fas fa-file-excel"></i> Exportar para Excel
-            </a>
-        </div>
-
-        {% macro mostrar_valores(rd) %}
-        {% set valor = rd[5] %}
-        {% set valor_adic = rd[7] if rd[7] else 0 %}
-        {% set valor_total = valor + valor_adic %}
-        {% set valor_despesa = rd[9] if rd[9] else 0 %}
-        {% set saldo_devolver = rd[10] if rd[10] else (valor_total - valor_despesa) %}
-
-        {% set adicional_data = rd[8] if rd[8] else 'N/A' %}
-        {% set data_fechamento = rd[11] if rd[11] else 'N/A' %}
-        {% set aprovado_data = rd[13] if rd[13] else 'N/A' %}
-        {% set liberado_data = rd[14] if rd[14] else 'N/A' %}
-
-        <strong>Valor Solicitado:</strong> R${{ format_currency(valor) }}<br>
-        <strong>Data da Solicitação:</strong> {{ rd[3] }}<br><br>
-
-        <strong>Valor Adicional:</strong> R${{ format_currency(valor_adic) }}<br>
-        {% if adicional_data != 'N/A' %}
-        <strong>Data do Adicional:</strong> {{ adicional_data }}<br><br>
-        {% else %}
-        <br>
-        {% endif %}
-
-        <strong>Total da RD:</strong> R${{ format_currency(valor_total) }}<br><br>
-
-        <strong>Valor Gasto (Despesa):</strong> R${{ format_currency(valor_despesa) }}<br>
-        <strong>Saldo a Devolver:</strong> R${{ format_currency(saldo_devolver) }}<br><br>
-        {% if aprovado_data != 'N/A' %}
-        <strong>Aprovado em:</strong> {{ aprovado_data }}<br>
+  <div class="container">
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <ul>
+      {% for message in messages %}
+      <li class="error-message">{{ message }}</li>
+      {% endfor %}
+    </ul>
     {% endif %}
-    {% if liberado_data != 'N/A' %}
-        <strong>Liberado em:</strong> {{ liberado_data }}<br>
-    {% endif %}
-    {% if data_fechamento != 'N/A' %}
-        <strong>Fechado em:</strong> {{ data_fechamento }}
-    {% endif %}
-    {% endmacro %}
-    
+    {% endwith %}
+
+    <div style="text-align:center; margin-top: 20px;">
+      <img src="https://pub-1e6f8559bc2b413c889fbf4860462599.r2.dev/download.png" alt="Logo Tecsul"
+        style="max-width: 200px; height: auto;">
+    </div>
+
+    <h1>Gerenciamento de RDs</h1>
+
+    {% if user_role is not defined %}
+    <form action="/" method="POST" class="main-form">
+      {% if error %}
+      <p class="error-message">{{ error }}</p>
+      {% endif %}
+      <label for="username">Usuário:</label>
+      <input type="text" id="username" name="username" required>
+      <label for="password">Senha:</label>
+      <input type="password" id="password" name="password" required>
+      <button type="submit"><i class="fas fa-sign-in-alt"></i> Entrar</button>
+    </form>
+
+    {% elif adicional_id %}
+    <div class="form-adicional">
+      <h2>Solicitar Crédito Adicional para RD #{{ adicional_id }}</h2>
+      <form action="/adicional_submit/{{ adicional_id }}" method="POST" enctype="multipart/form-data" class="main-form">
+        <label for="valor_adicional">Valor Adicional (R$):</label>
+        <input type="number" id="valor_adicional" name="valor_adicional" step="0.01" required>
+        <label for="arquivo">Anexar Arquivos Adicionais (opcional):</label>
+        <input type="file" id="arquivo" name="arquivo" multiple>
+        <button type="submit"><i class="fas fa-paper-plane"></i> Solicitar Adicional</button>
+      </form>
+    </div>
+
+    {% elif fechamento_id %}
+    <div class="form-fechamento">
+      <h2>Fechamento do RD #{{ fechamento_id }}</h2>
+      <form action="/fechamento_submit/{{ fechamento_id }}" method="POST" enctype="multipart/form-data" class="main-form">
+        <label for="valor_despesa">Valor da Despesa (R$):</label>
+        <input type="number" id="valor_despesa" name="valor_despesa" step="0.01" required>
+        <label for="arquivo">Anexar Arquivos Finais (opcional):</label>
+        <input type="file" id="arquivo" name="arquivo" multiple>
+        <button type="submit"><i class="fas fa-check-circle"></i> Fechar RD</button>
+      </form>
+    </div>
+
+    {% else %}
+    <div style="text-align: center;">
+      <button id="solicitar-alelo" class="btn btn-primary">Solicitar RD Crédito Alelo</button>
+      <button id="solicitar-reembolso" class="btn btn-secondary">Solicitar RD Reembolso</button>
+    </div>
+
+    <div id="form-alelo" class="main-form hidden">
+      <h2>Solicitar RD Crédito Alelo</h2>
+      <form action="/add_alelo" method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="rd_tipo" value="alelo">
+        <label for="solicitante">Solicitante:</label>
+        <input type="text" id="solicitante" name="solicitante" required>
+
+        <label for="funcionario">Funcionário:</label>
+        <input type="text" id="funcionario" name="funcionario" required>
+
+        <label for="data">Data:</label>
+        <input type="date" id="data" name="data" required>
+
+        <label for="centro_custo">Centro de Custo:</label>
+        <input type="text" id="centro_custo" name="centro_custo" required>
+
+        <label for="valor">Valor (R$):</label>
+        <input type="number" id="valor" name="valor" step="0.01" required>
+
+        <label for="observacao">Observação:</label>
+        <textarea id="observacao" name="observacao" rows="3"></textarea>
+
+        <label for="arquivo">Anexar Arquivos:</label>
+        <input type="file" id="arquivo" name="arquivo" multiple>
+
+        <button type="submit"><i class="fas fa-plus-circle"></i> Adicionar RD Crédito Alelo</button>
+      </form>
+    </div>
+
+    <div id="form-reembolso" class="main-form hidden">
+      <h2>Solicitar RD Reembolso</h2>
+      <form action="/add_reembolso" method="POST" enctype="multipart/form-data">
+        <input type="hidden" name="rd_tipo" value="reembolso">
+        <label for="solicitante">Solicitante:</label>
+        <input type="text" id="solicitante" name="solicitante" required>
+
+        <label for="funcionario">Funcionário:</label>
+        <input type="text" id="funcionario" name="funcionario" required>
+
+        <label for="data">Data:</label>
+        <input type="date" id="data" name="data" required>
+
+        <label for="centro_custo">Centro de Custo:</label>
+        <input type="text" id="centro_custo" name="centro_custo" required>
+
+        <label for="valor">Valor (R$):</label>
+        <input type="number" id="valor" name="valor" step="0.01" required>
+
+        <label for="observacao">Observação:</label>
+        <textarea id="observacao" name="observacao" rows="3"></textarea>
+
+        <label for="arquivo">Anexar Arquivos:</label>
+        <input type="file" id="arquivo" name="arquivo" multiple>
+
+        <button type="submit"><i class="fas fa-plus-circle"></i> Adicionar RD Reembolso</button>
+      </form>
+    </div>
+
     <!-- ==================== ABAS (TABS) ==================== -->
     <div class="tabs">
-        <!-- Inputs para cada aba -->
-        <input type="radio" name="tab-control" id="tab1" checked>
-        <input type="radio" name="tab-control" id="tab2">
-        <input type="radio" name="tab-control" id="tab3">
-        <input type="radio" name="tab-control" id="tab4">
-    
-        <!-- Rótulos (labels) das abas -->
-        <div class="tab-labels">
-            <label for="tab1">Pendentes de liberação do gestor</label>
-            <label for="tab2">Aprovados pelo gestor</label>
-            <label for="tab3">Liberados pelo financeiro</label>
-            <label for="tab4">Fechados</label>
+      <!-- Inputs para cada aba -->
+      <input type="radio" name="tab-control" id="tab1" checked>
+      <input type="radio" name="tab-control" id="tab2">
+      <input type="radio" name="tab-control" id="tab3">
+      <input type="radio" name="tab-control" id="tab4">
+
+      <!-- Rótulos (labels) das abas -->
+      <div class="tab-labels">
+        <label for="tab1">Pendentes de liberação do gestor</label>
+        <label for="tab2">Aprovados pelo gestor</label>
+        <label for="tab3">Liberados pelo financeiro</label>
+        <label for="tab4">Fechados</label>
+      </div>
+
+      <div class="content">
+        <!-- Pendentes -->
+        <div class="tab-content" id="content1">
+          <table id="tabela-pendentes" class="display">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Solicitante</th>
+                <th>Funcionário</th>
+                <th>Data</th>
+                <th>Centro de Custo</th>
+                <th>Observação</th>
+                <th>Valores</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for rd in pendentes %}
+              {% set rd_id = rd[0] %}
+              {% set rd_solic = rd[1] %}
+              {% set status = rd[6] %}
+              <tr>
+                <td data-label="ID">{{ rd_id }} {% if rd[15] == 'reembolso' %} - Reembolso{% else %} Crédito Alelo{% endif %}</td>
+                <td data-label="Solicitante">{{ rd[1] }}</td>
+                <td data-label="Funcionário">{{ rd[2] }}</td>
+                <td data-label="Data">{{ rd[3] }}</td>
+                <td data-label="Centro de Custo">{{ rd[4] }}</td>
+                <td data-label="Observação">{{ rd[16] if rd|length > 16 else '' }}</td>
+                <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
+                <td data-label="Ações">
+                  {% if can_approve_func(status) %}
+                  <form action="/approve/{{ rd_id }}" method="POST" class="action-form">
+                    <button type="submit" class="btn btn-approve">
+                      <i class="fas fa-check"></i> Aprovar
+                    </button>
+                  </form>
+                  {% endif %}
+                  {% if can_edit_func(status) %}
+                  <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit">
+                    <i class="fas fa-edit"></i> Editar
+                  </a>
+                  {% endif %}
+                  {% if can_delete_func(status, rd_solic) %}
+                  <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
+                    <button type="submit" class="btn btn-delete-rd">
+                      <i class="fas fa-trash-alt"></i> Excluir
+                    </button>
+                  </form>
+                  {% endif %}
+                  {% if rd[12] %}
+                  {% for arquivo in rd[12].split(',') %}
+                  <div class="arquivo-container">
+                    <a href="{{ get_r2_public_url(arquivo) }}" class="arquivo-link" target="_blank">{{ arquivo }}</a>
+                    <form action="{{ url_for('delete_file', id=rd_id) }}" method="POST" style="display:inline;">
+                      <input type="hidden" name="filename" value="{{ arquivo }}">
+                      <button type="submit" class="btn btn-delete-file" title="Excluir Arquivo">
+                        <i class="fas fa-times"></i>
+                      </button>
+                    </form>
+                  </div>
+                  {% endfor %}
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
         </div>
-    
-        <div class="content">
-            <!-- Pendentes -->
-            <div class="tab-content" id="content1">
-                <table id="tabela-pendentes" class="display">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Solicitante</th>
-                            <th>Funcionário</th>
-                            <th>Data</th>
-                            <th>Centro de Custo</th>
-                            <th>Observação</th>
-                            <th>Valores</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for rd in pendentes %}
-                        {% set rd_id = rd[0] %}
-                        {% set rd_solic = rd[1] %}
-                        {% set status = rd[6] %}
-                        <tr>
-                            <td data-label="ID">{{ rd_id }}</td>
-                            <td data-label="Solicitante">{{ rd[1] }}</td>
-                            <td data-label="Funcionário">{{ rd[2] }}</td>
-                            <td data-label="Data">{{ rd[3] }}</td>
-                            <td data-label="Centro de Custo">{{ rd[4] }}</td>
-                            <td data-label="Observação">{{ rd[16] if rd|length > 16 else '' }}</td>
-                            <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
-                            <td data-label="Ações">
-                                {% if can_approve_func(status) %}
-                                <form action="/approve/{{ rd_id }}" method="POST" class="action-form">
-                                    <button type="submit" class="btn btn-approve">
-                                        <i class="fas fa-check"></i> Aprovar
-                                    </button>
-                                </form>
-                                {% endif %}
-                                {% if can_edit_func(status) %}
-                                <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit">
-                                    <i class="fas fa-edit"></i> Editar
-                                </a>
-                                {% endif %}
-                                {% if can_delete_func(status, rd_solic) %}
-                                <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
-                                    <button type="submit" class="btn btn-delete-rd">
-                                        <i class="fas fa-trash-alt"></i> Excluir
-                                    </button>
-                                </form>
-                                {% endif %}
-                                {% if rd[12] %}
-                                {% for arquivo in rd[12].split(',') %}
-                                <div class="arquivo-container">
-                                    <a href="{{ get_r2_public_url(arquivo) }}" class="arquivo-link" target="_blank">{{ arquivo }}</a>
-                                    <form action="{{ url_for('delete_file', id=rd_id) }}" method="POST" style="display:inline;">
-                                        <input type="hidden" name="filename" value="{{ arquivo }}">
-                                        <button type="submit" class="btn btn-delete-file" title="Excluir Arquivo">
-                                            <i class="fas fa-times"></i>
-                                        </button>
-                                    </form>
-                                </div>
-                                {% endfor %}
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-    
-            <!-- Aprovados -->
-            <div class="tab-content" id="content2">
-                <table id="tabela-aprovados" class="display">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Solicitante</th>
-                            <th>Funcionário</th>
-                            <th>Data</th>
-                            <th>Centro de Custo</th>
-                            <th>Observação</th>
-                            <th>Valores</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for rd in aprovados %}
-                        {% set rd_id = rd[0] %}
-                        {% set rd_solic = rd[1] %}
-                        {% set status = rd[6] %}
-                        <tr>
-                            <td data-label="ID">{{ rd_id }}</td>
-                            <td data-label="Solicitante">{{ rd[1] }}</td>
-                            <td data-label="Funcionário">{{ rd[2] }}</td>
-                            <td data-label="Data">{{ rd[3] }}</td>
-                            <td data-label="Centro de Custo">{{ rd[4] }}</td>
-                            <td data-label="Observação">{{ rd[16] if rd|length > 16 else '' }}</td>
-                            <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
-                            <td data-label="Ações">
-                                {% if can_approve_func(status) %}
-                                <form action="/approve/{{ rd_id }}" method="POST" class="action-form">
-                                    <button type="submit" class="btn btn-approve">
-                                        <i class="fas fa-check"></i> Aprovar
-                                    </button>
-                                </form>
-                                {% endif %}
-                                {% if can_edit_func(status) %}
-                                <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit">
-                                    <i class="fas fa-edit"></i> Editar
-                                </a>
-                                {% endif %}
-                                {% if can_delete_func(status, rd_solic) %}
-                                <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
-                                    <button type="submit" class="btn btn-delete-rd">
-                                        <i class="fas fa-trash-alt"></i> Excluir
-                                    </button>
-                                </form>
-                                {% endif %}
-                                {% if rd[12] %}
-                                {% for arquivo in rd[12].split(',') %}
-                                <div class="arquivo-container">
-                                    <a href="{{ get_r2_public_url(arquivo) }}" class="arquivo-link" target="_blank">{{ arquivo }}</a>
-                                    <form action="{{ url_for('delete_file', id=rd_id) }}" method="POST" style="display:inline;">
-                                        <input type="hidden" name="filename" value="{{ arquivo }}">
-                                        <button type="submit" class="btn btn-delete-file" title="Excluir Arquivo">
-                                            <i class="fas fa-times"></i>
-                                        </button>
-                                    </form>
-                                </div>
-                                {% endfor %}
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-    
-            <!-- Liberados -->
-            <div class="tab-content" id="content3">
-                <table id="tabela-liberados" class="display">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Solicitante</th>
-                            <th>Funcionário</th>
-                            <th>Data</th>
-                            <th>Centro de Custo</th>
-                            <th>Observação</th>
-                            <th>Valores</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for rd in liberados %}
-                        {% set rd_id = rd[0] %}
-                        {% set rd_solic = rd[1] %}
-                        {% set status = rd[6] %}
-                        <tr>
-                            <td data-label="ID">{{ rd_id }}</td>
-                            <td data-label="Solicitante">{{ rd[1] }}</td>
-                            <td data-label="Funcionário">{{ rd[2] }}</td>
-                            <td data-label="Data">{{ rd[3] }}</td>
-                            <td data-label="Centro de Custo">{{ rd[4] }}</td>
-                            <td data-label="Observação">{{ rd[16] if rd|length > 16 else '' }}</td>
-                            <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
-                            <td data-label="Ações">
-                                {% if can_edit_func(status) %}
-                                <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit">
-                                    <i class="fas fa-edit"></i> Editar
-                                </a>
-                                {% endif %}
-                                {% if can_delete_func(status, rd_solic) %}
-                                <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
-                                    <button type="submit" class="btn btn-delete-rd">
-                                        <i class="fas fa-trash-alt"></i> Excluir
-                                    </button>
-                                </form>
-                                {% endif %}
-                                {% if can_request_additional(status) %}
-                                <form action="/" method="GET" class="action-form">
-                                    <input type="hidden" name="adicional" value="{{ rd_id }}">
-                                    <button type="submit" class="btn btn-additional">
-                                        <i class="fas fa-plus"></i> Crédito Adicional
-                                    </button>
-                                </form>
-                                {% endif %}
-                                {% if can_close(status) %}
-                                <form action="/" method="GET" class="action-form">
-                                    <input type="hidden" name="fechamento" value="{{ rd_id }}">
-                                    <button type="submit" class="btn btn-fechamento">
-                                        <i class="fas fa-lock"></i> Fechamento
-                                    </button>
-                                </form>
-                                {% endif %}
-                                {% if rd[12] %}
-                                {% for arquivo in rd[12].split(',') %}
-                                <div class="arquivo-container">
-                                    <a href="{{ get_r2_public_url(arquivo) }}" class="arquivo-link" target="_blank">{{ arquivo }}</a>
-                                    <form action="{{ url_for('delete_file', id=rd_id) }}" method="POST" style="display:inline;">
-                                        <input type="hidden" name="filename" value="{{ arquivo }}">
-                                        <button type="submit" class="btn btn-delete-file" title="Excluir Arquivo">
-                                            <i class="fas fa-times"></i>
-                                        </button>
-                                    </form>
-                                </div>
-                                {% endfor %}
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-    
-            <!-- Fechados -->
-            <div class="tab-content" id="content4">
-                <table id="tabela-fechados" class="display">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Solicitante</th>
-                            <th>Funcionário</th>
-                            <th>Data</th>
-                            <th>Centro de Custo</th>
-                            <th>Observação</th>
-                            <th>Valores</th>
-                            <th>Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for rd in fechados %}
-                        {% set rd_id = rd[0] %}
-                        {% set rd_solic = rd[1] %}
-                        {% set status = rd[6] %}
-                        <tr>
-                            <td data-label="ID">{{ rd_id }}</td>
-                            <td data-label="Solicitante">{{ rd[1] }}</td>
-                            <td data-label="Funcionário">{{ rd[2] }}</td>
-                            <td data-label="Data">{{ rd[3] }}</td>
-                            <td data-label="Centro de Custo">{{ rd[4] }}</td>
-                            <td data-label="Observação">{{ rd[16] if rd|length > 16 else '' }}</td>
-                            <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
-                            <td data-label="Ações">
-                                {% if rd[12] %}
-                                {% for arquivo in rd[12].split(',') %}
-                                <div class="arquivo-container">
-                                    <a href="{{ get_r2_public_url(arquivo) }}" class="arquivo-link" target="_blank">{{ arquivo }}</a>
-                                    <form action="{{ url_for('delete_file', id=rd_id) }}" method="POST" style="display:inline;">
-                                        <input type="hidden" name="filename" value="{{ arquivo }}">
-                                        <button type="submit" class="btn btn-delete-file" title="Excluir Arquivo">
-                                            <i class="fas fa-times"></i>
-                                        </button>
-                                    </form>
-                                </div>
-                                {% endfor %}
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div> <!-- .content -->
+
+        <!-- Aprovados -->
+        <div class="tab-content" id="content2">
+          <table id="tabela-aprovados" class="display">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Solicitante</th>
+                <th>Funcionário</th>
+                <th>Data</th>
+                <th>Centro de Custo</th>
+                <th>Observação</th>
+                <th>Valores</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for rd in aprovados %}
+              {% set rd_id = rd[0] %}
+              {% set rd_solic = rd[1] %}
+              {% set status = rd[6] %}
+              <tr>
+                <td data-label="ID">{{ rd_id }} {% if rd[15] == 'reembolso' %} - Reembolso{% else %} Crédito Alelo{% endif %}</td>
+                <td data-label="Solicitante">{{ rd[1] }}</td>
+                <td data-label="Funcionário">{{ rd[2] }}</td>
+                <td data-label="Data">{{ rd[3] }}</td>
+                <td data-label="Centro de Custo">{{ rd[4] }}</td>
+                <td data-label="Observação">{{ rd[16] if rd|length > 16 else '' }}</td>
+                <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
+                <td data-label="Ações">
+                  {% if can_approve_func(status) %}
+                  <form action="/approve/{{ rd_id }}" method="POST" class="action-form">
+                    <button type="submit" class="btn btn-approve">
+                      <i class="fas fa-check"></i> Aprovar
+                    </button>
+                  </form>
+                  {% endif %}
+                  {% if can_edit_func(status) %}
+                  <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit">
+                    <i class="fas fa-edit"></i> Editar
+                  </a>
+                  {% endif %}
+                  {% if can_delete_func(status, rd_solic) %}
+                  <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
+                    <button type="submit" class="btn btn-delete-rd">
+                      <i class="fas fa-trash-alt"></i> Excluir
+                    </button>
+                  </form>
+                  {% endif %}
+                  {% if rd[12] %}
+                  {% for arquivo in rd[12].split(',') %}
+                  <div class="arquivo-container">
+                    <a href="{{ get_r2_public_url(arquivo) }}" class="arquivo-link" target="_blank">{{ arquivo }}</a>
+                    <form action="{{ url_for('delete_file', id=rd_id) }}" method="POST" style="display:inline;">
+                      <input type="hidden" name="filename" value="{{ arquivo }}">
+                      <button type="submit" class="btn btn-delete-file" title="Excluir Arquivo">
+                        <i class="fas fa-times"></i>
+                      </button>
+                    </form>
+                  </div>
+                  {% endfor %}
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Liberados -->
+        <div class="tab-content" id="content3">
+          <table id="tabela-liberados" class="display">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Solicitante</th>
+                <th>Funcionário</th>
+                <th>Data</th>
+                <th>Centro de Custo</th>
+                <th>Observação</th>
+                <th>Valores</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for rd in liberados %}
+              {% set rd_id = rd[0] %}
+              {% set rd_solic = rd[1] %}
+              {% set status = rd[6] %}
+              <tr>
+                <td data-label="ID">{{ rd_id }} {% if rd[15] == 'reembolso' %} - Reembolso{% else %} Crédito Alelo{% endif %}</td>
+                <td data-label="Solicitante">{{ rd[1] }}</td>
+                <td data-label="Funcionário">{{ rd[2] }}</td>
+                <td data-label="Data">{{ rd[3] }}</td>
+                <td data-label="Centro de Custo">{{ rd[4] }}</td>
+                <td data-label="Observação">{{ rd[16] if rd|length > 16 else '' }}</td>
+                <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
+                <td data-label="Ações">
+                  {% if can_edit_func(status) %}
+                  <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit">
+                    <i class="fas fa-edit"></i> Editar
+                  </a>
+                  {% endif %}
+                  {% if can_delete_func(status, rd_solic) %}
+                  <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
+                    <button type="submit" class="btn btn-delete-rd">
+                      <i class="fas fa-trash-alt"></i> Excluir
+                    </button>
+                  </form>
+                  {% endif %}
+                  {% if can_request_additional(status) %}
+                  <form action="/" method="GET" class="action-form">
+                    <input type="hidden" name="adicional" value="{{ rd_id }}">
+                    <button type="submit" class="btn btn-additional">
+                      <i class="fas fa-plus"></i> Crédito Adicional
+                    </button>
+                  </form>
+                  {% endif %}
+                  {% if can_close(status) %}
+                  <form action="/" method="GET" class="action-form">
+                    <input type="hidden" name="fechamento" value="{{ rd_id }}">
+                    <button type="submit" class="btn btn-fechamento">
+                      <i class="fas fa-lock"></i> Fechamento
+                    </button>
+                  </form>
+                  {% endif %}
+                  {% if rd[12] %}
+                  {% for arquivo in rd[12].split(',') %}
+                  <div class="arquivo-container">
+                    <a href="{{ get_r2_public_url(arquivo) }}" class="arquivo-link" target="_blank">{{ arquivo }}</a>
+                    <form action="{{ url_for('delete_file', id=rd_id) }}" method="POST" style="display:inline;">
+                      <input type="hidden" name="filename" value="{{ arquivo }}">
+                      <button type="submit" class="btn btn-delete-file" title="Excluir Arquivo">
+                        <i class="fas fa-times"></i>
+                      </button>
+                    </form>
+                  </div>
+                  {% endfor %}
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Fechados -->
+        <div class="tab-content" id="content4">
+          <table id="tabela-fechados" class="display">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Solicitante</th>
+                <th>Funcionário</th>
+                <th>Data</th>
+                <th>Centro de Custo</th>
+                <th>Observação</th>
+                <th>Valores</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for rd in fechados %}
+              {% set rd_id = rd[0] %}
+              {% set rd_solic = rd[1] %}
+              {% set status = rd[6] %}
+              <tr>
+                <td data-label="ID">{{ rd_id }} {% if rd[15] == 'reembolso' %} - Reembolso{% else %} Crédito Alelo{% endif %}</td>
+                <td data-label="Solicitante">{{ rd[1] }}</td>
+                <td data-label="Funcionário">{{ rd[2] }}</td>
+                <td data-label="Data">{{ rd[3] }}</td>
+                <td data-label="Centro de Custo">{{ rd[4] }}</td>
+                <td data-label="Observação">{{ rd[16] if rd|length > 16 else '' }}</td>
+                <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
+                <td data-label="Ações">
+                  {% if rd[12] %}
+                  {% for arquivo in rd[12].split(',') %}
+                  <div class="arquivo-container">
+                    <a href="{{ get_r2_public_url(arquivo) }}" class="arquivo-link" target="_blank">{{ arquivo }}</a>
+                    <form action="{{ url_for('delete_file', id=rd_id) }}" method="POST" style="display:inline;">
+                      <input type="hidden" name="filename" value="{{ arquivo }}">
+                      <button type="submit" class="btn btn-delete-file" title="Excluir Arquivo">
+                        <i class="fas fa-times"></i>
+                      </button>
+                    </form>
+                  </div>
+                  {% endfor %}
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div> <!-- .content -->
     </div> <!-- .tabs -->
-    
+
     {% endif %} <!-- fim do else de user_role -->
-    
-    </div> <!-- .container -->
-    
-    <footer>
-        Desenvolvido por André Ferreira
-    </footer>
-    
-    <!-- jQuery e DataTables JS -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script type="text/javascript" src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
-    
-    <script>
-        // Inicializar DataTables em cada tabela
-        $(document).ready(function () {
-            $('#tabela-pendentes').DataTable();
-            $('#tabela-aprovados').DataTable();
-            $('#tabela-liberados').DataTable();
-            $('#tabela-fechados').DataTable();
-        });
-    </script>
-    </body>
-    
-    </html>
+  </div> <!-- .container -->
+
+  <footer>
+    Desenvolvido por André Ferreira
+  </footer>
+
+  <!-- jQuery e DataTables JS -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script type="text/javascript" src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
+
+  <script>
+    // Inicializar DataTables em cada tabela
+    $(document).ready(function () {
+      $('#tabela-pendentes').DataTable();
+      $('#tabela-aprovados').DataTable();
+      $('#tabela-liberados').DataTable();
+      $('#tabela-fechados').DataTable();
+
+      // Toggle forms for RD requests
+      $('#solicitar-alelo').click(function () {
+        $('#form-alelo').removeClass('hidden');
+        $('#form-reembolso').addClass('hidden');
+      });
+
+      $('#solicitar-reembolso').click(function () {
+        $('#form-reembolso').removeClass('hidden');
+        $('#form-alelo').addClass('hidden');
+      });
+    });
+  </script>
+</body>
+
+</html>
