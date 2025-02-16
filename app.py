@@ -55,11 +55,11 @@ app.secret_key = secret_key
 logging.debug("SECRET_KEY carregado corretamente.")
 
 # ---- Configurações do PostgreSQL ----
-PG_HOST = os.getenv('PG_HOST', 'seu_host')
+PG_HOST = os.getenv('PG_HOST', 'dpg-ctjqnsdds78s73erdqi0-a.oregon-postgres.render.com')
 PG_PORT = os.getenv('PG_PORT', '5432')
-PG_DB = os.getenv('PG_DB', 'seu_banco')
-PG_USER = os.getenv('PG_USER', 'seu_usuario')
-PG_PASSWORD = os.getenv('PG_PASSWORD', 'sua_senha')
+PG_DB = os.getenv('PG_DB', 'programard_db')
+PG_USER = os.getenv('PG_USER', 'programard_db_user')
+PG_PASSWORD = os.getenv('PG_PASSWORD', 'hU9wJmIfgiyCg02KFQ3a4AropKSMopXr')
 
 def get_pg_connection():
     try:
