@@ -16,7 +16,7 @@
   <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css" />
 
   <style>
-    /* ==================== CORES E VARIÁVEIS ==================== */
+    /* Variáveis de cores e estilos */
     :root {
       --primary-color: #3498db;
       --secondary-color: #f39c12;
@@ -31,7 +31,6 @@
       --border-color: #dddddd;
       --input-border: #dcdde1;
     }
-
     body {
       font-family: 'Inter', sans-serif;
       background-color: var(--background-color);
@@ -39,56 +38,45 @@
       margin: 0;
       padding: 0;
     }
-
     .top-bar {
       background: var(--header-color);
       padding: 10px 20px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      color: #ffffff;
+      color: #fff;
     }
-
     .top-bar .user-info {
       font-weight: 600;
     }
-
     .top-bar a {
-      color: #ffffff;
+      color: #fff;
       margin-left: 10px;
-      display: inline-flex;
-      align-items: center;
       text-decoration: none;
     }
-
     .top-bar a:hover {
       text-decoration: underline;
     }
-
     h1,
     h2 {
       text-align: center;
       margin: 20px 0;
       font-weight: 700;
     }
-
     h1 {
       font-size: 1.5rem;
     }
-
     h2 {
       font-size: 1.2rem;
     }
-
     .container {
       max-width: 1000px;
       margin: 20px auto;
       padding: 20px;
-      background: #ffffff;
+      background: #fff;
       border-radius: 10px;
       box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
     }
-
     .main-form {
       background: #fff;
       margin-bottom: 20px;
@@ -97,14 +85,12 @@
       padding: 20px;
       box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
     }
-
     .main-form label {
       display: block;
       margin-bottom: 5px;
       font-weight: 600;
       color: var(--header-color);
     }
-
     .main-form input,
     .main-form select,
     .main-form textarea {
@@ -116,7 +102,6 @@
       font-size: 0.9rem;
       box-sizing: border-box;
     }
-
     .main-form button {
       background-color: var(--primary-color);
       color: #fff;
@@ -128,11 +113,9 @@
       display: inline-flex;
       align-items: center;
     }
-
     .main-form button:hover {
       background-color: #2980b9;
     }
-
     button,
     .btn {
       padding: 8px 15px;
@@ -145,93 +128,74 @@
       justify-content: center;
       transition: background-color 0.3s ease, transform 0.2s ease;
     }
-
     .btn-primary {
       background-color: var(--primary-color);
       color: #fff;
     }
-
     .btn-primary:hover {
       background-color: #2980b9;
       transform: translateY(-2px);
     }
-
     .btn-secondary {
       background-color: var(--secondary-color);
       color: #fff;
     }
-
     .btn-secondary:hover {
       background-color: #d68910;
       transform: translateY(-2px);
     }
-
     .btn-success {
       background-color: var(--success-color);
       color: #fff;
     }
-
     .btn-success:hover {
       background-color: #27ae60;
       transform: translateY(-2px);
     }
-
     .btn-danger {
       background-color: var(--danger-color);
       color: #fff;
     }
-
     .btn-danger:hover {
       background-color: #c0392b;
       transform: translateY(-2px);
     }
-
     .btn-warning {
       background-color: var(--warning-color);
       color: #34495e;
     }
-
     .btn-warning:hover {
       background-color: #d4ac0d;
       color: #fff;
       transform: translateY(-2px);
     }
-
     .btn-approve {
       background-color: var(--success-color);
     }
-
     .btn-approve:hover {
       background-color: #27ae60;
     }
-
     .btn-additional {
       background-color: var(--secondary-color);
     }
-
     .btn-additional:hover {
       background-color: #d68910;
     }
-
     .btn-fechamento {
       background-color: #8e44ad;
     }
-
     .btn-fechamento:hover {
       background-color: #7d3c98;
     }
-
     .btn-delete-rd {
       background-color: var(--danger-color);
       padding: 6px 12px;
       font-size: 0.75rem;
       color: #fff;
     }
-
     .btn-delete-rd:hover {
       background-color: #c0392b;
     }
-
     .btn-delete-file {
       background-color: var(--danger-color);
       padding: 2px 6px;
@@ -241,21 +205,17 @@
       width: 20px;
       margin-left: 5px;
     }
-
     .btn-delete-file:hover {
       background-color: #c0392b;
     }
-
     .btn-edit {
       background-color: #f1c40f;
       color: #34495e;
     }
-
     .btn-edit:hover {
       background-color: #d4ac0d;
       color: #fff;
     }
-
     table {
       width: 100%;
       border-collapse: separate;
@@ -266,24 +226,20 @@
       overflow: hidden;
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
     }
-
     th,
     td {
       padding: 10px;
       text-align: left;
       border-bottom: 1px solid var(--border-color);
     }
-
     th {
       background-color: var(--primary-color);
       color: #fff;
       font-weight: 600;
     }
-
     tr:hover {
       background-color: #f9f9f9;
     }
-
     @media (max-width: 768px) {
       table,
       thead,
@@ -293,45 +249,38 @@
       tr {
         display: block;
       }
-
       th {
         position: absolute;
         top: -9999px;
         left: -9999px;
       }
-
       tr {
         margin-bottom: 15px;
       }
-
       td {
         border: none;
         position: relative;
         padding-left: 50%;
         white-space: pre-wrap;
       }
-
       td::before {
         content: attr(data-label);
         position: absolute;
         left: 15px;
         font-weight: 600;
       }
-
       .btn,
       .btn-delete-rd {
         width: 100%;
         margin-bottom: 10px;
       }
     }
-
-    /* Coluna de arquivos com toggle */
+    /* Coluna Arquivos com toggle */
     .files-resumo {
       display: flex;
       align-items: center;
       justify-content: center;
     }
-
     .files-resumo button.toggle-files {
       background: none;
       border: none;
@@ -339,33 +288,27 @@
       cursor: pointer;
       color: var(--primary-color);
     }
-
     .files-list {
       display: none;
       margin-top: 5px;
     }
-
     .arquivo-container {
       margin-bottom: 5px;
     }
-
     .arquivo-link {
       text-decoration: none;
       color: var(--primary-color);
       font-size: 0.9rem;
       margin-right: 5px;
     }
-
     .arquivo-link:hover {
       text-decoration: underline;
     }
-
     .error-message {
       color: var(--danger-color);
       font-size: 0.85rem;
       margin-bottom: 15px;
     }
-
     footer {
       text-align: center;
       color: var(--footer-text);
@@ -376,22 +319,18 @@
       width: 100%;
       bottom: 0;
     }
-
     .tabs {
       margin-top: 20px;
     }
-
     .tabs input[type="radio"] {
       display: none;
     }
-
     .tab-labels {
       display: flex;
       justify-content: center;
       margin-bottom: 10px;
       flex-wrap: wrap;
     }
-
     .tab-labels label {
       background-color: #ecf0f1;
       padding: 8px 15px;
@@ -401,21 +340,17 @@
       transition: background-color 0.3s;
       font-weight: 600;
     }
-
     .tab-labels label:hover {
       background-color: #ddd;
     }
-
     .tab-content {
       display: none;
     }
-
     input[type="radio"]:checked+label {
       background-color: var(--primary-color);
       color: #fff;
     }
-
-    /* Exibição da aba selecionada */
+    /* Exibir a aba selecionada */
     #tab1:checked~.content #content1,
     #tab2:checked~.content #content2,
     #tab3:checked~.content #content3,
@@ -501,7 +436,7 @@
     {% else %}
 
     {% if can_add %}
-    <!-- Bloco para escolha do tipo de solicitação -->
+    <!-- Botões para escolher o tipo de solicitação -->
     <div id="solicitacao-container" style="margin-bottom: 20px; text-align: center;">
       <button type="button" id="btn-alelo" class="btn btn-primary">
         <i class="fas fa-plus-circle"></i> Solicitação RD Alelo
@@ -510,33 +445,25 @@
         <i class="fas fa-plus-circle"></i> Solicitação RD Reembolso
       </button>
     </div>
-    <!-- Formulário de solicitação oculto -->
+    <!-- Formulário de solicitação (inicialmente oculto) -->
     <form id="form-solicitacao" action="/add" method="POST" enctype="multipart/form-data" class="main-form"
       style="display: none;">
       <label for="solicitante">Solicitante:</label>
       <input type="text" id="solicitante" name="solicitante" required>
-
       <label for="funcionario">Funcionário:</label>
       <input type="text" id="funcionario" name="funcionario" required>
-
       <label for="data">Data:</label>
       <input type="date" id="data" name="data" required>
-
       <label for="centro_custo">Centro de Custo:</label>
       <input type="text" id="centro_custo" name="centro_custo" required>
-
       <label for="valor">Valor (R$):</label>
       <input type="number" id="valor" name="valor" step="0.01" required>
-
       <label for="observacao">Observação:</label>
       <textarea id="observacao" name="observacao" rows="3"></textarea>
-
       <label for="arquivo">Anexar Arquivos:</label>
       <input type="file" id="arquivo" name="arquivo" multiple>
-
       <!-- Campo oculto para definir o tipo -->
       <input type="hidden" name="tipo" id="rd-tipo" value="">
-
       <button type="submit"><i class="fas fa-plus-circle"></i> Enviar Solicitação</button>
     </form>
     {% endif %}
@@ -556,46 +483,12 @@
       </a>
     </div>
 
-    <!-- Macro para exibir os valores com toggle -->
-    {% macro mostrar_valores(rd) %}
-      {% set valor = rd[5] %}
-      {% set valor_adic = rd[7] if rd[7] else 0 %}
-      {% set valor_total = valor + valor_adic %}
-      {% set valor_despesa = rd[9] if rd[9] else 0 %}
-      {% set saldo_devolver = rd[10] if rd[10] else (valor_total - valor_despesa) %}
-      {% set adicional_data = rd[8] if rd[8] else 'N/A' %}
-      {% set data_fechamento = rd[11] if rd[11] else 'N/A' %}
-      {% set aprovado_data = rd[13] if rd[13] else 'N/A' %}
-      {% set liberado_data = rd[14] if rd[14] else 'N/A' %}
-      <div class="valor-resumo">
-        <span>R${{ format_currency(valor) }}</span>
-        <button class="toggle-details">+</button>
-      </div>
-      <div class="rd-details" style="display: none;">
-        <strong>Valor Solicitado:</strong> R${{ format_currency(valor) }}<br>
-        <strong>Data da Solicitação:</strong> {{ rd[3] }}<br>
-        <strong>Valor Adicional:</strong> R${{ format_currency(valor_adic) }}<br>
-        {% if adicional_data != 'N/A' %}
-        <strong>Data do Adicional:</strong> {{ adicional_data }}<br>
-        {% endif %}
-        <strong>Total da RD:</strong> R${{ format_currency(valor_total) }}<br>
-        <strong>Valor Gasto (Despesa):</strong> R${{ format_currency(valor_despesa) }}<br>
-        <strong>Saldo a Devolver:</strong> R${{ format_currency(saldo_devolver) }}<br>
-        {% if aprovado_data != 'N/A' %}
-        <strong>Aprovado em:</strong> {{ aprovado_data }}<br>
-        {% endif %}
-        {% if liberado_data != 'N/A' %}
-        <strong>Liberado em:</strong> {{ liberado_data }}<br>
-        {% endif %}
-        {% if data_fechamento != 'N/A' %}
-        <strong>Fechado em:</strong> {{ data_fechamento }}
-        {% endif %}
-      </div>
-    {% endmacro %}
+    {% endif %}  {# Fim dos fluxos de login, adicional, fechamento ou solicitação #}
 
-    <!-- ABAS (TABS) -->
+    <!-- ABAS para exibição das RDs -->
+    {# As variáveis pendentes, aprovados, liberados, fechamento_solicitado e fechados são passadas pelo render_template #}
     <div class="tabs">
-      <!-- Inputs para as abas -->
+      <!-- Inputs para cada aba -->
       <input type="radio" name="tab-control" id="tab1" checked>
       <input type="radio" name="tab-control" id="tab2">
       <input type="radio" name="tab-control" id="tab3">
@@ -612,7 +505,7 @@
       </div>
 
       <div class="content">
-        <!-- Aba: Pendentes -->
+        <!-- Aba 1: Pendentes -->
         <div class="tab-content" id="content1">
           <table id="tabela-pendentes" class="display">
             <thead>
@@ -631,7 +524,6 @@
             <tbody>
               {% for rd in pendentes %}
               {% set rd_id = rd[0] %}
-              {% set rd_solic = rd[1] %}
               {% set status = rd[6] %}
               <tr>
                 <td data-label="ID">
@@ -643,6 +535,7 @@
                 <td data-label="Data">{{ rd[3] }}</td>
                 <td data-label="Centro de Custo">{{ rd[4] }}</td>
                 <td data-label="Observação">{{ rd[16] if rd|length > 16 else '' }}</td>
+                <!-- Coluna Arquivos -->
                 <td data-label="Arquivos">
                   {% if rd[12] %}
                   <div class="files-resumo">
@@ -655,9 +548,32 @@
                     </div>
                     {% endfor %}
                   </div>
+                  {% else %}
+                  -
                   {% endif %}
                 </td>
-                <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
+                <!-- Coluna Valores -->
+                <td data-label="Valores">
+                  <div class="valor-resumo">
+                    <span>R${{ format_currency(rd[5]) }}</span>
+                    <button class="toggle-details">+</button>
+                  </div>
+                  <div class="rd-details" style="display: none;">
+                    <strong>Valor Adicional:</strong> R${{ format_currency(rd[7] if rd[7] else 0) }}<br>
+                    <strong>Total da RD:</strong> R${{ format_currency(rd[5] + (rd[7] or 0)) }}<br>
+                    <strong>Valor Gasto:</strong> R${{ format_currency(rd[9] if rd[9] else 0) }}<br>
+                    <strong>Saldo a Devolver:</strong> R${{ format_currency(rd[10] if rd[10] else (rd[5] + (rd[7] or 0) - (rd[9] or 0))) }}<br>
+                    {% if rd[13] and rd[13] != 'N/A' %}
+                    <strong>Aprovado em:</strong> {{ rd[13] }}<br>
+                    {% endif %}
+                    {% if rd[14] and rd[14] != 'N/A' %}
+                    <strong>Liberado em:</strong> {{ rd[14] }}<br>
+                    {% endif %}
+                    {% if rd[11] and rd[11] != 'N/A' %}
+                    <strong>Fechado em:</strong> {{ rd[11] }}
+                    {% endif %}
+                  </div>
+                </td>
                 <td data-label="Ações">
                   {% if can_approve_func(status) %}
                   <form action="/approve/{{ rd_id }}" method="POST" class="action-form">
@@ -671,7 +587,7 @@
                     <i class="fas fa-edit"></i> Editar
                   </a>
                   {% endif %}
-                  {% if can_delete_func(status, rd_solic) %}
+                  {% if can_delete_func(status, rd[1]) %}
                   <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
                     <button type="submit" class="btn btn-delete-rd">
                       <i class="fas fa-trash-alt"></i> Excluir
@@ -685,7 +601,7 @@
           </table>
         </div>
 
-        <!-- Aba: Aprovados -->
+        <!-- Aba 2: Aprovados -->
         <div class="tab-content" id="content2">
           <table id="tabela-aprovados" class="display">
             <thead>
@@ -704,7 +620,6 @@
             <tbody>
               {% for rd in aprovados %}
               {% set rd_id = rd[0] %}
-              {% set rd_solic = rd[1] %}
               {% set status = rd[6] %}
               <tr>
                 <td data-label="ID">
@@ -728,6 +643,8 @@
                     </div>
                     {% endfor %}
                   </div>
+                  {% else %}
+                  -
                   {% endif %}
                 </td>
                 <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
@@ -744,7 +661,7 @@
                     <i class="fas fa-edit"></i> Editar
                   </a>
                   {% endif %}
-                  {% if can_delete_func(status, rd_solic) %}
+                  {% if can_delete_func(status, rd[1]) %}
                   <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
                     <button type="submit" class="btn btn-delete-rd">
                       <i class="fas fa-trash-alt"></i> Excluir
@@ -758,7 +675,7 @@
           </table>
         </div>
 
-        <!-- Aba: Liberados -->
+        <!-- Aba 3: Liberados -->
         <div class="tab-content" id="content3">
           <table id="tabela-liberados" class="display">
             <thead>
@@ -777,7 +694,6 @@
             <tbody>
               {% for rd in liberados %}
               {% set rd_id = rd[0] %}
-              {% set rd_solic = rd[1] %}
               {% set status = rd[6] %}
               <tr>
                 <td data-label="ID">
@@ -801,6 +717,8 @@
                     </div>
                     {% endfor %}
                   </div>
+                  {% else %}
+                  -
                   {% endif %}
                 </td>
                 <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
@@ -810,7 +728,7 @@
                     <i class="fas fa-edit"></i> Editar
                   </a>
                   {% endif %}
-                  {% if can_delete_func(status, rd_solic) %}
+                  {% if can_delete_func(status, rd[1]) %}
                   <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
                     <button type="submit" class="btn btn-delete-rd">
                       <i class="fas fa-trash-alt"></i> Excluir
@@ -840,7 +758,7 @@
           </table>
         </div>
 
-        <!-- Aba: Fechamento Solicitado -->
+        <!-- Aba 4: Fechamento Solicitado -->
         <div class="tab-content" id="content4">
           <table id="tabela-fechamento-solicitado" class="display">
             <thead>
@@ -859,7 +777,6 @@
             <tbody>
               {% for rd in fechamento_solicitado %}
               {% set rd_id = rd[0] %}
-              {% set rd_solic = rd[1] %}
               {% set status = rd[6] %}
               <tr>
                 <td data-label="ID">
@@ -883,6 +800,8 @@
                     </div>
                     {% endfor %}
                   </div>
+                  {% else %}
+                  -
                   {% endif %}
                 </td>
                 <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
@@ -899,7 +818,7 @@
           </table>
         </div>
 
-        <!-- Aba: Fechados -->
+        <!-- Aba 5: Fechados -->
         <div class="tab-content" id="content5">
           <table id="tabela-fechados" class="display">
             <thead>
@@ -918,7 +837,6 @@
             <tbody>
               {% for rd in fechados %}
               {% set rd_id = rd[0] %}
-              {% set rd_solic = rd[1] %}
               {% set status = rd[6] %}
               <tr>
                 <td data-label="ID">
@@ -942,20 +860,22 @@
                     </div>
                     {% endfor %}
                   </div>
+                  {% else %}
+                  -
                   {% endif %}
                 </td>
                 <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
                 <td data-label="Ações">
                   {% if is_financeiro %}
-                  {% if not rd[18] %}
-                  <form action="/registrar_saldo_devolvido/{{ rd_id }}" method="POST" class="action-form">
-                    <button type="submit" class="btn btn-warning">
-                      <i class="fas fa-money-bill-wave"></i> Saldo Devolvido
-                    </button>
-                  </form>
-                  {% else %}
-                  <span>Saldo devolvido em {{ rd[18] }}</span>
-                  {% endif %}
+                    {% if not rd[18] %}
+                    <form action="/registrar_saldo_devolvido/{{ rd_id }}" method="POST" class="action-form">
+                      <button type="submit" class="btn btn-warning">
+                        <i class="fas fa-money-bill-wave"></i> Saldo Devolvido
+                      </button>
+                    </form>
+                    {% else %}
+                    <span>Devolvido em {{ rd[18] }}</span>
+                    {% endif %}
                   {% endif %}
                 </td>
               </tr>
@@ -967,7 +887,7 @@
       </div> <!-- .content -->
     </div> <!-- .tabs -->
 
-    {% endif %} <!-- fim do bloco principal -->
+    {% endif %}  {# Fim do bloco principal #}
 
   </div> <!-- .container -->
 
@@ -987,7 +907,7 @@
       $('#tabela-fechamento-solicitado').DataTable();
       $('#tabela-fechados').DataTable();
 
-      // Toggle para detalhes de valores
+      // Toggle para detalhes dos valores
       $('.toggle-details').on('click', function () {
         var details = $(this).closest('.valor-resumo').next('.rd-details');
         if (details.is(':visible')) {
@@ -999,14 +919,14 @@
         }
       });
 
-      // Toggle para arquivos
+      // Toggle para exibir arquivos
       $('.toggle-files').on('click', function () {
-        var files = $(this).closest('.files-resumo').next('.files-list');
-        if (files.is(':visible')) {
-          files.slideUp();
+        var filesList = $(this).closest('.files-resumo').next('.files-list');
+        if (filesList.is(':visible')) {
+          filesList.slideUp();
           $(this).text('+');
         } else {
-          files.slideDown();
+          filesList.slideDown();
           $(this).text('-');
         }
       });
