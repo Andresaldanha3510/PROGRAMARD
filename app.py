@@ -14,11 +14,11 @@ load_dotenv()
 logging.basicConfig(level=logging.DEBUG)
 
 # ---- Configurações para Cloudflare R2 ----
-R2_ACCESS_KEY = os.getenv('R2_ACCESS_KEY', 'sua_r2_access_key')
-R2_SECRET_KEY = os.getenv('R2_SECRET_KEY', 'sua_r2_secret_key')
-R2_ENDPOINT   = 'https://seu-endpoint.r2.cloudflarestorage.com'
+R2_ACCESS_KEY = os.getenv('R2_ACCESS_KEY', 'your_r2_access_key')  # Substitua se necessário
+R2_SECRET_KEY = os.getenv('R2_SECRET_KEY', 'your_r2_secret_key')  # Substitua se necessário
+R2_ENDPOINT   = 'https://e5dfe58dd78702917f5bb5852970c6c2.r2.cloudflarestorage.com'
 R2_BUCKET_NAME = 'meu-bucket-r2'
-R2_PUBLIC_URL = "https://seu-r2-public-url"
+R2_PUBLIC_URL = "https://pub-1e6f8559bc2b413c889fbf4860462599.r2.dev"
 
 def get_r2_public_url(object_name):
     return f"{R2_PUBLIC_URL}/{object_name}"
@@ -190,7 +190,6 @@ def can_delete(status, solicitante):
     return False
 
 def can_approve(status):
-    # Permite aprovação para Pendente, ou para fechamento solicitado (gestor)
     if status == 'Pendente' and is_gestor():
         return True
     if status == 'Aprovado' and is_financeiro():
