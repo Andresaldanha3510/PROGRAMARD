@@ -9,7 +9,7 @@ import xlsxwriter
 import logging
 from dotenv import load_dotenv
 
-# Carrega variáveis de ambiente
+# Carrega variáveis de ambiente (arquivo .env)
 load_dotenv()
 logging.basicConfig(level=logging.DEBUG)
 
@@ -54,7 +54,7 @@ if not secret_key:
 app.secret_key = secret_key
 logging.debug("SECRET_KEY carregado corretamente.")
 
-# ---- Configurações do PostgreSQL (valores fornecidos) ----
+# ---- Configurações do PostgreSQL (credenciais fornecidas) ----
 PG_HOST = os.getenv('PG_HOST', 'dpg-ctjqnsdds78s73erdqi0-a.oregon-postgres.render.com')
 PG_PORT = os.getenv('PG_PORT', '5432')
 PG_DB = os.getenv('PG_DB', 'programard_db')
@@ -78,8 +78,9 @@ def get_pg_connection():
 
 def init_db():
     """
-    Inicializa o banco, criando a tabela 'rd' se não existir,
-    e adicionando as colunas 'tipo' e 'data_saldo_devolvido' se necessário.
+    Inicializa o banco, criando a tabela rd se não existir e
+    adicionando as colunas 'valor_liberado', 'observacao', 'tipo' e 'data_saldo_devolvido'.
+    Também cria a tabela saldo_global.
     """
     conn = get_pg_connection()
     cursor = conn.cursor()
@@ -107,6 +108,22 @@ def init_db():
     """
     cursor.execute(create_rd_table)
 
+    # Adiciona coluna 'valor_liberado' se não existir
+    cursor.execute("""
+        SELECT column_name FROM information_schema.columns
+        WHERE table_name = 'rd' AND column_name = 'valor_liberado';
+    """)
+    if not cursor.fetchone():
+        cursor.execute("ALTER TABLE rd ADD COLUMN valor_liberado NUMERIC(15,2) DEFAULT 0;")
+
+    # Adiciona coluna 'observacao' se não existir
+    cursor.execute("""
+        SELECT column_name FROM information_schema.columns
+        WHERE table_name = 'rd' AND column_name = 'observacao';
+    """)
+    if not cursor.fetchone():
+        cursor.execute("ALTER TABLE rd ADD COLUMN observacao TEXT;")
+
     # Adiciona coluna 'tipo' se não existir
     cursor.execute("""
         SELECT column_name FROM information_schema.columns
@@ -123,7 +140,6 @@ def init_db():
     if not cursor.fetchone():
         cursor.execute("ALTER TABLE rd ADD COLUMN data_saldo_devolvido DATE;")
 
-    # Coluna 'observacao' já é criada no CREATE TABLE acima.
     # Cria tabela saldo_global
     create_saldo_global_table = """
     CREATE TABLE IF NOT EXISTS saldo_global (
@@ -189,9 +205,7 @@ def can_delete(status, solicitante):
     return False
 
 def can_approve(status):
-    # Aprovação:
-    # Gestor: Pendente -> Aprovado ou Fechamento Solicitado -> Fechado
-    # Financeiro: Aprovado -> Liberado (para crédito) ou aprova reembolso direto para Fechado
+    # Gestor pode aprovar RD Pendente ou Fechamento Solicitado; Financeiro aprova RD Aprovado
     if status == 'Pendente' and is_gestor():
         return True
     if status == 'Aprovado' and is_financeiro():
@@ -228,7 +242,8 @@ def format_currency(value):
     right = parts[1]
     return f"{left},{right}"
 
-# Rota principal
+# ROTAS
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
@@ -250,6 +265,8 @@ def index():
         return redirect(url_for('index'))
     if 'user_role' not in session:
         return render_template('index.html', error=None, format_currency=format_currency)
+
+    logging.debug(f"Usuário autenticado como: {session['user_role']}")
     conn = get_pg_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM rd WHERE status='Pendente'")
@@ -287,7 +304,6 @@ def index():
         format_currency=format_currency
     )
 
-# Rota para adicionar RD
 @app.route('/add', methods=['POST'])
 def add_rd():
     if not can_add():
@@ -338,7 +354,6 @@ def add_rd():
     flash('RD adicionada com sucesso.')
     return redirect(url_for('index'))
 
-# Rota para editar RD
 @app.route('/edit_form/<id>', methods=['GET'])
 def edit_form(id):
     conn = get_pg_connection()
@@ -407,7 +422,6 @@ def edit_submit(id):
     flash('RD atualizada com sucesso.')
     return redirect(url_for('index'))
 
-# Rota para aprovar RD (Pendente->Aprovado ou Aprovado->Liberado ou Fechamento Solicitado->Fechado)
 @app.route('/approve/<id>', methods=['POST'])
 def approve(id):
     conn = get_pg_connection()
@@ -466,7 +480,6 @@ def approve(id):
     flash('Operação realizada com sucesso.')
     return redirect(url_for('index'))
 
-# Rota para que o gestor aprove o fechamento solicitado (quando o solicitante fecha, muda para "Fechamento Solicitado")
 @app.route('/aprovar_fechamento/<id>', methods=['POST'])
 def aprovar_fechamento(id):
     if not is_gestor():
@@ -487,7 +500,6 @@ def aprovar_fechamento(id):
     flash('Fechamento aprovado. RD movida para Fechado.')
     return redirect(url_for('index'))
 
-# Rota para registrar a devolução do saldo (apenas para financeiro)
 @app.route('/registrar_saldo_devolvido/<id>', methods=['POST'])
 def registrar_saldo_devolvido(id):
     if not is_financeiro():
@@ -521,7 +533,6 @@ def registrar_saldo_devolvido(id):
     flash('Saldo devolvido registrado com sucesso.')
     return redirect(url_for('index'))
 
-# Rota para excluir RD
 @app.route('/delete/<id>', methods=['POST'])
 def delete_rd(id):
     conn = get_pg_connection()
