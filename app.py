@@ -14,8 +14,8 @@ load_dotenv()
 logging.basicConfig(level=logging.DEBUG)
 
 # ---- Configurações para Cloudflare R2 ----
-R2_ACCESS_KEY = os.getenv('R2_ACCESS_KEY', 'your_r2_access_key')  # Substitua se necessário
-R2_SECRET_KEY = os.getenv('R2_SECRET_KEY', 'your_r2_secret_key')  # Substitua se necessário
+R2_ACCESS_KEY = os.getenv('R2_ACCESS_KEY', 'your_r2_access_key')
+R2_SECRET_KEY = os.getenv('R2_SECRET_KEY', 'your_r2_secret_key')
 R2_ENDPOINT   = 'https://e5dfe58dd78702917f5bb5852970c6c2.r2.cloudflarestorage.com'
 R2_BUCKET_NAME = 'meu-bucket-r2'
 R2_PUBLIC_URL = "https://pub-1e6f8559bc2b413c889fbf4860462599.r2.dev"
@@ -54,7 +54,7 @@ if not secret_key:
 app.secret_key = secret_key
 logging.debug("SECRET_KEY carregado corretamente.")
 
-# ---- Configurações do PostgreSQL ----
+# ---- Configurações do PostgreSQL (valores fornecidos) ----
 PG_HOST = os.getenv('PG_HOST', 'dpg-ctjqnsdds78s73erdqi0-a.oregon-postgres.render.com')
 PG_PORT = os.getenv('PG_PORT', '5432')
 PG_DB = os.getenv('PG_DB', 'programard_db')
@@ -78,7 +78,7 @@ def get_pg_connection():
 
 def init_db():
     """
-    Inicializa o banco, criando a tabela rd (se não existir)
+    Inicializa o banco, criando a tabela 'rd' se não existir,
     e adicionando as colunas 'tipo' e 'data_saldo_devolvido' se necessário.
     """
     conn = get_pg_connection()
@@ -91,17 +91,17 @@ def init_db():
         funcionario TEXT NOT NULL,
         data DATE NOT NULL,
         centro_custo TEXT NOT NULL,
-        valor NUMERIC(15, 2) NOT NULL,
+        valor NUMERIC(15,2) NOT NULL,
         status TEXT DEFAULT 'Pendente',
-        valor_adicional NUMERIC(15, 2) DEFAULT 0,
+        valor_adicional NUMERIC(15,2) DEFAULT 0,
         adicional_data DATE,
-        valor_despesa NUMERIC(15, 2),
-        saldo_devolver NUMERIC(15, 2),
+        valor_despesa NUMERIC(15,2),
+        saldo_devolver NUMERIC(15,2),
         data_fechamento DATE,
         arquivos TEXT,
         aprovado_data DATE,
         liberado_data DATE,
-        valor_liberado NUMERIC(15, 2) DEFAULT 0,
+        valor_liberado NUMERIC(15,2) DEFAULT 0,
         observacao TEXT
     );
     """
@@ -123,19 +123,18 @@ def init_db():
     if not cursor.fetchone():
         cursor.execute("ALTER TABLE rd ADD COLUMN data_saldo_devolvido DATE;")
 
+    # Coluna 'observacao' já é criada no CREATE TABLE acima.
     # Cria tabela saldo_global
     create_saldo_global_table = """
     CREATE TABLE IF NOT EXISTS saldo_global (
         id SERIAL PRIMARY KEY,
-        saldo NUMERIC(15, 2) DEFAULT 30000
+        saldo NUMERIC(15,2) DEFAULT 30000
     );
     """
     cursor.execute(create_saldo_global_table)
-
     cursor.execute("SELECT COUNT(*) FROM saldo_global")
     if cursor.fetchone()[0] == 0:
         cursor.execute("INSERT INTO saldo_global (saldo) VALUES (30000)")
-
     conn.commit()
     cursor.close()
     conn.close()
@@ -190,6 +189,9 @@ def can_delete(status, solicitante):
     return False
 
 def can_approve(status):
+    # Aprovação:
+    # Gestor: Pendente -> Aprovado ou Fechamento Solicitado -> Fechado
+    # Financeiro: Aprovado -> Liberado (para crédito) ou aprova reembolso direto para Fechado
     if status == 'Pendente' and is_gestor():
         return True
     if status == 'Aprovado' and is_financeiro():
@@ -215,7 +217,7 @@ def get_saldo_global():
 def set_saldo_global(novo_saldo):
     conn = get_pg_connection()
     cursor = conn.cursor()
-    cursor.execute('UPDATE saldo_global SET saldo = %s WHERE id = 1', (novo_saldo,))
+    cursor.execute("UPDATE saldo_global SET saldo = %s WHERE id = 1", (novo_saldo,))
     conn.commit()
     conn.close()
 
@@ -226,9 +228,11 @@ def format_currency(value):
     right = parts[1]
     return f"{left},{right}"
 
+# Rota principal
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
+        logging.debug(f"Dados do formulário: {request.form}")
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '').strip()
         if username == 'gestor' and password == '115289':
@@ -244,10 +248,8 @@ def index():
             flash('Credenciais inválidas.')
             return render_template('index.html', error="Credenciais inválidas", format_currency=format_currency)
         return redirect(url_for('index'))
-
     if 'user_role' not in session:
         return render_template('index.html', error=None, format_currency=format_currency)
-
     conn = get_pg_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM rd WHERE status='Pendente'")
@@ -264,7 +266,6 @@ def index():
     adicional_id = request.args.get('adicional')
     fechamento_id = request.args.get('fechamento')
     conn.close()
-
     return render_template(
         'index.html',
         pendentes=pendentes,
@@ -286,25 +287,23 @@ def index():
         format_currency=format_currency
     )
 
+# Rota para adicionar RD
 @app.route('/add', methods=['POST'])
 def add_rd():
     if not can_add():
         flash("Acesso negado.")
         return "Acesso negado", 403
-
     solicitante = request.form['solicitante'].strip()
     funcionario = request.form['funcionario'].strip()
     data = request.form['data'].strip()
     centro_custo = request.form['centro_custo'].strip()
     observacao = request.form.get('observacao', '').strip()
     rd_tipo = request.form.get('tipo', 'credito alelo').strip()
-
     try:
         valor = float(request.form['valor'])
     except ValueError:
         flash('Valor inválido.')
         return redirect(url_for('index'))
-
     custom_id = generate_custom_id()
     arquivos = []
     if 'arquivo' in request.files:
@@ -314,7 +313,6 @@ def add_rd():
                 upload_file_to_r2(file, filename)
                 arquivos.append(filename)
     arquivos_str = ','.join(arquivos) if arquivos else None
-
     conn = get_pg_connection()
     cursor = conn.cursor()
     cursor.execute('''
@@ -340,6 +338,7 @@ def add_rd():
     flash('RD adicionada com sucesso.')
     return redirect(url_for('index'))
 
+# Rota para editar RD
 @app.route('/edit_form/<id>', methods=['GET'])
 def edit_form(id):
     conn = get_pg_connection()
@@ -408,6 +407,7 @@ def edit_submit(id):
     flash('RD atualizada com sucesso.')
     return redirect(url_for('index'))
 
+# Rota para aprovar RD (Pendente->Aprovado ou Aprovado->Liberado ou Fechamento Solicitado->Fechado)
 @app.route('/approve/<id>', methods=['POST'])
 def approve(id):
     conn = get_pg_connection()
@@ -466,6 +466,7 @@ def approve(id):
     flash('Operação realizada com sucesso.')
     return redirect(url_for('index'))
 
+# Rota para que o gestor aprove o fechamento solicitado (quando o solicitante fecha, muda para "Fechamento Solicitado")
 @app.route('/aprovar_fechamento/<id>', methods=['POST'])
 def aprovar_fechamento(id):
     if not is_gestor():
@@ -486,6 +487,7 @@ def aprovar_fechamento(id):
     flash('Fechamento aprovado. RD movida para Fechado.')
     return redirect(url_for('index'))
 
+# Rota para registrar a devolução do saldo (apenas para financeiro)
 @app.route('/registrar_saldo_devolvido/<id>', methods=['POST'])
 def registrar_saldo_devolvido(id):
     if not is_financeiro():
@@ -519,6 +521,7 @@ def registrar_saldo_devolvido(id):
     flash('Saldo devolvido registrado com sucesso.')
     return redirect(url_for('index'))
 
+# Rota para excluir RD
 @app.route('/delete/<id>', methods=['POST'])
 def delete_rd(id):
     conn = get_pg_connection()
@@ -529,13 +532,14 @@ def delete_rd(id):
         conn.close()
         flash("RD não encontrada.")
         return redirect(url_for('index'))
-    if not can_delete(rd[1], rd[0]):
+    rd_solicitante, rd_status, rd_liberado = rd
+    if not can_delete(rd_status, rd_solicitante):
         conn.close()
         flash("Acesso negado.")
         return redirect(url_for('index'))
-    if rd[1] == 'Liberado' and rd[2] and rd[2] > 0:
+    if rd_status == 'Liberado' and rd_liberado and rd_liberado > 0:
         saldo = get_saldo_global()
-        set_saldo_global(saldo + rd[2])
+        set_saldo_global(saldo + rd_liberado)
     cursor.execute("SELECT arquivos FROM rd WHERE id=%s", (id,))
     arquivos = cursor.fetchone()[0]
     if arquivos:
@@ -605,8 +609,7 @@ def export_excel():
         "Centro de Custo",
         "Valor Gasto",
         "Saldo a Devolver",
-        "Data Fechamento",
-        "Data Saldo Devolvido",
+        "Data de Fechamento",
         "Saldo Global"
     ]
     for col, h in enumerate(header):
@@ -624,8 +627,7 @@ def export_excel():
         worksheet.write(row_number, 8, float(rd_row[9] or 0))
         worksheet.write(row_number, 9, float(rd_row[10] or 0))
         worksheet.write(row_number, 10, str(rd_row[11] or ''))
-        worksheet.write(row_number, 11, str(rd_row[18] or ''))
-        worksheet.write(row_number, 12, float(saldo_global))
+        worksheet.write(row_number, 11, float(saldo_global))
         row_number += 1
     workbook.close()
     output.seek(0)
