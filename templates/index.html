@@ -16,7 +16,6 @@
     <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css" />
 
     <style>
-        /* ==================== CORES E VARIÁVEIS ==================== */
         :root {
             --primary-color: #3498db;
             --secondary-color: #f39c12;
@@ -72,14 +71,6 @@
             font-weight: 700;
         }
 
-        h1 {
-            font-size: 1.5rem;
-        }
-
-        h2 {
-            font-size: 1.2rem;
-        }
-
         .container {
             max-width: 1000px;
             margin: 20px auto;
@@ -90,12 +81,12 @@
         }
 
         .main-form {
-            background: #fff;
             margin-bottom: 20px;
             border: 1px solid var(--border-color);
             border-radius: 10px;
             padding: 20px;
             box-shadow: 0 2px 15px rgba(0, 0, 0, 0.1);
+            background: #fff;
         }
 
         .main-form label {
@@ -106,8 +97,8 @@
         }
 
         .main-form input,
-        .main-form select,
-        .main-form textarea {
+        .main-form textarea,
+        .main-form select {
             width: 100%;
             padding: 10px;
             margin-bottom: 15px;
@@ -150,88 +141,37 @@
             background-color: var(--primary-color);
             color: #fff;
         }
-
-        .btn-primary:hover {
-            background-color: #2980b9;
-            transform: translateY(-2px);
-        }
-
         .btn-secondary {
             background-color: var(--secondary-color);
             color: #fff;
         }
-
-        .btn-secondary:hover {
-            background-color: #d68910;
-            transform: translateY(-2px);
-        }
-
         .btn-success {
             background-color: var(--success-color);
             color: #fff;
         }
-
-        .btn-success:hover {
-            background-color: #27ae60;
-            transform: translateY(-2px);
-        }
-
         .btn-danger {
             background-color: var(--danger-color);
             color: #fff;
         }
-
-        .btn-danger:hover {
-            background-color: #c0392b;
-            transform: translateY(-2px);
-        }
-
         .btn-warning {
             background-color: var(--warning-color);
             color: #34495e;
         }
-
-        .btn-warning:hover {
-            background-color: #d4ac0d;
-            color: #fff;
-            transform: translateY(-2px);
-        }
-
         .btn-approve {
             background-color: var(--success-color);
         }
-
-        .btn-approve:hover {
-            background-color: #27ae60;
-        }
-
         .btn-additional {
             background-color: var(--secondary-color);
         }
-
-        .btn-additional:hover {
-            background-color: #d68910;
-        }
-
         .btn-fechamento {
             background-color: #8e44ad;
         }
-
-        .btn-fechamento:hover {
-            background-color: #7d3c98;
-        }
-
         .btn-delete-rd {
             background-color: var(--danger-color);
             padding: 6px 12px;
             font-size: 0.75rem;
             color: #fff;
         }
-
-        .btn-delete-rd:hover {
-            background-color: #c0392b;
-        }
-
         .btn-delete-file {
             background-color: var(--danger-color);
             padding: 2px 6px;
@@ -241,19 +181,9 @@
             width: 20px;
             margin-left: 5px;
         }
-
-        .btn-delete-file:hover {
-            background-color: #c0392b;
-        }
-
         .btn-edit {
             background-color: #f1c40f;
             color: #34495e;
-        }
-
-        .btn-edit:hover {
-            background-color: #d4ac0d;
-            color: #fff;
         }
 
         table {
@@ -325,30 +255,11 @@
             }
         }
 
-        /* Toggle para exibir arquivos */
-        .files-resumo {
+        .arquivo-container {
             display: flex;
             align-items: center;
-            justify-content: center;
-        }
-
-        .files-resumo button.toggle-files {
-            background: none;
-            border: none;
-            font-size: 1rem;
-            cursor: pointer;
-            color: var(--primary-color);
-        }
-
-        .files-list {
-            display: none;
             margin-top: 5px;
         }
-
-        .arquivo-container {
-            margin-bottom: 5px;
-        }
-
         .arquivo-link {
             text-decoration: none;
             color: var(--primary-color);
@@ -410,17 +321,16 @@
             display: none;
         }
 
-        input[type="radio"]:checked+label {
+        input[type="radio"]:checked + label {
             background-color: var(--primary-color);
             color: #fff;
         }
 
-        /* Exibe a aba selecionada */
-        #tab1:checked~.content #content1,
-        #tab2:checked~.content #content2,
-        #tab3:checked~.content #content3,
-        #tab4:checked~.content #content4,
-        #tab5:checked~.content #content5 {
+        #tab1:checked ~ .content #content1,
+        #tab2:checked ~ .content #content2,
+        #tab3:checked ~ .content #content3,
+        #tab4:checked ~ .content #content4,
+        #tab5:checked ~ .content #content5 {
             display: block;
         }
     </style>
@@ -473,35 +383,38 @@
     </form>
 
     {% elif adicional_id %}
+    <!-- Formulário de solicitação de crédito adicional -->
     <div class="form-adicional">
         <h2>Solicitar Crédito Adicional para RD #{{ adicional_id }}</h2>
-        <form action="/adicional_submit/{{ adicional_id }}" method="POST" enctype="multipart/form-data"
-              class="main-form">
+        <form action="/adicional_submit/{{ adicional_id }}" method="POST" enctype="multipart/form-data" class="main-form">
             <label for="valor_adicional">Valor Adicional (R$):</label>
             <input type="number" id="valor_adicional" name="valor_adicional" step="0.01" required>
+
             <label for="arquivo">Anexar Arquivos Adicionais (opcional):</label>
             <input type="file" id="arquivo" name="arquivo" multiple>
+
             <button type="submit"><i class="fas fa-paper-plane"></i> Solicitar Adicional</button>
         </form>
     </div>
 
     {% elif fechamento_id %}
+    <!-- Formulário de fechamento (solicitar fechamento) -->
     <div class="form-fechamento">
         <h2>Fechamento do RD #{{ fechamento_id }}</h2>
-        <form action="/fechamento_submit/{{ fechamento_id }}" method="POST" enctype="multipart/form-data"
-              class="main-form">
+        <form action="/fechamento_submit/{{ fechamento_id }}" method="POST" enctype="multipart/form-data" class="main-form">
             <label for="valor_despesa">Valor da Despesa (R$):</label>
             <input type="number" id="valor_despesa" name="valor_despesa" step="0.01" required>
+
             <label for="arquivo">Anexar Arquivos Finais (opcional):</label>
             <input type="file" id="arquivo" name="arquivo" multiple>
+
             <button type="submit"><i class="fas fa-check-circle"></i> Fechar RD</button>
         </form>
     </div>
 
     {% else %}
-
+    <!-- Formulário de solicitação RD (Alelo ou Reembolso) -->
     {% if can_add %}
-    <!-- Botões para escolher o tipo de solicitação -->
     <div style="text-align:center; margin-bottom: 20px;">
         <button type="button" id="btn-alelo" class="btn btn-primary">
             <i class="fas fa-plus-circle"></i> Solicitação RD Alelo
@@ -510,10 +423,7 @@
             <i class="fas fa-plus-circle"></i> Solicitação RD Reembolso
         </button>
     </div>
-
-    <!-- Formulário de solicitação (inicialmente oculto) -->
-    <form id="form-solicitacao" action="/add" method="POST" enctype="multipart/form-data" class="main-form"
-          style="display: none;">
+    <form id="form-solicitacao" action="/add" method="POST" enctype="multipart/form-data" class="main-form" style="display:none;">
         <label for="solicitante">Solicitante:</label>
         <input type="text" id="solicitante" name="solicitante" required>
 
@@ -526,6 +436,9 @@
         <label for="centro_custo">Centro de Custo:</label>
         <input type="text" id="centro_custo" name="centro_custo" required>
 
+        <label for="unidade_negocio">Unidade de Negócio:</label>
+        <input type="text" id="unidade_negocio" name="unidade_negocio" placeholder="Exemplo: Filial X, etc.">
+
         <label for="valor">Valor (R$):</label>
         <input type="number" id="valor" name="valor" step="0.01" required>
 
@@ -535,14 +448,12 @@
         <label for="arquivo">Anexar Arquivos:</label>
         <input type="file" id="arquivo" name="arquivo" multiple>
 
-        <!-- Campo oculto para definir o tipo -->
         <input type="hidden" name="tipo" id="rd-tipo" value="">
-
         <button type="submit"><i class="fas fa-plus-circle"></i> Enviar Solicitação</button>
     </form>
     {% endif %}
 
-    {% if user_role == 'financeiro' %}
+    {% if user_role=='financeiro' %}
     <h2>Editar Saldo Global</h2>
     <form action="{{ url_for('edit_saldo') }}" method="POST" class="main-form">
         <label for="saldo_global">Saldo Global (R$):</label>
@@ -556,7 +467,9 @@
             <i class="fas fa-file-excel"></i> Exportar para Excel
         </a>
     </div>
+    {% endif %}  <!-- se user_role is not defined -->
 
+    <!-- Macro para mostrar valores com toggle (botão +) -->
     {% macro mostrar_valores(rd) %}
     {% set valor = rd[5] %}
     {% set valor_adic = rd[7] if rd[7] else 0 %}
@@ -569,45 +482,46 @@
     {% set aprovado_data = rd[13] if rd[13] else 'N/A' %}
     {% set liberado_data = rd[14] if rd[14] else 'N/A' %}
 
-    <strong>Valor Solicitado:</strong> R${{ format_currency(valor) }}<br>
-    <strong>Data da Solicitação:</strong> {{ rd[3] }}<br><br>
+    <div class="valor-resumo">
+        <span>R${{ format_currency(valor) }}</span>
+        <button class="toggle-details">+</button>
+    </div>
+    <div class="rd-details" style="display:none;">
+        <strong>Valor Solicitado:</strong> R${{ format_currency(valor) }}<br>
+        <strong>Data da Solicitação:</strong> {{ rd[3] }}<br>
 
-    <strong>Valor Adicional:</strong> R${{ format_currency(valor_adic) }}<br>
-    {% if adicional_data != 'N/A' %}
-    <strong>Data do Adicional:</strong> {{ adicional_data }}<br><br>
-    {% else %}
-    <br>
-    {% endif %}
+        <strong>Valor Adicional:</strong> R${{ format_currency(valor_adic) }}<br>
+        {% if adicional_data != 'N/A' %}
+        <strong>Data do Adicional:</strong> {{ adicional_data }}<br>
+        {% endif %}
 
-    <strong>Total da RD:</strong> R${{ format_currency(valor_total) }}<br><br>
-
-    <strong>Valor Gasto (Despesa):</strong> R${{ format_currency(valor_despesa) }}<br>
-    <strong>Saldo a Devolver:</strong> R${{ format_currency(saldo_devolver) }}<br><br>
-    {% if aprovado_data != 'N/A' %}
-    <strong>Aprovado em:</strong> {{ aprovado_data }}<br>
-    {% endif %}
-    {% if liberado_data != 'N/A' %}
-    <strong>Liberado em:</strong> {{ liberado_data }}<br>
-    {% endif %}
-    {% if data_fechamento != 'N/A' %}
-    <strong>Fechado em:</strong> {{ data_fechamento }}
-    {% endif %}
+        <strong>Total da RD:</strong> R${{ format_currency(valor_total) }}<br>
+        <strong>Valor Gasto (Despesa):</strong> R${{ format_currency(valor_despesa) }}<br>
+        <strong>Saldo a Devolver:</strong> R${{ format_currency(saldo_devolver) }}<br>
+        {% if aprovado_data != 'N/A' %}
+        <strong>Aprovado em:</strong> {{ aprovado_data }}<br>
+        {% endif %}
+        {% if liberado_data != 'N/A' %}
+        <strong>Liberado em:</strong> {{ liberado_data }}<br>
+        {% endif %}
+        {% if data_fechamento != 'N/A' %}
+        <strong>Fechado em:</strong> {{ data_fechamento }}
+        {% endif %}
+    </div>
     {% endmacro %}
 
-    <!-- ==================== ABAS (TABS) ==================== -->
+    <!-- As ABAS -->
     <div class="tabs">
-        <!-- Inputs para cada aba -->
         <input type="radio" name="tab-control" id="tab1" checked>
         <input type="radio" name="tab-control" id="tab2">
         <input type="radio" name="tab-control" id="tab3">
         <input type="radio" name="tab-control" id="tab4">
         <input type="radio" name="tab-control" id="tab5">
 
-        <!-- Rótulos das abas -->
         <div class="tab-labels">
-            <label for="tab1">Pendentes de liberação do gestor</label>
-            <label for="tab2">Aprovados pelo gestor</label>
-            <label for="tab3">Liberados pelo financeiro</label>
+            <label for="tab1">Pendentes do Gestor</label>
+            <label for="tab2">Aprovados pelo Gestor</label>
+            <label for="tab3">Liberados pelo Financeiro</label>
             <label for="tab4">Fechamento Solicitado</label>
             <label for="tab5">Fechados</label>
         </div>
@@ -624,22 +538,48 @@
                             <th>Data</th>
                             <th>Centro de Custo</th>
                             <th>Observação</th>
+                            <th>Arquivos</th>
                             <th>Valores</th>
                             <th>Ações</th>
                         </tr>
                     </thead>
                     <tbody>
-                    {% for rd in pendentes %}
+                        {% for rd in pendentes %}
                         {% set rd_id = rd[0] %}
-                        {% set rd_solic = rd[1] %}
                         {% set status = rd[6] %}
                         <tr>
-                            <td data-label="ID">{{ rd_id }}</td>
+                            <td data-label="ID">
+                                {{ rd_id }} <br>
+                                <small>{{ format_currency(rd[5]) }} ({{ rd[17] if rd|length>17 else '' }})</small>
+                            </td>
                             <td data-label="Solicitante">{{ rd[1] }}</td>
                             <td data-label="Funcionário">{{ rd[2] }}</td>
                             <td data-label="Data">{{ rd[3] }}</td>
                             <td data-label="Centro de Custo">{{ rd[4] }}</td>
-                            <td data-label="Observação">{{ rd[16] if rd|length > 16 else '' }}</td>
+                            <td data-label="Observação">{{ rd[16] if rd|length>16 else '' }}</td>
+                            <td data-label="Arquivos">
+                                {% if rd[12] %}
+                                <div class="files-resumo">
+                                    <button class="toggle-files">+</button>
+                                </div>
+                                <div class="files-list">
+                                    {% for arquivo in rd[12].split(',') %}
+                                    <div class="arquivo-container">
+                                        <a href="{{ get_r2_public_url(arquivo) }}" class="arquivo-link" target="_blank">{{ arquivo }}</a>
+                                        <!-- Botão de excluir arquivo, se permitido -->
+                                        <form action="{{ url_for('delete_file', id=rd_id) }}" method="POST" style="display:inline;">
+                                            <input type="hidden" name="filename" value="{{ arquivo }}">
+                                            <button type="submit" class="btn btn-delete-file" title="Excluir Arquivo">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
                             <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
                             <td data-label="Ações">
                                 {% if can_approve_func(status) %}
@@ -654,31 +594,16 @@
                                     <i class="fas fa-edit"></i> Editar
                                 </a>
                                 {% endif %}
-                                {% if can_delete_func(status, rd_solic) %}
+                                {% if can_delete_func(status, rd[1]) %}
                                 <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
                                     <button type="submit" class="btn btn-delete-rd">
                                         <i class="fas fa-trash-alt"></i> Excluir
                                     </button>
                                 </form>
                                 {% endif %}
-
-                                {# Exibição de arquivos #}
-                                {% if rd[12] %}
-                                {% for arquivo in rd[12].split(',') %}
-                                <div class="arquivo-container">
-                                    <a href="{{ get_r2_public_url(arquivo) }}" class="arquivo-link" target="_blank">{{ arquivo }}</a>
-                                    <form action="{{ url_for('delete_file', id=rd_id) }}" method="POST" style="display:inline;">
-                                        <input type="hidden" name="filename" value="{{ arquivo }}">
-                                        <button type="submit" class="btn btn-delete-file" title="Excluir Arquivo">
-                                            <i class="fas fa-times"></i>
-                                        </button>
-                                    </form>
-                                </div>
-                                {% endfor %}
-                                {% endif %}
                             </td>
                         </tr>
-                    {% endfor %}
+                        {% endfor %}
                     </tbody>
                 </table>
             </div>
@@ -694,22 +619,47 @@
                             <th>Data</th>
                             <th>Centro de Custo</th>
                             <th>Observação</th>
+                            <th>Arquivos</th>
                             <th>Valores</th>
                             <th>Ações</th>
                         </tr>
                     </thead>
                     <tbody>
-                    {% for rd in aprovados %}
+                        {% for rd in aprovados %}
                         {% set rd_id = rd[0] %}
-                        {% set rd_solic = rd[1] %}
                         {% set status = rd[6] %}
                         <tr>
-                            <td data-label="ID">{{ rd_id }}</td>
+                            <td data-label="ID">
+                                {{ rd_id }} <br>
+                                <small>{{ format_currency(rd[5]) }} ({{ rd[17] if rd|length>17 else '' }})</small>
+                            </td>
                             <td data-label="Solicitante">{{ rd[1] }}</td>
                             <td data-label="Funcionário">{{ rd[2] }}</td>
                             <td data-label="Data">{{ rd[3] }}</td>
                             <td data-label="Centro de Custo">{{ rd[4] }}</td>
-                            <td data-label="Observação">{{ rd[16] if rd|length > 16 else '' }}</td>
+                            <td data-label="Observação">{{ rd[16] if rd|length>16 else '' }}</td>
+                            <td data-label="Arquivos">
+                                {% if rd[12] %}
+                                <div class="files-resumo">
+                                    <button class="toggle-files">+</button>
+                                </div>
+                                <div class="files-list">
+                                    {% for arquivo in rd[12].split(',') %}
+                                    <div class="arquivo-container">
+                                        <a href="{{ get_r2_public_url(arquivo) }}" target="_blank" class="arquivo-link">{{ arquivo }}</a>
+                                        <form action="{{ url_for('delete_file', id=rd_id) }}" method="POST" style="display:inline;">
+                                            <input type="hidden" name="filename" value="{{ arquivo }}">
+                                            <button type="submit" class="btn btn-delete-file" title="Excluir Arquivo">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
                             <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
                             <td data-label="Ações">
                                 {% if can_approve_func(status) %}
@@ -724,7 +674,7 @@
                                     <i class="fas fa-edit"></i> Editar
                                 </a>
                                 {% endif %}
-                                {% if can_delete_func(status, rd_solic) %}
+                                {% if can_delete_func(status, rd[1]) %}
                                 <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
                                     <button type="submit" class="btn btn-delete-rd">
                                         <i class="fas fa-trash-alt"></i> Excluir
@@ -733,7 +683,7 @@
                                 {% endif %}
                             </td>
                         </tr>
-                    {% endfor %}
+                        {% endfor %}
                     </tbody>
                 </table>
             </div>
@@ -749,22 +699,47 @@
                             <th>Data</th>
                             <th>Centro de Custo</th>
                             <th>Observação</th>
+                            <th>Arquivos</th>
                             <th>Valores</th>
                             <th>Ações</th>
                         </tr>
                     </thead>
                     <tbody>
-                    {% for rd in liberados %}
+                        {% for rd in liberados %}
                         {% set rd_id = rd[0] %}
-                        {% set rd_solic = rd[1] %}
                         {% set status = rd[6] %}
                         <tr>
-                            <td data-label="ID">{{ rd_id }}</td>
+                            <td data-label="ID">
+                                {{ rd_id }} <br>
+                                <small>{{ format_currency(rd[5]) }} ({{ rd[17] if rd|length>17 else '' }})</small>
+                            </td>
                             <td data-label="Solicitante">{{ rd[1] }}</td>
                             <td data-label="Funcionário">{{ rd[2] }}</td>
                             <td data-label="Data">{{ rd[3] }}</td>
                             <td data-label="Centro de Custo">{{ rd[4] }}</td>
-                            <td data-label="Observação">{{ rd[16] if rd|length > 16 else '' }}</td>
+                            <td data-label="Observação">{{ rd[16] if rd|length>16 else '' }}</td>
+                            <td data-label="Arquivos">
+                                {% if rd[12] %}
+                                <div class="files-resumo">
+                                    <button class="toggle-files">+</button>
+                                </div>
+                                <div class="files-list">
+                                    {% for arquivo in rd[12].split(',') %}
+                                    <div class="arquivo-container">
+                                        <a href="{{ get_r2_public_url(arquivo) }}" target="_blank" class="arquivo-link">{{ arquivo }}</a>
+                                        <form action="{{ url_for('delete_file', id=rd_id) }}" method="POST" style="display:inline;">
+                                            <input type="hidden" name="filename" value="{{ arquivo }}">
+                                            <button type="submit" class="btn btn-delete-file" title="Excluir Arquivo">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
                             <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
                             <td data-label="Ações">
                                 {% if can_edit_func(status) %}
@@ -772,7 +747,7 @@
                                     <i class="fas fa-edit"></i> Editar
                                 </a>
                                 {% endif %}
-                                {% if can_delete_func(status, rd_solic) %}
+                                {% if can_delete_func(status, rd[1]) %}
                                 <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
                                     <button type="submit" class="btn btn-delete-rd">
                                         <i class="fas fa-trash-alt"></i> Excluir
@@ -795,24 +770,9 @@
                                     </button>
                                 </form>
                                 {% endif %}
-
-                                {# Exibição de arquivos #}
-                                {% if rd[12] %}
-                                {% for arquivo in rd[12].split(',') %}
-                                <div class="arquivo-container">
-                                    <a href="{{ get_r2_public_url(arquivo) }}" class="arquivo-link" target="_blank">{{ arquivo }}</a>
-                                    <form action="{{ url_for('delete_file', id=rd_id) }}" method="POST" style="display:inline;">
-                                        <input type="hidden" name="filename" value="{{ arquivo }}">
-                                        <button type="submit" class="btn btn-delete-file" title="Excluir Arquivo">
-                                            <i class="fas fa-times"></i>
-                                        </button>
-                                    </form>
-                                </div>
-                                {% endfor %}
-                                {% endif %}
                             </td>
                         </tr>
-                    {% endfor %}
+                        {% endfor %}
                     </tbody>
                 </table>
             </div>
@@ -828,32 +788,59 @@
                             <th>Data</th>
                             <th>Centro de Custo</th>
                             <th>Observação</th>
+                            <th>Arquivos</th>
                             <th>Valores</th>
                             <th>Ações</th>
                         </tr>
                     </thead>
                     <tbody>
-                    {% for rd in fechamento_solicitado %}
+                        {% for rd in fechamento_solicitado %}
                         {% set rd_id = rd[0] %}
-                        {% set rd_solic = rd[1] %}
                         {% set status = rd[6] %}
                         <tr>
-                            <td data-label="ID">{{ rd_id }}</td>
+                            <td data-label="ID">
+                                {{ rd_id }} <br>
+                                <small>{{ format_currency(rd[5]) }} ({{ rd[17] if rd|length>17 else '' }})</small>
+                            </td>
                             <td data-label="Solicitante">{{ rd[1] }}</td>
                             <td data-label="Funcionário">{{ rd[2] }}</td>
                             <td data-label="Data">{{ rd[3] }}</td>
                             <td data-label="Centro de Custo">{{ rd[4] }}</td>
-                            <td data-label="Observação">{{ rd[16] if rd|length > 16 else '' }}</td>
+                            <td data-label="Observação">{{ rd[16] if rd|length>16 else '' }}</td>
+                            <td data-label="Arquivos">
+                                {% if rd[12] %}
+                                <div class="files-resumo">
+                                    <button class="toggle-files">+</button>
+                                </div>
+                                <div class="files-list">
+                                    {% for arquivo in rd[12].split(',') %}
+                                    <div class="arquivo-container">
+                                        <a href="{{ get_r2_public_url(arquivo) }}" class="arquivo-link" target="_blank">{{ arquivo }}</a>
+                                        <form action="{{ url_for('delete_file', id=rd_id) }}" method="POST" style="display:inline;">
+                                            <input type="hidden" name="filename" value="{{ arquivo }}">
+                                            <button type="submit" class="btn btn-delete-file" title="Excluir Arquivo">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
                             <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
                             <td data-label="Ações">
+                                {% if can_approve_func(status) %}
                                 <form action="/approve/{{ rd_id }}" method="POST" class="action-form">
                                     <button type="submit" class="btn btn-approve">
                                         <i class="fas fa-check"></i> Aprovar Fechamento
                                     </button>
                                 </form>
+                                {% endif %}
                             </td>
                         </tr>
-                    {% endfor %}
+                        {% endfor %}
                     </tbody>
                 </table>
             </div>
@@ -869,22 +856,48 @@
                             <th>Data</th>
                             <th>Centro de Custo</th>
                             <th>Observação</th>
+                            <th>Arquivos</th>
                             <th>Valores</th>
                             <th>Ações</th>
                         </tr>
                     </thead>
                     <tbody>
-                    {% for rd in fechados %}
+                        {% for rd in fechados %}
                         {% set rd_id = rd[0] %}
-                        {% set rd_solic = rd[1] %}
                         {% set status = rd[6] %}
                         <tr>
-                            <td data-label="ID">{{ rd_id }}</td>
+                            <td data-label="ID">
+                                {{ rd_id }} <br>
+                                <small>{{ format_currency(rd[5]) }} ({{ rd[17] if rd|length>17 else '' }})</small>
+                            </td>
                             <td data-label="Solicitante">{{ rd[1] }}</td>
                             <td data-label="Funcionário">{{ rd[2] }}</td>
                             <td data-label="Data">{{ rd[3] }}</td>
                             <td data-label="Centro de Custo">{{ rd[4] }}</td>
-                            <td data-label="Observação">{{ rd[16] if rd|length > 16 else '' }}</td>
+                            <td data-label="Observação">{{ rd[16] if rd|length>16 else '' }}</td>
+                            <td data-label="Arquivos">
+                                {% if rd[12] %}
+                                <div class="files-resumo">
+                                    <button class="toggle-files">+</button>
+                                </div>
+                                <div class="files-list">
+                                    {% for arquivo in rd[12].split(',') %}
+                                    <div class="arquivo-container">
+                                        <a href="{{ get_r2_public_url(arquivo) }}" class="arquivo-link" target="_blank">{{ arquivo }}</a>
+                                        <!-- Exclusão de arquivo se quiser permitir mesmo no fechado -->
+                                        <form action="{{ url_for('delete_file', id=rd_id) }}" method="POST" style="display:inline;">
+                                            <input type="hidden" name="filename" value="{{ arquivo }}">
+                                            <button type="submit" class="btn btn-delete-file" title="Excluir Arquivo">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
                             <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
                             <td data-label="Ações">
                                 {% if is_financeiro %}
@@ -900,15 +913,14 @@
                                 {% endif %}
                             </td>
                         </tr>
-                    {% endfor %}
+                        {% endfor %}
                     </tbody>
                 </table>
             </div>
         </div> <!-- .content -->
     </div> <!-- .tabs -->
 
-    {% endif %} <!-- fim do else de user_role -->
-
+    {% endif %} <!-- fim do else do user_role -->
 </div> <!-- .container -->
 
 <footer>
@@ -918,50 +930,48 @@
 <!-- jQuery e DataTables JS -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script type="text/javascript" src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
-
 <script>
-    // Inicializar DataTables em cada tabela
-    $(document).ready(function () {
-        $('#tabela-pendentes').DataTable();
-        $('#tabela-aprovados').DataTable();
-        $('#tabela-liberados').DataTable();
-        $('#tabela-fechamento-solicitado').DataTable();
-        $('#tabela-fechados').DataTable();
+$(document).ready(function(){
+    $('#tabela-pendentes').DataTable();
+    $('#tabela-aprovados').DataTable();
+    $('#tabela-liberados').DataTable();
+    $('#tabela-fechamento-solicitado').DataTable();
+    $('#tabela-fechados').DataTable();
 
-        // Toggle para detalhes dos valores
-        $('.toggle-details').on('click', function () {
-            var details = $(this).closest('.valor-resumo').next('.rd-details');
-            if (details.is(':visible')) {
-                details.slideUp();
-                $(this).text('+');
-            } else {
-                details.slideDown();
-                $(this).text('-');
-            }
-        });
-
-        // Toggle para exibir arquivos
-        $('.toggle-files').on('click', function () {
-            var filesList = $(this).closest('.files-resumo').next('.files-list');
-            if (filesList.is(':visible')) {
-                filesList.slideUp();
-                $(this).text('+');
-            } else {
-                filesList.slideDown();
-                $(this).text('-');
-            }
-        });
+    // Toggle para detalhes dos valores
+    $('.toggle-details').on('click', function () {
+        var details = $(this).closest('.valor-resumo').next('.rd-details');
+        if (details.is(':visible')) {
+            details.slideUp();
+            $(this).text('+');
+        } else {
+            details.slideDown();
+            $(this).text('-');
+        }
     });
 
-    // Botões para exibir o formulário de solicitação com o tipo definido
-    document.getElementById('btn-alelo')?.addEventListener('click', function () {
-        document.getElementById('form-solicitacao').style.display = 'block';
-        document.getElementById('rd-tipo').value = 'credito alelo';
+    // Toggle para exibir arquivos
+    $('.toggle-files').on('click', function(){
+        var filesList = $(this).closest('.files-resumo').next('.files-list');
+        if(filesList.is(':visible')){
+            filesList.slideUp();
+            $(this).text('+');
+        }else{
+            filesList.slideDown();
+            $(this).text('-');
+        }
     });
-    document.getElementById('btn-reembolso')?.addEventListener('click', function () {
-        document.getElementById('form-solicitacao').style.display = 'block';
-        document.getElementById('rd-tipo').value = 'reembolso';
-    });
+});
+
+// Botões para exibir o formulário com o tipo
+document.getElementById('btn-alelo')?.addEventListener('click',function(){
+    document.getElementById('form-solicitacao').style.display='block';
+    document.getElementById('rd-tipo').value='credito alelo';
+});
+document.getElementById('btn-reembolso')?.addEventListener('click',function(){
+    document.getElementById('form-solicitacao').style.display='block';
+    document.getElementById('rd-tipo').value='reembolso';
+});
 </script>
 </body>
 </html>
