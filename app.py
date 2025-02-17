@@ -851,6 +851,13 @@ def export_excel():
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
+@app.route('/logout')
+def logout():
+    session.clear()  # se quiser limpar a sessão
+    flash("Logout realizado com sucesso.")
+    return redirect(url_for('index'))
+
+
 if __name__=='__main__':
     init_db()
     app.run(debug=True)
