@@ -112,7 +112,7 @@
     /* Tabela */
     table {
       width:100%; 
-      border-collapse: collapse; /* agora colapsamos as bordas para separar colunas */
+      border-collapse: collapse; /* colapsamos para separar colunas */
       margin-top:20px; background:#fff; border-radius:8px;
       overflow:hidden; box-shadow:0 2px 10px rgba(0,0,0,0.05);
     }
@@ -169,6 +169,8 @@
       background-color:#ecf0f1; padding:8px 15px; margin:2px;
       border-radius:5px; cursor:pointer; transition:background-color 0.3s;
       font-weight:600;
+      display:inline-flex; align-items:center;
+      gap:5px;
     }
     .tab-labels label:hover { background-color:#ddd; }
     .tab-content { display:none; }
@@ -197,6 +199,18 @@
       background:#fafafa; padding:10px; margin-top:5px;
       border:1px solid #ddd; border-radius:5px;
       display:none;
+    }
+
+    /* Badge (balão de contagem) */
+    .badge {
+      background-color: var(--danger-color);
+      color: #fff;
+      font-size: 0.75rem;
+      padding: 3px 6px;
+      border-radius: 10px;
+      display:inline-block;
+      min-width: 20px;
+      text-align: center;
     }
 
     /* Modal para exibir anexos */
@@ -349,7 +363,8 @@
             enctype="multipart/form-data"
             class="main-form"
             style="display:none;">
-        <label for="solicitante">Solicitante:</label>
+        <!-- Label com ID para mudar dinamicamente -->
+        <label id="lbl-solicitante" for="solicitante">Solicitante:</label>
         <input type="text" id="solicitante" name="solicitante" required>
 
         <label for="funcionario">Funcionário:</label>
@@ -440,20 +455,48 @@
 
       <!-- Abas: Pendentes, Aprovados, Liberados, Fechamento Solicitado, Fechados -->
       <div class="tabs">
+        <!-- Cada input "radio" controla a aba selecionada -->
         <input type="radio" name="tab-control" id="tab1" checked>
         <input type="radio" name="tab-control" id="tab2">
         <input type="radio" name="tab-control" id="tab3">
         <input type="radio" name="tab-control" id="tab4">
         <input type="radio" name="tab-control" id="tab5">
-        <div class="tab-labels">
-          <label for="tab1">Pendentes</label>
-          <label for="tab2">Aprovados</label>
-          <label for="tab3">Liberados</label>
-          <label for="tab4">Fechamento Solicitado</label>
-          <label for="tab5">Fechados</label>
-        </div>
-        <div class="content">
 
+        <!-- Rótulos das abas com "baloes" de contagem -->
+        <div class="tab-labels">
+          <label for="tab1">
+            Pendentes
+            {% if pendentes|length > 0 %}
+            <span class="badge">{{ pendentes|length }}</span>
+            {% endif %}
+          </label>
+          <label for="tab2">
+            Aprovados
+            {% if aprovados|length > 0 %}
+            <span class="badge">{{ aprovados|length }}</span>
+            {% endif %}
+          </label>
+          <label for="tab3">
+            Liberados
+            {% if liberados|length > 0 %}
+            <span class="badge">{{ liberados|length }}</span>
+            {% endif %}
+          </label>
+          <label for="tab4">
+            Fechamento Solicitado
+            {% if fechamento_solicitado|length > 0 %}
+            <span class="badge">{{ fechamento_solicitado|length }}</span>
+            {% endif %}
+          </label>
+          <label for="tab5">
+            Fechados
+            {% if fechados|length > 0 %}
+            <span class="badge">{{ fechados|length }}</span>
+            {% endif %}
+          </label>
+        </div>
+
+        <div class="content">
           <!-- =============== Pendentes =============== -->
           <div class="tab-content" id="content1">
             <table id="tabela-pendentes" class="display">
@@ -841,19 +884,17 @@ $(document).on('click', '.toggle-details', function(){
 
 // Abrir modal ao clicar no botão "Ver Anexos"
 $(document).on('click', '.btn-view-files', function(){
-  let filesStr = $(this).data('files');    // ex: "123_arq1.pdf,123_arq2.jpg"
-  let rdId     = $(this).data('rdId');     // ex: "123.23"
+  let filesStr = $(this).data('files');    
+  let rdId     = $(this).data('rdId');     
 
   if(!filesStr){
-    return; // se por algum motivo estiver vazio
+    return; 
   }
   let filesArr = filesStr.split(',');
 
   // Monta a lista de arquivos para exibir no modal
   let html = '';
   filesArr.forEach(function(arquivo){
-    // Monta um form p/ exclusão (caso o usuário tenha permissão)
-    // Aponta para /delete_file/<rdId> e envia filename
     html += `
       <div class="file-item">
         <a href="${getPublicUrl(arquivo)}"
@@ -886,19 +927,27 @@ $(window).click(function(e){
   }
 });
 
-// Função auxiliar p/ gerar URL pública do arquivo (pode adaptar p/ Jinja se preferir)
+// Função auxiliar p/ gerar URL pública do arquivo
 function getPublicUrl(filename){
+  // Ajuste para o seu endpoint, se quiser usar a função do Jinja no back-end.
   return "https://pub-1e6f8559bc2b413c889fbf4860462599.r2.dev/" + filename;
 }
 
-// Botões para exibir formulário de solicitação
-document.getElementById('btn-alelo')?.addEventListener('click',function(){
-  document.getElementById('form-solicitacao').style.display='block';
-  document.getElementById('rd-tipo').value='credito alelo';
+// Botões para exibir formulário de solicitação e mudar label do solicitante
+document.getElementById('btn-alelo')?.addEventListener('click', function(){
+  document.getElementById('form-solicitacao').style.display = 'block';
+  document.getElementById('rd-tipo').value = 'credito alelo';
+
+  // Mudar o texto do label
+  document.getElementById('lbl-solicitante').innerText = 'Solicitante do RD Alelo';
 });
-document.getElementById('btn-reembolso')?.addEventListener('click',function(){
-  document.getElementById('form-solicitacao').style.display='block';
-  document.getElementById('rd-tipo').value='reembolso';
+
+document.getElementById('btn-reembolso')?.addEventListener('click', function(){
+  document.getElementById('form-solicitacao').style.display = 'block';
+  document.getElementById('rd-tipo').value = 'reembolso';
+
+  // Mudar o texto do label
+  document.getElementById('lbl-solicitante').innerText = 'Solicitante do RD Reembolso';
 });
 </script>
 </body>
