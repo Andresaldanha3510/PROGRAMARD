@@ -54,7 +54,7 @@
     .top-bar a:hover { text-decoration:underline; }
 
     .container {
-      max-width:1000px; margin:20px auto; padding:20px;
+      max-width:1200px; margin:20px auto; padding:20px;
       background:#fff; border-radius:10px;
       box-shadow:0 4px 20px rgba(0,0,0,0.1);
     }
@@ -94,9 +94,9 @@
     .btn-success{ background-color:var(--success-color); color:#fff; }
     .btn-danger{ background-color:var(--danger-color); color:#fff; }
     .btn-warning{ background-color:var(--warning-color); color:#34495e; }
-    .btn-approve{ background-color:var(--success-color); }
-    .btn-additional{ background-color:var(--secondary-color); }
-    .btn-fechamento{ background-color:#8e44ad; }
+    .btn-approve{ background-color:var(--success-color); color:#fff; }
+    .btn-additional{ background-color:var(--secondary-color); color:#fff; }
+    .btn-fechamento{ background-color:#8e44ad; color:#fff; }
     .btn-delete-rd {
       background-color:var(--danger-color);
       padding:6px 12px; font-size:0.75rem; color:#fff;
@@ -118,6 +118,7 @@
     th, td {
       padding:10px; text-align:left;
       border-bottom:1px solid var(--border-color);
+      vertical-align: middle;
     }
     th {
       background-color: var(--primary-color);
@@ -148,10 +149,15 @@
     .arquivo-link {
       text-decoration:none; color:var(--primary-color);
       font-size:0.9rem; margin-right:10px;
+      max-width: 250px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .arquivo-link:hover { text-decoration:underline; }
     .error-message {
       color:var(--danger-color); font-size:0.85rem; margin-bottom:15px;
+      list-style: none;
     }
     footer {
       text-align:center; color:var(--footer-text);
@@ -163,6 +169,7 @@
     .tabs input[type="radio"] { display:none; }
     .tab-labels {
       display:flex; justify-content:center; margin-bottom:10px; flex-wrap:wrap;
+      gap:5px;
     }
     .tab-labels label {
       background-color:#ecf0f1; padding:8px 15px; margin:2px;
@@ -192,6 +199,25 @@
     .files-list {
       display:none; margin-top:5px;
     }
+    /* Estilo do + / - para detalhes do valor */
+    .valor-resumo {
+      display:flex; align-items:center; gap:10px;
+    }
+    .valor-resumo span {
+      font-weight:600;
+    }
+    .valor-resumo button.toggle-details {
+      border:none; background:none; font-weight:700; font-size:1.1rem;
+      cursor:pointer; color:var(--primary-color);
+    }
+    .rd-details {
+      background:#fafafa; padding:10px; margin-top:5px;
+      border:1px solid #ddd; border-radius:5px;
+    }
+    .action-form {
+      display:inline-block;
+      margin:2px 0;
+    }
   </style>
 </head>
 <body>
@@ -214,11 +240,11 @@
 
   {% with messages = get_flashed_messages() %}
   {% if messages %}
-  <ul>
-    {% for message in messages %}
-    <li class="error-message">{{ message }}</li>
-    {% endfor %}
-  </ul>
+    <ul>
+      {% for message in messages %}
+      <li class="error-message">{{ message }}</li>
+      {% endfor %}
+    </ul>
   {% endif %}
   {% endwith %}
 
@@ -229,7 +255,6 @@
   </div>
   <h1>Gerenciamento de RDs</h1>
 
-  <!-- Bloco aninhado principal -->
   {% if user_role is not defined %}
     <!-- ===================== FORMULÁRIO DE LOGIN ===================== -->
     <form action="/" method="POST" class="main-form">
@@ -244,9 +269,8 @@
 
       <button type="submit"><i class="fas fa-sign-in-alt"></i> Entrar</button>
     </form>
-
   {% else %}
-    <!-- Se user_role está definido, checamos se há adicional_id ou fechamento_id -->
+
     {% if adicional_id %}
       <!-- ===================== FORMULÁRIO DE CRÉDITO ADICIONAL ===================== -->
       <div class="form-adicional">
@@ -350,39 +374,51 @@
 
       <!-- Macro para exibir detalhes de valores (toggle) -->
       {% macro mostrar_valores(rd) %}
-      {% set valor = rd[5] %}
-      {% set valor_adic = rd[7] if rd[7] else 0 %}
-      {% set valor_total = valor + valor_adic %}
-      {% set valor_despesa = rd[9] if rd[9] else 0 %}
-      {% set saldo_devolver = rd[10] if rd[10] else (valor_total - valor_despesa) %}
-      {% set adicional_data = rd[8] if rd[8] else 'N/A' %}
-      {% set data_fechamento = rd[11] if rd[11] else 'N/A' %}
-      {% set aprovado_data = rd[13] if rd[13] else 'N/A' %}
-      {% set liberado_data = rd[14] if rd[14] else 'N/A' %}
-      <div class="valor-resumo">
-        <span>R${{ format_currency(valor) }}</span>
-        <button class="toggle-details">+</button>
-      </div>
-      <div class="rd-details" style="display:none;">
-        <strong>Valor Solicitado:</strong> R${{ format_currency(valor) }}<br>
-        <strong>Data da Solicitação:</strong> {{ rd[3] }}<br>
-        <strong>Valor Adicional:</strong> R${{ format_currency(valor_adic) }}<br>
-        {% if adicional_data!='N/A' %}
-          <strong>Data do Adicional:</strong> {{ adicional_data }}<br>
-        {% endif %}
-        <strong>Total da RD:</strong> R${{ format_currency(valor_total) }}<br>
-        <strong>Valor Gasto (Despesa):</strong> R${{ format_currency(valor_despesa) }}<br>
-        <strong>Saldo a Devolver:</strong> R${{ format_currency(saldo_devolver) }}<br>
-        {% if aprovado_data!='N/A' %}
-          <strong>Aprovado em:</strong> {{ aprovado_data }}<br>
-        {% endif %}
-        {% if liberado_data!='N/A' %}
-          <strong>Liberado em:</strong> {{ liberado_data }}<br>
-        {% endif %}
-        {% if data_fechamento!='N/A' %}
-          <strong>Fechado em:</strong> {{ data_fechamento }}
-        {% endif %}
-      </div>
+        {# Indices de rd: 
+           0=id,1=solic,2=func,3=data,4=ccusto,
+           5=valor,6=status,7=valor_adic,8=adic_data,
+           9=valor_despesa,10=saldo_devolver,11=data_fech,
+           12=arquivos,13=aprovado_data,14=liberado_data,
+           15=valor_liberado,16=observacao,17=tipo,
+           18=data_saldo_devolvido,19=unidade_negocio
+        #}
+        {% set valor = rd[5] %}
+        {% set valor_adic = rd[7] if rd[7] else 0 %}
+        {% set valor_total = valor + valor_adic %}
+        {% set valor_despesa = rd[9] if rd[9] else 0 %}
+        {% set saldo_devolver = rd[10] if rd[10] else (valor_total - valor_despesa) %}
+        {% set adicional_data = rd[8] if rd[8] else 'N/A' %}
+        {% set data_fechamento = rd[11] if rd[11] else 'N/A' %}
+        {% set aprovado_data = rd[13] if rd[13] else 'N/A' %}
+        {% set liberado_data = rd[14] if rd[14] else 'N/A' %}
+        {% set data_saldo_dev = rd[18] if rd[18] else 'N/A' %}
+        <div class="valor-resumo">
+          <span>R${{ format_currency(valor) }}</span>
+          <button class="toggle-details" title="Exibir detalhes de valores">+</button>
+        </div>
+        <div class="rd-details" style="display:none;">
+          <strong>Valor Solicitado:</strong> R${{ format_currency(valor) }}<br>
+          <strong>Data da Solicitação:</strong> {{ rd[3] }}<br>
+          <strong>Valor Adicional:</strong> R${{ format_currency(valor_adic) }}<br>
+          {% if adicional_data != 'N/A' %}
+            <strong>Data do Adicional:</strong> {{ adicional_data }}<br>
+          {% endif %}
+          <strong>Total da RD:</strong> R${{ format_currency(valor_total) }}<br>
+          <strong>Valor Gasto (Despesa):</strong> R${{ format_currency(valor_despesa) }}<br>
+          <strong>Saldo a Devolver:</strong> R${{ format_currency(saldo_devolver) }}<br>
+          {% if aprovado_data!='N/A' %}
+            <strong>Aprovado em:</strong> {{ aprovado_data }}<br>
+          {% endif %}
+          {% if liberado_data!='N/A' %}
+            <strong>Liberado em:</strong> {{ liberado_data }}<br>
+          {% endif %}
+          {% if data_fechamento!='N/A' %}
+            <strong>Fechado em:</strong> {{ data_fechamento }}<br>
+          {% endif %}
+          {% if data_saldo_dev!='N/A' %}
+            <strong>Saldo devolvido em:</strong> {{ data_saldo_dev }}
+          {% endif %}
+        </div>
       {% endmacro %}
 
       <!-- Abas: Pendentes, Aprovados, Liberados, Fechamento Solicitado, Fechados -->
@@ -393,9 +429,9 @@
         <input type="radio" name="tab-control" id="tab4">
         <input type="radio" name="tab-control" id="tab5">
         <div class="tab-labels">
-          <label for="tab1">Pendentes do Gestor</label>
-          <label for="tab2">Aprovados pelo Gestor</label>
-          <label for="tab3">Liberados pelo Financeiro</label>
+          <label for="tab1">Pendentes</label>
+          <label for="tab2">Aprovados</label>
+          <label for="tab3">Liberados</label>
           <label for="tab4">Fechamento Solicitado</label>
           <label for="tab5">Fechados</label>
         </div>
@@ -424,17 +460,17 @@
                 <tr>
                   <td data-label="ID">
                     {{ rd_id }}<br>
-                    <small>{{ format_currency(rd[5]) }} ({{ rd[17] if rd|length>17 else '' }})</small>
+                    <small>Tipo: {{ rd[17] }}</small>
                   </td>
                   <td data-label="Solicitante">{{ rd[1] }}</td>
                   <td data-label="Funcionário">{{ rd[2] }}</td>
                   <td data-label="Data">{{ rd[3] }}</td>
                   <td data-label="Centro de Custo">{{ rd[4] }}</td>
-                  <td data-label="Observação">{{ rd[16] if rd|length>16 else '' }}</td>
+                  <td data-label="Observação">{{ rd[16] }}</td>
                   <td data-label="Arquivos">
                     {% if rd[12] %}
                     <div class="files-resumo">
-                      <button class="toggle-files">+</button>
+                      <button class="toggle-files" title="Exibir arquivos anexados">+</button>
                     </div>
                     <div class="files-list">
                       {% for arquivo in rd[12].split(',') %}
@@ -443,8 +479,7 @@
                            class="arquivo-link"
                            target="_blank">{{ arquivo }}</a>
                         <form action="{{ url_for('delete_file', id=rd_id) }}"
-                              method="POST"
-                              style="display:inline;">
+                              method="POST" style="display:inline;">
                           <input type="hidden" name="filename" value="{{ arquivo }}">
                           <button type="submit" class="btn btn-delete-file" title="Excluir Arquivo">
                             <i class="fas fa-times"></i>
@@ -508,17 +543,17 @@
                 <tr>
                   <td data-label="ID">
                     {{ rd_id }}<br>
-                    <small>{{ format_currency(rd[5]) }} ({{ rd[17] if rd|length>17 else '' }})</small>
+                    <small>Tipo: {{ rd[17] }}</small>
                   </td>
                   <td data-label="Solicitante">{{ rd[1] }}</td>
                   <td data-label="Funcionário">{{ rd[2] }}</td>
                   <td data-label="Data">{{ rd[3] }}</td>
                   <td data-label="Centro de Custo">{{ rd[4] }}</td>
-                  <td data-label="Observação">{{ rd[16] if rd|length>16 else '' }}</td>
+                  <td data-label="Observação">{{ rd[16] }}</td>
                   <td data-label="Arquivos">
                     {% if rd[12] %}
                     <div class="files-resumo">
-                      <button class="toggle-files">+</button>
+                      <button class="toggle-files" title="Exibir arquivos anexados">+</button>
                     </div>
                     <div class="files-list">
                       {% for arquivo in rd[12].split(',') %}
@@ -544,7 +579,7 @@
                     {% if can_approve_func(status) %}
                     <form action="/approve/{{ rd_id }}" method="POST" class="action-form">
                       <button type="submit" class="btn btn-approve">
-                        <i class="fas fa-check"></i> Aprovar
+                        <i class="fas fa-check"></i> Liberar
                       </button>
                     </form>
                     {% endif %}
@@ -590,13 +625,13 @@
                 <tr>
                   <td data-label="ID">
                     {{ rd_id }}<br>
-                    <small>{{ format_currency(rd[5]) }} ({{ rd[17] if rd|length>17 else '' }})</small>
+                    <small>Tipo: {{ rd[17] }}</small>
                   </td>
                   <td data-label="Solicitante">{{ rd[1] }}</td>
                   <td data-label="Funcionário">{{ rd[2] }}</td>
                   <td data-label="Data">{{ rd[3] }}</td>
                   <td data-label="Centro de Custo">{{ rd[4] }}</td>
-                  <td data-label="Observação">{{ rd[16] if rd|length>16 else '' }}</td>
+                  <td data-label="Observação">{{ rd[16] }}</td>
                   <td data-label="Arquivos">
                     {% if rd[12] %}
                     <div class="files-resumo">
@@ -639,15 +674,15 @@
                     {% if can_request_additional(status) %}
                     <form action="/" method="GET" class="action-form">
                       <input type="hidden" name="adicional" value="{{ rd_id }}">
-                      <button type="submit" class="btn btn-additional">
-                        <i class="fas fa-plus"></i> Crédito Adicional
+                      <button type="submit" class="btn btn-additional" title="Solicitar crédito adicional">
+                        <i class="fas fa-plus"></i> Adicional
                       </button>
                     </form>
                     {% endif %}
                     {% if can_close(status) %}
                     <form action="/" method="GET" class="action-form">
                       <input type="hidden" name="fechamento" value="{{ rd_id }}">
-                      <button type="submit" class="btn btn-fechamento">
+                      <button type="submit" class="btn btn-fechamento" title="Solicitar fechamento">
                         <i class="fas fa-lock"></i> Fechamento
                       </button>
                     </form>
@@ -682,13 +717,13 @@
                 <tr>
                   <td data-label="ID">
                     {{ rd_id }}<br>
-                    <small>{{ format_currency(rd[5]) }} ({{ rd[17] if rd|length>17 else '' }})</small>
+                    <small>Tipo: {{ rd[17] }}</small>
                   </td>
                   <td data-label="Solicitante">{{ rd[1] }}</td>
                   <td data-label="Funcionário">{{ rd[2] }}</td>
                   <td data-label="Data">{{ rd[3] }}</td>
                   <td data-label="Centro de Custo">{{ rd[4] }}</td>
-                  <td data-label="Observação">{{ rd[16] if rd|length>16 else '' }}</td>
+                  <td data-label="Observação">{{ rd[16] }}</td>
                   <td data-label="Arquivos">
                     {% if rd[12] %}
                     <div class="files-resumo">
@@ -717,8 +752,8 @@
                   <td data-label="Ações">
                     {% if can_approve_func(status) %}
                     <form action="/approve/{{ rd_id }}" method="POST" class="action-form">
-                      <button type="submit" class="btn btn-approve">
-                        <i class="fas fa-check"></i> Aprovar Fechamento
+                      <button type="submit" class="btn btn-approve" title="Aprovar fechamento">
+                        <i class="fas fa-check"></i> Fechar
                       </button>
                     </form>
                     {% endif %}
@@ -752,17 +787,17 @@
                 <tr>
                   <td data-label="ID">
                     {{ rd_id }}<br>
-                    <small>{{ format_currency(rd[5]) }} ({{ rd[17] if rd|length>17 else '' }})</small>
+                    <small>Tipo: {{ rd[17] }}</small>
                   </td>
                   <td data-label="Solicitante">{{ rd[1] }}</td>
                   <td data-label="Funcionário">{{ rd[2] }}</td>
                   <td data-label="Data">{{ rd[3] }}</td>
                   <td data-label="Centro de Custo">{{ rd[4] }}</td>
-                  <td data-label="Observação">{{ rd[16] if rd|length>16 else '' }}</td>
+                  <td data-label="Observação">{{ rd[16] }}</td>
                   <td data-label="Arquivos">
                     {% if rd[12] %}
                     <div class="files-resumo">
-                      <button class="toggle-files">+</button>
+                      <button class="toggle-files" title="Exibir arquivos anexados">+</button>
                     </div>
                     <div class="files-list">
                       {% for arquivo in rd[12].split(',') %}
@@ -772,7 +807,7 @@
                         <form action="{{ url_for('delete_file', id=rd_id) }}"
                               method="POST" style="display:inline;">
                           <input type="hidden" name="filename" value="{{ arquivo }}">
-                          <button type="submit" class="btn btn-delete-file">
+                          <button type="submit" class="btn btn-delete-file" title="Excluir arquivo">
                             <i class="fas fa-times"></i>
                           </button>
                         </form>
@@ -783,18 +818,22 @@
                     -
                     {% endif %}
                   </td>
-                  <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
+                  <td data-label="Valores">
+                    {{ mostrar_valores(rd) }}
+                  </td>
                   <td data-label="Ações">
                     {% if is_financeiro %}
                       {% if not rd[18] %}
                       <form action="/registrar_saldo_devolvido/{{ rd_id }}"
                             method="POST" class="action-form">
-                        <button type="submit" class="btn btn-warning">
+                        <button type="submit" class="btn btn-warning" title="Registrar saldo devolvido ao Global">
                           <i class="fas fa-money-bill-wave"></i> Saldo Devolvido
                         </button>
                       </form>
                       {% else %}
-                      <span>Devolvido em {{ rd[18] }}</span>
+                      <span style="color: var(--success-color); font-weight:600;">
+                        Já devolvido em {{ rd[18] }}
+                      </span>
                       {% endif %}
                     {% endif %}
                   </td>
@@ -828,7 +867,7 @@ $(document).ready(function(){
   $('#tabela-fechamento-solicitado').DataTable();
   $('#tabela-fechados').DataTable();
 
-  // Toggle dos valores
+  // Toggle dos valores (coluna "Valores")
   $('.toggle-details').on('click', function(){
     var details = $(this).closest('.valor-resumo').next('.rd-details');
     if(details.is(':visible')){
@@ -840,7 +879,7 @@ $(document).ready(function(){
     }
   });
 
-  // Toggle dos arquivos
+  // Toggle dos arquivos (coluna "Arquivos")
   $('.toggle-files').on('click', function(){
     var filesList = $(this).closest('.files-resumo').next('.files-list');
     if(filesList.is(':visible')){
