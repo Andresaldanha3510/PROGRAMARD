@@ -340,7 +340,9 @@ def add_rd():
     unidade_negocio = request.form.get('unidade_negocio','').strip()
 
     try:
-        valor = float(request.form['valor'])
+        # Converte vírgula para ponto antes de converter para float
+        valor_str = request.form['valor'].replace(',', '.')
+        valor = float(valor_str)
     except ValueError:
         flash("Valor inválido.")
         return redirect(url_for('index'))
@@ -407,7 +409,8 @@ def edit_submit(id):
     unidade_negocio = request.form.get('unidade_negocio','').strip()
 
     try:
-        valor = float(request.form['valor'])
+        valor_str = request.form['valor'].replace(',', '.')
+        valor = float(valor_str)
     except ValueError:
         flash("Valor inválido.")
         return redirect(url_for('index'))
@@ -574,7 +577,8 @@ def adicional_submit(id):
         conn.close()
 
     try:
-        valor_adicional_novo = float(request.form['valor_adicional'])
+        valor_adicional_str = request.form['valor_adicional'].replace(',', '.')
+        valor_adicional_novo = float(valor_adicional_str)
     except (ValueError,KeyError):
         flash("Valor adicional inválido.")
         return redirect(url_for('index'))
@@ -631,7 +635,8 @@ def fechamento_submit(id):
         conn.close()
 
     try:
-        valor_despesa = float(request.form['valor_despesa'])
+        valor_despesa_str = request.form['valor_despesa'].replace(',', '.')
+        valor_despesa = float(valor_despesa_str)
     except (ValueError,KeyError):
         flash("Valor da despesa inválido.")
         return redirect(url_for('index'))
@@ -676,7 +681,8 @@ def edit_saldo():
         flash("Acesso negado.")
         return redirect(url_for('index'))
     try:
-        novo_saldo = float(request.form['saldo_global'])
+        saldo_str = request.form['saldo_global'].replace(',', '.')
+        novo_saldo = float(saldo_str)
     except (ValueError,KeyError):
         flash("Saldo inválido.")
         return redirect(url_for('index'))
