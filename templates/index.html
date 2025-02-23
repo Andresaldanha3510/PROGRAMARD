@@ -4,18 +4,15 @@
   <meta charset="UTF-8">
   <title>Gerenciamento de RDs</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
   <!-- Fonte e FontAwesome -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
         referrerpolicy="no-referrer" />
-
   <!-- Estilos do DataTables -->
   <link rel="stylesheet"
         type="text/css"
         href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css" />
-
   <style>
     :root {
       --primary-color: #3498db;
@@ -234,7 +231,6 @@
   </style>
 </head>
 <body>
-
 {% if user_role is defined %}
 <div class="top-bar">
   <div class="user-info">
@@ -356,6 +352,26 @@
           <i class="fas fa-file-excel"></i> Exportar para Excel
         </a>
       </div>
+
+      <!-- Macro para mostrar os valores -->
+      {% macro mostrar_valores(rd) %}
+        {% set valor = rd[5] %}
+        {% set valor_adic = rd[7] if rd[7] else 0 %}
+        {% set valor_total = valor + valor_adic %}
+        {% set valor_despesa = rd[9] if rd[9] else 0 %}
+        {% set saldo_devolver = rd[10] if rd[10] else (valor_total - valor_despesa) %}
+        <div class="valor-resumo">
+          <span>R${{ format_currency(valor) }}</span>
+          <button class="toggle-details" title="Exibir detalhes">+</button>
+        </div>
+        <div class="rd-details">
+          <strong>Valor Solicitado:</strong> R${{ format_currency(valor) }}<br>
+          <strong>Valor Adicional:</strong> R${{ format_currency(valor_adic) }}<br>
+          <strong>Total da RD:</strong> R${{ format_currency(valor_total) }}<br>
+          <strong>Valor Gasto (Despesa):</strong> R${{ format_currency(valor_despesa) }}<br>
+          <strong>Saldo a Devolver:</strong> R${{ format_currency(saldo_devolver) }}
+        </div>
+      {% endmacro %}
 
       <!-- Abas -->
       <div class="tabs">
@@ -773,7 +789,7 @@
   {% endif %}
 </div>
 
-<!-- Modal para arquivos -->
+<!-- Modal para exibir anexos -->
 <div id="fileModal" class="modal">
   <div class="modal-content">
     <span class="close-btn" id="closeFileModal">&times;</span>
@@ -856,7 +872,6 @@ $(window).click(function(e){
   if(e.target === modal){ $(modal).hide(); }
 });
 
-// Função auxiliar para gerar URL pública
 function getPublicUrl(filename){
   return "https://pub-1e6f8559bc2b413c889fbf4860462599.r2.dev/" + filename;
 }
