@@ -427,14 +427,14 @@ def edit_submit(id):
 def approve(id):
     conn = get_pg_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT status, valor, valor_adicional, valor_liberado, tipo FROM rd WHERE id=%s", (id,))
+    cursor.execute("SELECT status, valor, valor_adicional, tipo FROM rd WHERE id=%s", (id,))
     rd_info = cursor.fetchone()
     if not rd_info:
         conn.close()
         flash("RD não encontrada.")
         return redirect(url_for('index'))
 
-    status, valor, valor_adic, valor_liberado, rd_tipo = rd_info
+    status, valor, valor_adic, rd_tipo = rd_info
     if not can_approve(status):
         conn.close()
         flash("Ação não permitida.")
@@ -449,30 +449,21 @@ def approve(id):
             WHERE id=%s
         """, (new_status, current_date, id))
     elif status == 'Aprovado' and is_financeiro():
+        # Se for reembolso, fecha direto; caso contrário, libera (valor liberado não é recalculado aqui)
         if rd_tipo.lower() == 'reembolso':
             new_status = 'Fechado'
             cursor.execute("""
-                UPDATE rd
-                SET status=%s, data_fechamento=%s
+                UPDATE rd SET status=%s, data_fechamento=%s
                 WHERE id=%s
             """, (new_status, current_date, id))
         else:
             new_status = 'Liberado'
-            valor_total = valor + (valor_adic or 0)
-            falta_liberar = valor_total - (valor_liberado or 0)
-            if falta_liberar > 0:
-                saldo = get_saldo_global()
-                if falta_liberar > saldo:
-                    conn.close()
-                    flash("Saldo global insuficiente para liberar.")
-                    return redirect(url_for('index'))
-                set_saldo_global(saldo - falta_liberar)
-                valor_liberado = valor_total
+            # Aqui, o total de créditos já deve ter sido calculado na aprovação
+            total_credit = valor + (valor_adic or 0)
             cursor.execute("""
-                UPDATE rd
-                SET status=%s, liberado_data=%s, valor_liberado=%s
+                UPDATE rd SET status=%s, liberado_data=%s
                 WHERE id=%s
-            """, (new_status, current_date, valor_liberado, id))
+            """, (new_status, current_date, id))
     elif status == 'Fechamento Solicitado' and is_gestor():
         new_status = 'Fechado'
         cursor.execute("UPDATE rd SET status=%s WHERE id=%s", (new_status, id))
@@ -549,13 +540,13 @@ def adicional_submit(id):
 
     conn = get_pg_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT status, valor_adicional, adicionais_individuais FROM rd WHERE id=%s", (id,))
+    cursor.execute("SELECT status, valor_adicional, adicionais_individuais, valor FROM rd WHERE id=%s", (id,))
     rd_status = cursor.fetchone()
     if not rd_status:
         conn.close()
         flash("RD não encontrada.")
         return redirect(url_for('index'))
-    status_atual, valor_adic_atual, adicionais_individuais = rd_status
+    status_atual, valor_adic_atual, adicionais_individuais, valor_solicitado = rd_status
     if not can_request_additional(status_atual):
         conn.close()
         flash("Não é possível solicitar adicional agora.")
@@ -610,32 +601,31 @@ def fechamento_submit(id):
 
     conn = get_pg_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT status, valor_liberado FROM rd WHERE id=%s", (id,))
+    # Recalcula o total de créditos a partir do valor solicitado e do valor adicional
+    cursor.execute("SELECT valor, valor_adicional, status FROM rd WHERE id=%s", (id,))
     rd_info = cursor.fetchone()
     if not rd_info:
         conn.close()
         flash("RD não encontrada.")
         return redirect(url_for('index'))
-
-    status_atual, valor_liberado = rd_info
+    valor_solicitado, valor_adicional, status_atual = rd_info
     if not can_close(status_atual):
         conn.close()
         flash("Não é possível fechar esta RD agora.")
         return redirect(url_for('index'))
-
-    if valor_liberado < valor_despesa:
+    total_credit = valor_solicitado + (valor_adicional or 0)
+    if total_credit < valor_despesa:
         conn.close()
-        flash("Valor da despesa maior que o valor liberado.")
+        flash("Valor da despesa maior que o total de créditos solicitados.")
         return redirect(url_for('index'))
-
-    saldo_dev = valor_liberado - valor_despesa
+    saldo_devolver = total_credit - valor_despesa
     data_fech = datetime.now().strftime('%Y-%m-%d')
     cursor.execute("""
         UPDATE rd
         SET valor_despesa=%s, saldo_devolver=%s, data_fechamento=%s,
             status='Fechamento Solicitado'
         WHERE id=%s
-    """, (valor_despesa, saldo_dev, data_fech, id))
+    """, (valor_despesa, saldo_devolver, data_fech, id))
     conn.commit()
     cursor.close()
     conn.close()
@@ -674,7 +664,7 @@ def reject_fechamento(id):
 
 @app.route('/reenviar_fechamento/<id>', methods=['POST'])
 def reenviar_fechamento(id):
-    # A correção deve ser feita via formulário de edição (o botão direciona para /edit_form/<id>)
+    # O solicitante deverá corrigir via formulário de edição
     flash("Utilize o botão 'Corrigir e reenviar' para editar a RD.")
     return redirect(url_for('index'))
 
@@ -773,25 +763,24 @@ def registrar_saldo_devolvido(id):
 
     conn = get_pg_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT valor_liberado, valor_despesa, data_saldo_devolvido FROM rd WHERE id=%s", (id,))
+    # Recalcula o total de créditos a partir de "valor" e "valor_adicional"
+    cursor.execute("SELECT valor, valor_adicional, valor_despesa, data_saldo_devolvido FROM rd WHERE id=%s", (id,))
     rd_info = cursor.fetchone()
     if not rd_info:
         conn.close()
         flash("RD não encontrada.")
         return redirect(url_for('index'))
-
-    val_lib, val_desp, data_sal_dev = rd_info
+    valor, valor_adic, valor_desp, data_sal_dev = rd_info
     if data_sal_dev:
         conn.close()
         flash("Saldo já registrado antes.")
         return redirect(url_for('index'))
-
-    if val_lib < float(val_desp or 0):
+    total_credit = valor + (valor_adic or 0)
+    if total_credit < (valor_desp or 0):
         conn.close()
-        flash("Despesa maior que o valor liberado.")
+        flash("Despesa maior que o total de créditos.")
         return redirect(url_for('index'))
-
-    saldo_devolver = val_lib - (val_desp or 0)
+    saldo_devolver = total_credit - (valor_desp or 0)
     saldo = get_saldo_global()
     set_saldo_global(saldo + saldo_devolver)
     current_date = datetime.now().strftime('%Y-%m-%d')
