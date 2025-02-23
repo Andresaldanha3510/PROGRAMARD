@@ -49,7 +49,7 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 app = Flask(__name__)
-# Deixa disponível a função get_r2_public_url no jinja
+# Torna a função get_r2_public_url acessível nos templates
 app.jinja_env.globals.update(get_r2_public_url=get_r2_public_url)
 
 secret_key = os.getenv('SECRET_KEY', 'secret123')
@@ -81,7 +81,7 @@ def init_db():
     conn = get_pg_connection()
     cursor = conn.cursor()
 
-    # Cria tabela RD se não existir
+    # Cria tabela RD se não existir (com campos básicos)
     create_rd_table = """
     CREATE TABLE IF NOT EXISTS rd (
         id TEXT PRIMARY KEY,
@@ -105,58 +105,38 @@ def init_db():
     """
     cursor.execute(create_rd_table)
 
-    # Garantir colunas extras já existentes ou adicionar se necessário
-    cursor.execute("""
-        SELECT column_name
-        FROM information_schema.columns
-        WHERE table_name='rd' AND column_name='valor_liberado';
-    """)
+    # Garante as colunas extras necessárias:
+    cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name='rd' AND column_name='valor_liberado';")
     if not cursor.fetchone():
         cursor.execute("ALTER TABLE rd ADD COLUMN valor_liberado NUMERIC(15,2) DEFAULT 0;")
-    cursor.execute("""
-        SELECT column_name
-        FROM information_schema.columns
-        WHERE table_name='rd' AND column_name='observacao';
-    """)
+
+    cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name='rd' AND column_name='observacao';")
     if not cursor.fetchone():
         cursor.execute("ALTER TABLE rd ADD COLUMN observacao TEXT;")
-    cursor.execute("""
-        SELECT column_name
-        FROM information_schema.columns
-        WHERE table_name='rd' AND column_name='tipo';
-    """)
+
+    cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name='rd' AND column_name='tipo';")
     if not cursor.fetchone():
         cursor.execute("ALTER TABLE rd ADD COLUMN tipo TEXT DEFAULT 'credito alelo';")
-    cursor.execute("""
-        SELECT column_name
-        FROM information_schema.columns
-        WHERE table_name='rd' AND column_name='data_saldo_devolvido';
-    """)
+
+    cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name='rd' AND column_name='data_saldo_devolvido';")
     if not cursor.fetchone():
         cursor.execute("ALTER TABLE rd ADD COLUMN data_saldo_devolvido DATE;")
-    cursor.execute("""
-        SELECT column_name
-        FROM information_schema.columns
-        WHERE table_name='rd' AND column_name='unidade_negocio';
-    """)
+
+    cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name='rd' AND column_name='unidade_negocio';")
     if not cursor.fetchone():
         cursor.execute("ALTER TABLE rd ADD COLUMN unidade_negocio TEXT;")
+
     # Coluna para motivo da recusa
-    cursor.execute("""
-        SELECT column_name FROM information_schema.columns 
-        WHERE table_name='rd' AND column_name='motivo_recusa';
-    """)
+    cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name='rd' AND column_name='motivo_recusa';")
     if not cursor.fetchone():
         cursor.execute("ALTER TABLE rd ADD COLUMN motivo_recusa TEXT;")
-    # Coluna para adicionais individuais
-    cursor.execute("""
-        SELECT column_name FROM information_schema.columns 
-        WHERE table_name='rd' AND column_name='adicionais_individuais';
-    """)
+    
+    # Coluna para armazenar os adicionais individuais
+    cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name='rd' AND column_name='adicionais_individuais';")
     if not cursor.fetchone():
         cursor.execute("ALTER TABLE rd ADD COLUMN adicionais_individuais TEXT;")
 
-    # Saldo Global
+    # Tabela para saldo global
     create_saldo_global_table = """
     CREATE TABLE IF NOT EXISTS saldo_global (
         id SERIAL PRIMARY KEY,
@@ -186,7 +166,7 @@ def generate_custom_id():
     if not last_id:
         return f"400.{current_year}"
     last_str = last_id[0]
-    last_num_str, last_yr_str = last_str.split('.')
+    last_num_str, _ = last_str.split('.')
     last_num = int(last_num_str)
     return f"{last_num+1}.{current_year}"
 
@@ -217,26 +197,28 @@ def can_edit(status):
 def can_delete(status, solicitante):
     if status == 'Fechado':
         return False
-    if status=='Pendente' and is_solicitante():
+    if status == 'Pendente' and is_solicitante():
         return True
     if (is_gestor() or is_financeiro()) and status in ['Pendente','Aprovado','Liberado']:
         return True
     return False
 
 def can_approve(status):
-    if status=='Pendente' and is_gestor():
+    # Gestor aprova RD em status Pendente ou Fechamento Solicitado
+    if status == 'Pendente' and is_gestor():
         return True
-    if status=='Aprovado' and is_financeiro():
+    if status == 'Fechamento Solicitado' and is_gestor():
         return True
-    if status=='Fechamento Solicitado' and is_gestor():
+    # Financeiro aprova RD em status Aprovado
+    if status == 'Aprovado' and is_financeiro():
         return True
     return False
 
 def can_request_additional(status):
-    return (is_solicitante() and status=='Liberado')
+    return (is_solicitante() and status == 'Liberado')
 
 def can_close(status):
-    return (is_solicitante() and status=='Liberado')
+    return (is_solicitante() and status == 'Liberado')
 
 def get_saldo_global():
     conn = get_pg_connection()
@@ -258,23 +240,23 @@ def format_currency(value):
         return "0,00"
     s = f"{value:,.2f}"
     parts = s.split('.')
-    left = parts[0].replace(',','.')
+    left = parts[0].replace(',', '.')
     right = parts[1]
     return f"{left},{right}"
 
-@app.route('/', methods=['GET','POST'])
+@app.route('/', methods=['GET', 'POST'])
 def index():
-    if request.method=='POST':
-        username = request.form.get('username','').strip()
-        password = request.form.get('password','').strip()
-        if username=='gestor' and password=='115289':
-            session['user_role']='gestor'
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip()
+        password = request.form.get('password', '').strip()
+        if username == 'gestor' and password == '115289':
+            session['user_role'] = 'gestor'
             flash("Login como gestor bem-sucedido.")
-        elif username=='financeiro' and password=='351073':
-            session['user_role']='financeiro'
+        elif username == 'financeiro' and password == '351073':
+            session['user_role'] = 'financeiro'
             flash("Login como financeiro bem-sucedido.")
-        elif username=='solicitante' and password=='102030':
-            session['user_role']='solicitante'
+        elif username == 'solicitante' and password == '102030':
+            session['user_role'] = 'solicitante'
             flash("Login como solicitante bem-sucedido.")
         else:
             flash("Credenciais inválidas.")
@@ -286,29 +268,21 @@ def index():
 
     conn = get_pg_connection()
     cursor = conn.cursor()
-
     cursor.execute("SELECT * FROM rd WHERE status='Pendente'")
     pendentes = cursor.fetchall()
-
     cursor.execute("SELECT * FROM rd WHERE status='Aprovado'")
     aprovados = cursor.fetchall()
-
     cursor.execute("SELECT * FROM rd WHERE status='Liberado'")
     liberados = cursor.fetchall()
-
     cursor.execute("SELECT * FROM rd WHERE status='Fechamento Solicitado'")
     fechamento_solicitado = cursor.fetchall()
-
     cursor.execute("SELECT * FROM rd WHERE status='Fechado'")
     fechados = cursor.fetchall()
-
     cursor.execute("SELECT * FROM rd WHERE status='Recusado'")
     recusados = cursor.fetchall()
-
     saldo_global = get_saldo_global()
     adicional_id = request.args.get('adicional')
     fechamento_id = request.args.get('fechamento')
-
     conn.close()
 
     return render_template(
@@ -343,13 +317,12 @@ def add_rd():
     funcionario     = request.form['funcionario'].strip()
     data            = request.form['data'].strip()
     centro_custo    = request.form['centro_custo'].strip()
-    observacao      = request.form.get('observacao','').strip()
-    rd_tipo         = request.form.get('tipo','credito alelo').strip()
-    unidade_negocio = request.form.get('unidade_negocio','').strip()
+    observacao      = request.form.get('observacao', '').strip()
+    rd_tipo         = request.form.get('tipo', 'credito alelo').strip()
+    unidade_negocio = request.form.get('unidade_negocio', '').strip()
 
     try:
-        valor_str = request.form['valor'].replace(',', '.')
-        valor = float(valor_str)
+        valor = float(request.form['valor'].replace(',', '.'))
     except ValueError:
         flash("Valor inválido.")
         return redirect(url_for('index'))
@@ -372,9 +345,9 @@ def add_rd():
             valor, status, arquivos, valor_liberado, observacao,
             tipo, unidade_negocio
         )
-        VALUES (%s,%s,%s,%s,%s,
-                %s,%s,%s,0,%s,
-                %s,%s)
+        VALUES (%s, %s, %s, %s, %s,
+                %s, %s, %s, 0, %s,
+                %s, %s)
     """, (custom_id, solicitante, funcionario, data, centro_custo,
           valor, 'Pendente', arquivos_str, observacao,
           rd_tipo, unidade_negocio))
@@ -412,12 +385,11 @@ def edit_submit(id):
     funcionario     = request.form['funcionario'].strip()
     data            = request.form['data'].strip()
     centro_custo    = request.form['centro_custo'].strip()
-    observacao      = request.form.get('observacao','').strip()
-    unidade_negocio = request.form.get('unidade_negocio','').strip()
+    observacao      = request.form.get('observacao', '').strip()
+    unidade_negocio = request.form.get('unidade_negocio', '').strip()
 
     try:
-        valor_str = request.form['valor'].replace(',', '.')
-        valor = float(valor_str)
+        valor = float(request.form['valor'].replace(',', '.'))
     except ValueError:
         flash("Valor inválido.")
         return redirect(url_for('index'))
@@ -448,8 +420,7 @@ def edit_submit(id):
             unidade_negocio=%s
         WHERE id=%s
     """, (solicitante, funcionario, data, centro_custo, valor,
-          arquivos_str, observacao, unidade_negocio,
-          id))
+          arquivos_str, observacao, unidade_negocio, id))
     conn.commit()
     cursor.close()
     conn.close()
@@ -475,14 +446,14 @@ def approve(id):
 
     current_date = datetime.now().strftime('%Y-%m-%d')
 
-    if status=='Pendente' and is_gestor():
+    if status == 'Pendente' and is_gestor():
         new_status = 'Aprovado'
         cursor.execute("""
             UPDATE rd SET status=%s, aprovado_data=%s
             WHERE id=%s
         """, (new_status, current_date, id))
-    elif status=='Aprovado' and is_financeiro():
-        if rd_tipo.lower()=='reembolso':
+    elif status == 'Aprovado' and is_financeiro():
+        if rd_tipo.lower() == 'reembolso':
             new_status = 'Fechado'
             cursor.execute("""
                 UPDATE rd
@@ -506,7 +477,7 @@ def approve(id):
                 SET status=%s, liberado_data=%s, valor_liberado=%s
                 WHERE id=%s
             """, (new_status, current_date, valor_liberado, id))
-    elif status=='Fechamento Solicitado' and is_gestor():
+    elif status == 'Fechamento Solicitado' and is_gestor():
         new_status = 'Fechado'
         cursor.execute("UPDATE rd SET status=%s WHERE id=%s", (new_status, id))
     else:
@@ -537,7 +508,7 @@ def delete_rd(id):
         flash("Ação não permitida.")
         return redirect(url_for('index'))
 
-    if rd_status=='Liberado' and rd_liberado and rd_liberado > 0:
+    if rd_status == 'Liberado' and rd_liberado and rd_liberado > 0:
         saldo = get_saldo_global()
         set_saldo_global(saldo + rd_liberado)
 
@@ -556,6 +527,7 @@ def delete_rd(id):
 
 @app.route('/adicional_submit/<id>', methods=['POST'])
 def adicional_submit(id):
+    # Processa anexos se houver
     if 'arquivo' in request.files:
         conn = get_pg_connection()
         cursor = conn.cursor()
@@ -574,8 +546,7 @@ def adicional_submit(id):
         conn.close()
 
     try:
-        valor_adicional_str = request.form['valor_adicional'].replace(',', '.')
-        novo_valor_adicional = float(valor_adicional_str)
+        novo_valor_adicional = float(request.form['valor_adicional'].replace(',', '.'))
     except (ValueError, KeyError):
         flash("Valor adicional inválido.")
         return redirect(url_for('index'))
@@ -614,10 +585,7 @@ def adicional_submit(id):
 
 @app.route('/fechamento_submit/<id>', methods=['POST'])
 def fechamento_submit(id):
-    if not can_close(request.form.get('status')):
-        flash("Ação não permitida.")
-        return redirect(url_for('index'))
-
+    # Processa anexos, se houver
     if 'arquivo' in request.files:
         conn = get_pg_connection()
         cursor = conn.cursor()
@@ -636,8 +604,7 @@ def fechamento_submit(id):
         conn.close()
 
     try:
-        valor_despesa_str = request.form['valor_despesa'].replace(',', '.')
-        valor_despesa = float(valor_despesa_str)
+        valor_despesa = float(request.form['valor_despesa'].replace(',', '.'))
     except (ValueError, KeyError):
         flash("Valor da despesa inválido.")
         return redirect(url_for('index'))
@@ -737,8 +704,7 @@ def edit_saldo():
         flash("Acesso negado.")
         return redirect(url_for('index'))
     try:
-        saldo_str = request.form['saldo_global'].replace(',', '.')
-        novo_saldo = float(saldo_str)
+        novo_saldo = float(request.form['saldo_global'].replace(',', '.'))
     except (ValueError, KeyError):
         flash("Saldo inválido.")
         return redirect(url_for('index'))
@@ -920,6 +886,6 @@ def logout():
     flash("Logout realizado com sucesso.")
     return redirect(url_for('index'))
 
-if __name__=='__main__':
+if __name__ == '__main__':
     init_db()
     app.run(debug=True)
