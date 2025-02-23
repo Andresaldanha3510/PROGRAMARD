@@ -49,7 +49,7 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 app = Flask(__name__)
-# Disponibiliza funções no Jinja
+# Disponibiliza funções úteis para os templates
 app.jinja_env.globals.update(
     get_r2_public_url=get_r2_public_url,
     is_gestor=lambda: session.get('user_role') == 'gestor',
@@ -86,7 +86,7 @@ def init_db():
     conn = get_pg_connection()
     cursor = conn.cursor()
 
-    # Cria tabela RD se não existir
+    # Cria a tabela RD se não existir
     create_rd_table = """
     CREATE TABLE IF NOT EXISTS rd (
         id TEXT PRIMARY KEY,
@@ -110,8 +110,8 @@ def init_db():
     """
     cursor.execute(create_rd_table)
 
-    # Garante colunas extras
-    for col_cmd in [
+    # Garante que as colunas extras existam
+    for col_name, alter_cmd in [
         ("valor_liberado", "ALTER TABLE rd ADD COLUMN valor_liberado NUMERIC(15,2) DEFAULT 0;"),
         ("observacao", "ALTER TABLE rd ADD COLUMN observacao TEXT;"),
         ("tipo", "ALTER TABLE rd ADD COLUMN tipo TEXT DEFAULT 'credito alelo';"),
@@ -120,13 +120,12 @@ def init_db():
         ("motivo_recusa", "ALTER TABLE rd ADD COLUMN motivo_recusa TEXT;"),
         ("adicionais_individuais", "ALTER TABLE rd ADD COLUMN adicionais_individuais TEXT;")
     ]:
-        col_name, cmd = col_cmd
         cursor.execute(
             "SELECT column_name FROM information_schema.columns WHERE table_name='rd' AND column_name=%s;", 
             (col_name,)
         )
         if not cursor.fetchone():
-            cursor.execute(cmd)
+            cursor.execute(alter_cmd)
 
     # Tabela para saldo global
     create_saldo_global_table = """
@@ -181,7 +180,8 @@ def can_edit(status):
     if status == 'Fechado':
         return False
     if is_solicitante():
-        return (status == 'Pendente')
+        # Permitindo edição se estiver em 'Pendente' ou em 'Fechamento Recusado'
+        return status in ['Pendente', 'Fechamento Recusado']
     if is_gestor() or is_financeiro():
         return True
     return False
@@ -268,8 +268,8 @@ def index():
     fechamento_solicitado = cursor.fetchall()
     cursor.execute("SELECT * FROM rd WHERE status='Fechado'")
     fechados = cursor.fetchall()
-    cursor.execute("SELECT * FROM rd WHERE status='Recusado'")
-    recusados = cursor.fetchall()
+    cursor.execute("SELECT * FROM rd WHERE status='Fechamento Recusado'")
+    fechamento_recusado = cursor.fetchall()
     saldo_global = get_saldo_global()
     adicional_id = request.args.get('adicional')
     fechamento_id = request.args.get('fechamento')
@@ -286,7 +286,7 @@ def index():
         liberados=liberados,
         fechamento_solicitado=fechamento_solicitado,
         fechados=fechados,
-        recusados=recusados,
+        fechamento_recusado=fechamento_recusado,
         can_add=can_add(),
         can_delete_func=can_delete,
         can_edit_func=can_edit,
@@ -386,9 +386,10 @@ def edit_submit(id):
 
     conn = get_pg_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT arquivos FROM rd WHERE id=%s", (id,))
-    rd_data = cursor.fetchone()
-    arquivos = rd_data[0].split(',') if rd_data and rd_data[0] else []
+    cursor.execute("SELECT status, arquivos FROM rd WHERE id=%s", (id,))
+    row = cursor.fetchone()
+    original_status = row[0]
+    arquivos = row[1].split(',') if row and row[1] else []
 
     if 'arquivo' in request.files:
         for file in request.files.getlist('arquivo'):
@@ -411,6 +412,12 @@ def edit_submit(id):
         WHERE id=%s
     """, (solicitante, funcionario, data, centro_custo, valor,
           arquivos_str, observacao, unidade_negocio, id))
+    
+    # Se o solicitante estiver corrigindo uma RD que foi rejeitada (Fechamento Recusado),
+    # atualiza para "Fechamento Solicitado" e limpa o motivo.
+    if is_solicitante() and original_status == 'Fechamento Recusado':
+        cursor.execute("UPDATE rd SET status='Fechamento Solicitado', motivo_recusa=NULL WHERE id=%s", (id,))
+    
     conn.commit()
     cursor.close()
     conn.close()
@@ -640,6 +647,7 @@ def reject_fechamento(id):
     cursor = conn.cursor()
     cursor.execute("SELECT status FROM rd WHERE id=%s", (id,))
     row = cursor.fetchone()
+    # Verifica se o status é "Fechamento Solicitado"
     if not row or row[0] != 'Fechamento Solicitado':
         conn.close()
         flash("Ação não permitida.")
@@ -652,7 +660,7 @@ def reject_fechamento(id):
     
     cursor.execute("""
         UPDATE rd 
-        SET status='Recusado', motivo_recusa=%s 
+        SET status='Fechamento Recusado', motivo_recusa=%s 
         WHERE id=%s
     """, (motivo, id))
     conn.commit()
@@ -663,27 +671,8 @@ def reject_fechamento(id):
 
 @app.route('/reenviar_fechamento/<id>', methods=['POST'])
 def reenviar_fechamento(id):
-    if not is_solicitante():
-        flash("Acesso negado.")
-        return redirect(url_for('index'))
-    conn = get_pg_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT status FROM rd WHERE id=%s", (id,))
-    row = cursor.fetchone()
-    if not row or row[0] != 'Recusado':
-        conn.close()
-        flash("Ação não permitida.")
-        return redirect(url_for('index'))
-    
-    cursor.execute("""
-        UPDATE rd 
-        SET status='Fechamento Solicitado', motivo_recusa=NULL 
-        WHERE id=%s
-    """, (id,))
-    conn.commit()
-    cursor.close()
-    conn.close()
-    flash("Fechamento reenviado para aprovação.")
+    # Esta rota não é mais utilizada, pois a correção será feita via o formulário de edição.
+    flash("Utilize o botão 'Corrigir e reenviar' para editar a RD.")
     return redirect(url_for('index'))
 
 @app.route('/edit_saldo', methods=['POST'])
