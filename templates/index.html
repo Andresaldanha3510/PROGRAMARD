@@ -5,7 +5,7 @@
   <title>Gerenciamento de RDs</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- Fonte e FontAwesome (sem integrity para evitar erros) -->
+  <!-- Fonte e FontAwesome -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet"
         href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
@@ -37,34 +37,25 @@
       background-color: var(--background-color);
       color: var(--text-color);
     }
-    
-    .btn i {
-  margin-right: 5px;
-     }
-    
-     .top-bar {
+    .btn i { margin-right: 5px; }
+    .top-bar {
       background: var(--header-color);
       padding:10px 20px;
       display:flex; justify-content:space-between; align-items:center;
       color:#fff;
     }
-    .top-bar .user-info {
-      font-weight:600;
-    }
+    .top-bar .user-info { font-weight:600; }
     .top-bar a {
       color:#fff; margin-left:10px; text-decoration:none;
       display:inline-flex; align-items:center;
     }
     .top-bar a:hover { text-decoration:underline; }
-
     .container {
       max-width:1200px; margin:20px auto; padding:20px;
       background:#fff; border-radius:10px;
       box-shadow:0 4px 20px rgba(0,0,0,0.1);
     }
-    h1, h2 {
-      text-align:center; margin:20px 0; font-weight:700;
-    }
+    h1, h2 { text-align:center; margin:20px 0; font-weight:700; }
     .main-form {
       margin-bottom:20px; border:1px solid var(--border-color);
       border-radius:10px; padding:20px; background:#fff;
@@ -86,21 +77,20 @@
       display:inline-flex; align-items:center;
     }
     .main-form button:hover { background-color:#2980b9; }
-
     button, .btn {
       padding:8px 15px; border:none; border-radius:5px;
       font-size:0.9rem; cursor:pointer; display:inline-flex;
       align-items:center; justify-content:center;
       transition: background-color 0.3s ease, transform 0.2s ease;
     }
-    .btn-primary{ background-color:var(--primary-color); color:#fff; }
-    .btn-secondary{ background-color:var(--secondary-color); color:#fff; }
-    .btn-success{ background-color:var(--success-color); color:#fff; }
-    .btn-danger{ background-color:var(--danger-color); color:#fff; }
-    .btn-warning{ background-color:var(--warning-color); color:#34495e; }
-    .btn-approve{ background-color:var(--success-color); color:#fff; }
-    .btn-additional{ background-color:var(--secondary-color); color:#fff; }
-    .btn-fechamento{ background-color:#8e44ad; color:#fff; }
+    .btn-primary { background-color:var(--primary-color); color:#fff; }
+    .btn-secondary { background-color:var(--secondary-color); color:#fff; }
+    .btn-success { background-color:var(--success-color); color:#fff; }
+    .btn-danger { background-color:var(--danger-color); color:#fff; }
+    .btn-warning { background-color:var(--warning-color); color:#34495e; }
+    .btn-approve { background-color:var(--success-color); color:#fff; }
+    .btn-additional { background-color:var(--secondary-color); color:#fff; }
+    .btn-fechamento { background-color:#8e44ad; color:#fff; }
     .btn-delete-rd {
       background-color:var(--danger-color);
       padding:8px 18px; font-size:0.75rem; color:#fff;
@@ -113,11 +103,8 @@
     .btn-edit {
       background-color:#f1c40f; color:#34495e;
     }
-
-    /* Tabela */
     table {
-      width:100%; 
-      border-collapse: collapse; /* colapsamos para separar colunas */
+      width:100%; border-collapse: collapse;
       margin-top:20px; background:#fff; border-radius:8px;
       overflow:hidden; box-shadow:0 2px 10px rgba(0,0,0,0.05);
     }
@@ -133,10 +120,8 @@
     tr:hover { background-color:#f9f9f9; }
     @media (max-width:768px){
       table, thead, tbody, th, td, tr { display:block; }
-      th {
-        position:absolute; top:-9999px; left:-9999px;
-      }
-      tr{ margin-bottom:15px; }
+      th { position:absolute; top:-9999px; left:-9999px; }
+      tr { margin-bottom:15px; }
       td {
         border:none; position:relative; padding-left:50%;
         white-space: pre-wrap; border-bottom:1px solid var(--border-color);
@@ -145,9 +130,7 @@
         content:attr(data-label);
         position:absolute; left:15px; font-weight:600;
       }
-      .btn, .btn-delete-rd {
-        width:100%; margin-bottom:10px;
-      }
+      .btn, .btn-delete-rd { width:100%; margin-bottom:10px; }
     }
     .arquivo-link {
       text-decoration:none; color:var(--primary-color);
@@ -173,29 +156,26 @@
     .tab-labels label {
       background-color:#ecf0f1; padding:8px 15px; margin:2px;
       border-radius:5px; cursor:pointer; transition:background-color 0.3s;
-      font-weight:600;
-      display:inline-flex; align-items:center;
-      gap:5px;
+      font-weight:600; display:inline-flex; align-items:center; gap:5px;
     }
     .tab-labels label:hover { background-color:#ddd; }
     .tab-content { display:none; }
     input[type="radio"]:checked + label {
       background-color:var(--primary-color); color:#fff;
     }
-    /* Exibir a aba selecionada (5 abas) */
+    /* Exibe a aba selecionada */
     #tab1:checked ~ .content #content1,
     #tab2:checked ~ .content #content2,
     #tab3:checked ~ .content #content3,
     #tab4:checked ~ .content #content4,
-    #tab5:checked ~ .content #content5 {
+    #tab5:checked ~ .content #content5,
+    #tab6:checked ~ .content #content6 {
       display:block;
     }
     .valor-resumo {
       display:flex; align-items:center; gap:10px;
     }
-    .valor-resumo span {
-      font-weight:600;
-    }
+    .valor-resumo span { font-weight:600; }
     .valor-resumo button.toggle-details {
       border:none; background:none; font-weight:700; font-size:1.1rem;
       cursor:pointer; color:var(--primary-color);
@@ -205,8 +185,6 @@
       border:1px solid #ddd; border-radius:5px;
       display:none;
     }
-
-    /* Badge (balão de contagem) */
     .badge {
       background-color: var(--danger-color);
       color: #fff;
@@ -217,17 +195,14 @@
       min-width: 20px;
       text-align: center;
     }
-
-    /* Modal para exibir anexos */
     .modal {
-      display: none; /* inicialmente oculto */
+      display: none;
       position: fixed; 
       z-index: 9999; 
       left: 0; top: 0;
-      width: 100%; 
-      height: 100%;
-      overflow: auto; 
-      background-color: rgba(0,0,0,0.5); /* fundo escuro transparente */
+      width: 100%; height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.5);
     }
     .modal-content {
       background-color: #fff;
@@ -239,16 +214,13 @@
     }
     .close-btn {
       position: absolute;
-      top: 10px; 
-      right: 15px;
+      top: 10px; right: 15px;
       color: #999;
       font-size: 1.2rem;
       cursor: pointer;
       font-weight: 600;
     }
-    .close-btn:hover {
-      color: #333;
-    }
+    .close-btn:hover { color: #333; }
     .modal-content h3 {
       margin-top:0;
       font-weight:600;
@@ -258,10 +230,7 @@
     .file-item {
       display:flex; align-items:center; margin-bottom:8px;
     }
-    .file-item form {
-      margin:0; padding:0;
-      display:inline-block;
-    }
+    .file-item form { margin:0; padding:0; display:inline-block; }
   </style>
 </head>
 <body>
@@ -281,15 +250,14 @@
 {% endif %}
 
 <div class="container">
-
   {% with messages = get_flashed_messages() %}
-  {% if messages %}
-  <ul>
-    {% for message in messages %}
-    <li class="error-message">{{ message }}</li>
-    {% endfor %}
-  </ul>
-  {% endif %}
+    {% if messages %}
+    <ul>
+      {% for message in messages %}
+      <li class="error-message">{{ message }}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
   {% endwith %}
 
   <div style="text-align:center; margin-top:20px;">
@@ -300,23 +268,18 @@
   <h1>Gerenciamento de RDs</h1>
 
   {% if user_role is not defined %}
-    <!-- ===================== FORMULÁRIO DE LOGIN ===================== -->
     <form action="/" method="POST" class="main-form">
       {% if error %}
       <p class="error-message">{{ error }}</p>
       {% endif %}
       <label for="username">Usuário:</label>
       <input type="text" id="username" name="username" required>
-
       <label for="password">Senha:</label>
       <input type="password" id="password" name="password" required>
-
       <button type="submit"><i class="fas fa-sign-in-alt"></i> Entrar</button>
     </form>
   {% else %}
-
     {% if adicional_id %}
-      <!-- ===================== FORMULÁRIO DE CRÉDITO ADICIONAL ===================== -->
       <div class="form-adicional">
         <h2>Solicitar Crédito Adicional para RD #{{ adicional_id }}</h2>
         <form action="/adicional_submit/{{ adicional_id }}"
@@ -325,16 +288,12 @@
               class="main-form">
           <label for="valor_adicional">Valor Adicional (R$):</label>
           <input type="number" id="valor_adicional" name="valor_adicional" step="0.01" required>
-
           <label for="arquivo">Anexar Arquivos (opcional):</label>
           <input type="file" id="arquivo" name="arquivo" multiple>
-
           <button type="submit"><i class="fas fa-paper-plane"></i> Solicitar Adicional</button>
         </form>
       </div>
-
     {% elif fechamento_id %}
-      <!-- ===================== FORMULÁRIO DE FECHAMENTO ===================== -->
       <div class="form-fechamento">
         <h2>Fechamento da RD #{{ fechamento_id }}</h2>
         <form action="/fechamento_submit/{{ fechamento_id }}"
@@ -343,16 +302,12 @@
               class="main-form">
           <label for="valor_despesa">Valor da Despesa (R$):</label>
           <input type="number" id="valor_despesa" name="valor_despesa" step="0.01" required>
-
           <label for="arquivo">Anexar Arquivos Finais (opcional):</label>
           <input type="file" id="arquivo" name="arquivo" multiple>
-
           <button type="submit"><i class="fas fa-check-circle"></i> Fechar RD</button>
         </form>
       </div>
-
     {% else %}
-      <!-- ================= FORM PRINCIPAL + ABAS ================= -->
       {% if can_add %}
       <div style="text-align:center; margin-bottom:20px;">
         <button type="button" id="btn-alelo" class="btn btn-primary">
@@ -368,141 +323,70 @@
             enctype="multipart/form-data"
             class="main-form"
             style="display:none;">
-        <!-- Label com ID para mudar dinamicamente -->
         <label id="lbl-solicitante" for="solicitante">Solicitante:</label>
         <input type="text" id="solicitante" name="solicitante" required>
-
         <label for="funcionario">Funcionário:</label>
         <input type="text" id="funcionario" name="funcionario" required>
-
         <label for="data">Data:</label>
         <input type="date" id="data" name="data" required>
-
         <label for="centro_custo">Centro de Custo:</label>
         <input type="text" id="centro_custo" name="centro_custo" required>
-
         <label for="unidade_negocio">Unidade de Negócio:</label>
-        <input type="text" id="unidade_negocio" name="unidade_negocio"
-               placeholder="cod. Filial">
-
+        <input type="text" id="unidade_negocio" name="unidade_negocio" placeholder="cod. Filial">
         <label for="valor">Valor (R$):</label>
         <input type="number" id="valor" name="valor" step="0.01" required>
-
         <label for="observacao">Observação:</label>
         <textarea id="observacao" name="observacao" rows="3"></textarea>
-
         <label for="arquivo">Anexar Arquivos:</label>
         <input type="file" id="arquivo" name="arquivo" multiple>
-
-        <!-- Campo oculto para definir o tipo (Crédito Alelo / Reembolso) -->
         <input type="hidden" name="tipo" id="rd-tipo" value="">
-
         <button type="submit"><i class="fas fa-plus-circle"></i> Enviar Solicitação</button>
       </form>
       {% endif %}
-
       {% if user_role=='financeiro' %}
       <h2>Editar Saldo Global</h2>
       <form action="{{ url_for('edit_saldo') }}" method="POST" class="main-form">
         <label for="saldo_global">Saldo Global (R$):</label>
-        <input type="number" id="saldo_global" name="saldo_global"
-               step="0.01" value="{{ saldo_global }}" required>
+        <input type="number" id="saldo_global" name="saldo_global" step="0.01" value="{{ saldo_global }}" required>
         <button type="submit"><i class="fas fa-sync-alt"></i> Atualizar Saldo</button>
       </form>
       {% endif %}
-
       <div style="text-align:center; margin:20px 0;">
         <a href="{{ url_for('export_excel') }}" class="btn btn-success">
           <i class="fas fa-file-excel"></i> Exportar para Excel
         </a>
       </div>
 
-      <!-- Macro para exibir detalhes de valores (toggle) -->
-      {% macro mostrar_valores(rd) %}
-        {% set valor = rd[5] %}
-        {% set valor_adic = rd[7] if rd[7] else 0 %}
-        {% set valor_total = valor + valor_adic %}
-        {% set valor_despesa = rd[9] if rd[9] else 0 %}
-        {% set saldo_devolver = rd[10] if rd[10] else (valor_total - valor_despesa) %}
-        {% set adicional_data = rd[8] if rd[8] else 'N/A' %}
-        {% set data_fechamento = rd[11] if rd[11] else 'N/A' %}
-        {% set aprovado_data = rd[13] if rd[13] else 'N/A' %}
-        {% set liberado_data = rd[14] if rd[14] else 'N/A' %}
-        {% set data_saldo_dev = rd[18] if rd|length>18 else '' %}
-        <div class="valor-resumo">
-          <span>R${{ format_currency(valor) }}</span>
-          <button class="toggle-details" title="Exibir detalhes">+</button>
-        </div>
-        <div class="rd-details">
-          <strong>Valor Solicitado:</strong> R${{ format_currency(valor) }}<br>
-          <strong>Data da Solicitação:</strong> {{ rd[3] }}<br>
-          <strong>Valor Adicional:</strong> R${{ format_currency(valor_adic) }}<br>
-          {% if adicional_data != 'N/A' %}
-            <strong>Data do Adicional:</strong> {{ adicional_data }}<br>
-          {% endif %}
-          <strong>Total da RD:</strong> R${{ format_currency(valor_total) }}<br>
-          <strong>Valor Gasto (Despesa):</strong> R${{ format_currency(valor_despesa) }}<br>
-          <strong>Saldo a Devolver:</strong> R${{ format_currency(saldo_devolver) }}<br>
-          {% if aprovado_data!='N/A' %}
-            <strong>Aprovado em:</strong> {{ aprovado_data }}<br>
-          {% endif %}
-          {% if liberado_data!='N/A' %}
-            <strong>Liberado em:</strong> {{ liberado_data }}<br>
-          {% endif %}
-          {% if data_fechamento!='N/A' %}
-            <strong>Fechado em:</strong> {{ data_fechamento }}<br>
-          {% endif %}
-          {% if data_saldo_dev %}
-            <strong>Saldo devolvido em:</strong> {{ data_saldo_dev }}
-          {% endif %}
-        </div>
-      {% endmacro %}
-
-      <!-- Abas: Pendentes, Aprovados, Liberados, Fechamento Solicitado, Fechados -->
+      <!-- Abas -->
       <div class="tabs">
-        <!-- Cada input "radio" controla a aba selecionada -->
         <input type="radio" name="tab-control" id="tab1" checked>
         <input type="radio" name="tab-control" id="tab2">
         <input type="radio" name="tab-control" id="tab3">
         <input type="radio" name="tab-control" id="tab4">
         <input type="radio" name="tab-control" id="tab5">
-
-        <!-- Rótulos das abas com "baloes" de contagem -->
+        <input type="radio" name="tab-control" id="tab6">
         <div class="tab-labels">
           <label for="tab1">
-            Pendentes
-            {% if pendentes|length > 0 %}
-            <span class="badge">{{ pendentes|length }}</span>
-            {% endif %}
+            Pendentes {% if pendentes|length > 0 %}<span class="badge">{{ pendentes|length }}</span>{% endif %}
           </label>
           <label for="tab2">
-            Aprovados
-            {% if aprovados|length > 0 %}
-            <span class="badge">{{ aprovados|length }}</span>
-            {% endif %}
+            Aprovados {% if aprovados|length > 0 %}<span class="badge">{{ aprovados|length }}</span>{% endif %}
           </label>
           <label for="tab3">
-            Liberados
-            {% if liberados|length > 0 %}
-            <span class="badge">{{ liberados|length }}</span>
-            {% endif %}
+            Liberados {% if liberados|length > 0 %}<span class="badge">{{ liberados|length }}</span>{% endif %}
           </label>
           <label for="tab4">
-            Fechamento Solicitado
-            {% if fechamento_solicitado|length > 0 %}
-            <span class="badge">{{ fechamento_solicitado|length }}</span>
-            {% endif %}
+            Fechamento Solicitado {% if fechamento_solicitado|length > 0 %}<span class="badge">{{ fechamento_solicitado|length }}</span>{% endif %}
           </label>
           <label for="tab5">
-            Fechados
-            {% if fechados|length > 0 %}
-            <span class="badge">{{ fechados|length }}</span>
-            {% endif %}
+            Fechados {% if fechados|length > 0 %}<span class="badge">{{ fechados|length }}</span>{% endif %}
+          </label>
+          <label for="tab6">
+            Recusados {% if recusados|length > 0 %}<span class="badge">{{ recusados|length }}</span>{% endif %}
           </label>
         </div>
-
         <div class="content">
-          <!-- =============== Pendentes =============== -->
+          <!-- Tab Pendentes -->
           <div class="tab-content" id="content1">
             <table id="tabela-pendentes" class="display">
               <thead>
@@ -520,8 +404,8 @@
               </thead>
               <tbody>
                 {% for rd in pendentes %}
-                {% set rd_id=rd[0] %}
-                {% set status=rd[6] %}
+                {% set rd_id = rd[0] %}
+                {% set status = rd[6] %}
                 <tr>
                   <td data-label="ID">
                     {{ rd_id }}<br>
@@ -530,15 +414,11 @@
                   <td data-label="Solicitante">{{ rd[1] }}</td>
                   <td data-label="Funcionário">{{ rd[2] }}</td>
                   <td data-label="Data">{{ rd[3] }}</td>
-                  <td data-label="Centro de Custo">{{ rd[4] }}</br>
-                  <small>{{ rd[19] }}</small>
-                  </td>
+                  <td data-label="Centro de Custo">{{ rd[4] }}<br><small>{{ rd[19] }}</small></td>
                   <td data-label="Observação">{{ rd[16] }}</td>
                   <td data-label="Arquivos">
                     {% if rd[12] %}
-                    <button class="btn btn-secondary btn-view-files"
-                            data-files="{{ rd[12] }}"
-                            data-rd-id="{{ rd[0] }}">
+                    <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}">
                       <i class="fas fa-paperclip"></i> Anexos
                     </button>
                     {% else %}
@@ -572,8 +452,7 @@
               </tbody>
             </table>
           </div>
-
-          <!-- =============== Aprovados =============== -->
+          <!-- Tab Aprovados -->
           <div class="tab-content" id="content2">
             <table id="tabela-aprovados" class="display">
               <thead>
@@ -591,8 +470,8 @@
               </thead>
               <tbody>
                 {% for rd in aprovados %}
-                {% set rd_id=rd[0] %}
-                {% set status=rd[6] %}
+                {% set rd_id = rd[0] %}
+                {% set status = rd[6] %}
                 <tr>
                   <td data-label="ID">
                     {{ rd_id }}<br>
@@ -605,9 +484,7 @@
                   <td data-label="Observação">{{ rd[16] }}</td>
                   <td data-label="Arquivos">
                     {% if rd[12] %}
-                    <button class="btn btn-secondary btn-view-files"
-                            data-files="{{ rd[12] }}"
-                            data-rd-id="{{ rd[0] }}">
+                    <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}">
                       <i class="fas fa-paperclip"></i> Anexos
                     </button>
                     {% else %}
@@ -641,8 +518,7 @@
               </tbody>
             </table>
           </div>
-
-          <!-- =============== Liberados =============== -->
+          <!-- Tab Liberados -->
           <div class="tab-content" id="content3">
             <table id="tabela-liberados" class="display">
               <thead>
@@ -660,8 +536,8 @@
               </thead>
               <tbody>
                 {% for rd in liberados %}
-                {% set rd_id=rd[0] %}
-                {% set status=rd[6] %}
+                {% set rd_id = rd[0] %}
+                {% set status = rd[6] %}
                 <tr>
                   <td data-label="ID">
                     {{ rd_id }}<br>
@@ -674,9 +550,7 @@
                   <td data-label="Observação">{{ rd[16] }}</td>
                   <td data-label="Arquivos">
                     {% if rd[12] %}
-                    <button class="btn btn-secondary btn-view-files"
-                            data-files="{{ rd[12] }}"
-                            data-rd-id="{{ rd[0] }}">
+                    <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}">
                       <i class="fas fa-paperclip"></i> Anexos
                     </button>
                     {% else %}
@@ -719,8 +593,7 @@
               </tbody>
             </table>
           </div>
-
-          <!-- =========== Fechamento Solicitado =========== -->
+          <!-- Tab Fechamento Solicitado -->
           <div class="tab-content" id="content4">
             <table id="tabela-fechamento-solicitado" class="display">
               <thead>
@@ -738,8 +611,8 @@
               </thead>
               <tbody>
                 {% for rd in fechamento_solicitado %}
-                {% set rd_id=rd[0] %}
-                {% set status=rd[6] %}
+                {% set rd_id = rd[0] %}
+                {% set status = rd[6] %}
                 <tr>
                   <td data-label="ID">
                     {{ rd_id }}<br>
@@ -752,9 +625,7 @@
                   <td data-label="Observação">{{ rd[16] }}</td>
                   <td data-label="Arquivos">
                     {% if rd[12] %}
-                    <button class="btn btn-secondary btn-view-files"
-                            data-files="{{ rd[12] }}"
-                            data-rd-id="{{ rd[0] }}">
+                    <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}">
                       <i class="fas fa-paperclip"></i> Anexos
                     </button>
                     {% else %}
@@ -764,11 +635,16 @@
                   <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
                   <td data-label="Ações">
                     {% if can_approve_func(status) %}
-                    <form action="/approve/{{ rd_id }}" method="POST" class="action-form">
+                    <form action="/approve/{{ rd_id }}" method="POST" class="action-form" style="display:inline-block;">
                       <button type="submit" class="btn btn-approve">
                         <i class="fas fa-check"></i> Fechar
                       </button>
                     </form>
+                    {% endif %}
+                    {% if is_gestor() and rd[6]=='Fechamento Solicitado' %}
+                    <button type="button" class="btn btn-danger btn-recusar" data-rd-id="{{ rd_id }}">
+                      <i class="fas fa-times"></i> Recusar
+                    </button>
                     {% endif %}
                   </td>
                 </tr>
@@ -776,8 +652,7 @@
               </tbody>
             </table>
           </div>
-
-          <!-- ================ Fechados ================ -->
+          <!-- Tab Fechados -->
           <div class="tab-content" id="content5">
             <table id="tabela-fechados" class="display">
               <thead>
@@ -795,8 +670,8 @@
               </thead>
               <tbody>
                 {% for rd in fechados %}
-                {% set rd_id=rd[0] %}
-                {% set status=rd[6] %}
+                {% set rd_id = rd[0] %}
+                {% set status = rd[6] %}
                 <tr>
                   <td data-label="ID">
                     {{ rd_id }}<br>
@@ -809,9 +684,7 @@
                   <td data-label="Observação">{{ rd[16] }}</td>
                   <td data-label="Arquivos">
                     {% if rd[12] %}
-                    <button class="btn btn-secondary btn-view-files"
-                            data-files="{{ rd[12] }}"
-                            data-rd-id="{{ rd[0] }}">
+                    <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}">
                       <i class="fas fa-paperclip"></i> Anexos
                     </button>
                     {% else %}
@@ -822,8 +695,7 @@
                   <td data-label="Ações">
                     {% if is_financeiro %}
                       {% if not rd[18] %}
-                      <form action="/registrar_saldo_devolvido/{{ rd_id }}"
-                            method="POST" class="action-form">
+                      <form action="/registrar_saldo_devolvido/{{ rd_id }}" method="POST" class="action-form">
                         <button type="submit" class="btn btn-warning">
                           <i class="fas fa-money-bill-wave"></i> Saldo Devolvido
                         </button>
@@ -840,22 +712,86 @@
               </tbody>
             </table>
           </div>
+          <!-- Tab Recusados -->
+          <div class="tab-content" id="content6">
+            <table id="tabela-recusados" class="display">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Solicitante</th>
+                  <th>Funcionário</th>
+                  <th>Data</th>
+                  <th>Centro de Custo</th>
+                  <th>Observação</th>
+                  <th>Motivo da Recusa</th>
+                  <th>Arquivos</th>
+                  <th>Valores</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for rd in recusados %}
+                {% set rd_id = rd[0] %}
+                <tr>
+                  <td data-label="ID">
+                    {{ rd_id }}<br>
+                    <small>({{ rd[17] }})</small>
+                  </td>
+                  <td data-label="Solicitante">{{ rd[1] }}</td>
+                  <td data-label="Funcionário">{{ rd[2] }}</td>
+                  <td data-label="Data">{{ rd[3] }}</td>
+                  <td data-label="Centro de Custo">{{ rd[4] }}</td>
+                  <td data-label="Observação">{{ rd[16] }}</td>
+                  <td data-label="Motivo da Recusa">{{ rd[17] or '---' }}</td>
+                  <td data-label="Arquivos">
+                    {% if rd[12] %}
+                    <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}">
+                      <i class="fas fa-paperclip"></i> Anexos
+                    </button>
+                    {% else %}
+                    -
+                    {% endif %}
+                  </td>
+                  <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
+                  <td data-label="Ações">
+                    {% if is_solicitante() %}
+                    <form action="/reenviar_fechamento/{{ rd_id }}" method="POST" class="action-form">
+                      <button type="submit" class="btn btn-fechamento">
+                        <i class="fas fa-edit"></i> Corrigir e reenviar
+                      </button>
+                    </form>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  {% endif %}
+</div>
 
-        </div> <!-- .content -->
-      </div> <!-- .tabs -->
-    {% endif %} <!-- fim do else de adicional_id/fechamento_id -->
-  {% endif %} <!-- fim do else de user_role definido -->
-
-</div> <!-- .container -->
-
-<!-- Modal para exibir anexos -->
+<!-- Modal para arquivos -->
 <div id="fileModal" class="modal">
   <div class="modal-content">
     <span class="close-btn" id="closeFileModal">&times;</span>
     <h3>Arquivos Anexados</h3>
-    <div id="modalFilesContainer">
-      <!-- Lista de arquivos carregada dinamicamente via JS -->
-    </div>
+    <div id="modalFilesContainer"></div>
+  </div>
+</div>
+
+<!-- Modal para recusa do fechamento -->
+<div id="recusaModal" class="modal">
+  <div class="modal-content">
+    <span class="close-btn" id="closeRecusaModal">&times;</span>
+    <h3>Informe o Motivo da Recusa</h3>
+    <form id="formRecusa" method="POST">
+      <textarea name="motivo" id="motivo" rows="4" style="width:100%;" placeholder="Digite o motivo..."></textarea>
+      <br>
+      <button type="submit" class="btn btn-danger">Enviar Recusa</button>
+    </form>
   </div>
 </div>
 
@@ -863,21 +799,20 @@
     Desenvolvido por André Ferreira
 </footer>
 
-<!-- jQuery e DataTables JS -->
+<!-- jQuery e DataTables -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script type="text/javascript"
         src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
 <script>
 $(document).ready(function(){
-  // Inicializa DataTables
   $('#tabela-pendentes').DataTable();
   $('#tabela-aprovados').DataTable();
   $('#tabela-liberados').DataTable();
   $('#tabela-fechamento-solicitado').DataTable();
   $('#tabela-fechados').DataTable();
+  $('#tabela-recusados').DataTable();
 });
 
-// Delegação de eventos para exibir/esconder o resumo de valores
 $(document).on('click', '.toggle-details', function(){
   var details = $(this).closest('.valor-resumo').next('.rd-details');
   if(details.is(':visible')){
@@ -889,17 +824,11 @@ $(document).on('click', '.toggle-details', function(){
   }
 });
 
-// Abrir modal ao clicar no botão "Ver Anexos"
 $(document).on('click', '.btn-view-files', function(){
   let filesStr = $(this).data('files');    
   let rdId     = $(this).data('rdId');     
-
-  if(!filesStr){
-    return; 
-  }
+  if(!filesStr){ return; }
   let filesArr = filesStr.split(',');
-
-  // Monta a lista de arquivos para exibir no modal
   let html = '';
   filesArr.forEach(function(arquivo){
     html += `
@@ -916,45 +845,44 @@ $(document).on('click', '.btn-view-files', function(){
       </div>
     `;
   });
-
   $('#modalFilesContainer').html(html);
   $('#fileModal').show();
 });
 
-// Fechar modal
-$('#closeFileModal').click(function(){
-  $('#fileModal').hide();
-});
+$('#closeFileModal').click(function(){ $('#fileModal').hide(); });
 
-// Se clicar fora do conteúdo do modal, fecha também
 $(window).click(function(e){
   let modal = document.getElementById('fileModal');
-  if(e.target === modal){
-    $(modal).hide();
-  }
+  if(e.target === modal){ $(modal).hide(); }
 });
 
-// Função auxiliar p/ gerar URL pública do arquivo
+// Função auxiliar para gerar URL pública
 function getPublicUrl(filename){
-  // Ajuste para o seu endpoint, se quiser usar a função do Jinja no back-end.
   return "https://pub-1e6f8559bc2b413c889fbf4860462599.r2.dev/" + filename;
 }
 
-// Botões para exibir formulário de solicitação e mudar label do solicitante
 document.getElementById('btn-alelo')?.addEventListener('click', function(){
   document.getElementById('form-solicitacao').style.display = 'block';
   document.getElementById('rd-tipo').value = 'credito alelo';
-
-  // Mudar o texto do label
   document.getElementById('lbl-solicitante').innerText = 'Solicitante do RD Alelo';
 });
 
 document.getElementById('btn-reembolso')?.addEventListener('click', function(){
   document.getElementById('form-solicitacao').style.display = 'block';
   document.getElementById('rd-tipo').value = 'reembolso';
-
-  // Mudar o texto do label
   document.getElementById('lbl-solicitante').innerText = 'Solicitante do RD Reembolso';
+});
+
+// Handler para o botão "Recusar"
+$(document).on('click', '.btn-recusar', function(){
+  var rdId = $(this).data('rdId');
+  $('#formRecusa').attr('action', '/reject_fechamento/' + rdId);
+  $('#recusaModal').show();
+});
+$('#closeRecusaModal').click(function(){ $('#recusaModal').hide(); });
+$(window).click(function(e){
+  let modal = document.getElementById('recusaModal');
+  if(e.target === modal){ $(modal).hide(); }
 });
 </script>
 </body>
