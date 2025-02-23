@@ -49,8 +49,13 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 app = Flask(__name__)
-# Torna a função get_r2_public_url acessível nos templates
-app.jinja_env.globals.update(get_r2_public_url=get_r2_public_url)
+# Disponibiliza funções no Jinja
+app.jinja_env.globals.update(
+    get_r2_public_url=get_r2_public_url,
+    is_gestor=lambda: session.get('user_role') == 'gestor',
+    is_solicitante=lambda: session.get('user_role') == 'solicitante',
+    is_financeiro=lambda: session.get('user_role') == 'financeiro'
+)
 
 secret_key = os.getenv('SECRET_KEY', 'secret123')
 app.secret_key = secret_key
@@ -58,9 +63,9 @@ logging.debug("SECRET_KEY carregado corretamente.")
 
 PG_HOST = os.getenv('PG_HOST', 'dpg-ctjqnsdds78s73erdqi0-a.oregon-postgres.render.com')
 PG_PORT = os.getenv('PG_PORT', '5432')
-PG_DB   = os.getenv('PG_DB',   'programard_db')
+PG_DB   = os.getenv('PG_DB', 'programard_db')
 PG_USER = os.getenv('PG_USER', 'programard_db_user')
-PG_PASSWORD = os.getenv('PG_PASSWORD','hU9wJmIfgiyCg02KFQ3a4AropKSMopXr')
+PG_PASSWORD = os.getenv('PG_PASSWORD', 'hU9wJmIfgiyCg02KFQ3a4AropKSMopXr')
 
 def get_pg_connection():
     try:
@@ -81,7 +86,7 @@ def init_db():
     conn = get_pg_connection()
     cursor = conn.cursor()
 
-    # Cria tabela RD se não existir (com campos básicos)
+    # Cria tabela RD se não existir
     create_rd_table = """
     CREATE TABLE IF NOT EXISTS rd (
         id TEXT PRIMARY KEY,
@@ -105,36 +110,23 @@ def init_db():
     """
     cursor.execute(create_rd_table)
 
-    # Garante as colunas extras necessárias:
-    cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name='rd' AND column_name='valor_liberado';")
-    if not cursor.fetchone():
-        cursor.execute("ALTER TABLE rd ADD COLUMN valor_liberado NUMERIC(15,2) DEFAULT 0;")
-
-    cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name='rd' AND column_name='observacao';")
-    if not cursor.fetchone():
-        cursor.execute("ALTER TABLE rd ADD COLUMN observacao TEXT;")
-
-    cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name='rd' AND column_name='tipo';")
-    if not cursor.fetchone():
-        cursor.execute("ALTER TABLE rd ADD COLUMN tipo TEXT DEFAULT 'credito alelo';")
-
-    cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name='rd' AND column_name='data_saldo_devolvido';")
-    if not cursor.fetchone():
-        cursor.execute("ALTER TABLE rd ADD COLUMN data_saldo_devolvido DATE;")
-
-    cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name='rd' AND column_name='unidade_negocio';")
-    if not cursor.fetchone():
-        cursor.execute("ALTER TABLE rd ADD COLUMN unidade_negocio TEXT;")
-
-    # Coluna para motivo da recusa
-    cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name='rd' AND column_name='motivo_recusa';")
-    if not cursor.fetchone():
-        cursor.execute("ALTER TABLE rd ADD COLUMN motivo_recusa TEXT;")
-    
-    # Coluna para armazenar os adicionais individuais
-    cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name='rd' AND column_name='adicionais_individuais';")
-    if not cursor.fetchone():
-        cursor.execute("ALTER TABLE rd ADD COLUMN adicionais_individuais TEXT;")
+    # Garante colunas extras
+    for col_cmd in [
+        ("valor_liberado", "ALTER TABLE rd ADD COLUMN valor_liberado NUMERIC(15,2) DEFAULT 0;"),
+        ("observacao", "ALTER TABLE rd ADD COLUMN observacao TEXT;"),
+        ("tipo", "ALTER TABLE rd ADD COLUMN tipo TEXT DEFAULT 'credito alelo';"),
+        ("data_saldo_devolvido", "ALTER TABLE rd ADD COLUMN data_saldo_devolvido DATE;"),
+        ("unidade_negocio", "ALTER TABLE rd ADD COLUMN unidade_negocio TEXT;"),
+        ("motivo_recusa", "ALTER TABLE rd ADD COLUMN motivo_recusa TEXT;"),
+        ("adicionais_individuais", "ALTER TABLE rd ADD COLUMN adicionais_individuais TEXT;")
+    ]:
+        col_name, cmd = col_cmd
+        cursor.execute(
+            "SELECT column_name FROM information_schema.columns WHERE table_name='rd' AND column_name=%s;", 
+            (col_name,)
+        )
+        if not cursor.fetchone():
+            cursor.execute(cmd)
 
     # Tabela para saldo global
     create_saldo_global_table = """
@@ -183,7 +175,7 @@ def is_financeiro():
     return user_role() == 'financeiro'
 
 def can_add():
-    return user_role() in ['solicitante','gestor','financeiro']
+    return user_role() in ['solicitante', 'gestor', 'financeiro']
 
 def can_edit(status):
     if status == 'Fechado':
@@ -199,17 +191,15 @@ def can_delete(status, solicitante):
         return False
     if status == 'Pendente' and is_solicitante():
         return True
-    if (is_gestor() or is_financeiro()) and status in ['Pendente','Aprovado','Liberado']:
+    if (is_gestor() or is_financeiro()) and status in ['Pendente', 'Aprovado', 'Liberado']:
         return True
     return False
 
 def can_approve(status):
-    # Gestor aprova RD em status Pendente ou Fechamento Solicitado
     if status == 'Pendente' and is_gestor():
         return True
     if status == 'Fechamento Solicitado' and is_gestor():
         return True
-    # Financeiro aprova RD em status Aprovado
     if status == 'Aprovado' and is_financeiro():
         return True
     return False
@@ -527,7 +517,6 @@ def delete_rd(id):
 
 @app.route('/adicional_submit/<id>', methods=['POST'])
 def adicional_submit(id):
-    # Processa anexos se houver
     if 'arquivo' in request.files:
         conn = get_pg_connection()
         cursor = conn.cursor()
@@ -585,7 +574,6 @@ def adicional_submit(id):
 
 @app.route('/fechamento_submit/<id>', methods=['POST'])
 def fechamento_submit(id):
-    # Processa anexos, se houver
     if 'arquivo' in request.files:
         conn = get_pg_connection()
         cursor = conn.cursor()
