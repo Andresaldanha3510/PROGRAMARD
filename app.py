@@ -106,7 +106,6 @@ def init_db():
     cursor.execute(create_rd_table)
 
     # Garantir colunas extras já existentes ou adicionar se necessário
-    # valor_liberado
     cursor.execute("""
         SELECT column_name
         FROM information_schema.columns
@@ -114,8 +113,6 @@ def init_db():
     """)
     if not cursor.fetchone():
         cursor.execute("ALTER TABLE rd ADD COLUMN valor_liberado NUMERIC(15,2) DEFAULT 0;")
-
-    # observacao
     cursor.execute("""
         SELECT column_name
         FROM information_schema.columns
@@ -123,8 +120,6 @@ def init_db():
     """)
     if not cursor.fetchone():
         cursor.execute("ALTER TABLE rd ADD COLUMN observacao TEXT;")
-
-    # tipo
     cursor.execute("""
         SELECT column_name
         FROM information_schema.columns
@@ -132,8 +127,6 @@ def init_db():
     """)
     if not cursor.fetchone():
         cursor.execute("ALTER TABLE rd ADD COLUMN tipo TEXT DEFAULT 'credito alelo';")
-
-    # data_saldo_devolvido
     cursor.execute("""
         SELECT column_name
         FROM information_schema.columns
@@ -141,8 +134,6 @@ def init_db():
     """)
     if not cursor.fetchone():
         cursor.execute("ALTER TABLE rd ADD COLUMN data_saldo_devolvido DATE;")
-
-    # unidade_negocio
     cursor.execute("""
         SELECT column_name
         FROM information_schema.columns
@@ -150,7 +141,6 @@ def init_db():
     """)
     if not cursor.fetchone():
         cursor.execute("ALTER TABLE rd ADD COLUMN unidade_negocio TEXT;")
-
     # Coluna para motivo da recusa
     cursor.execute("""
         SELECT column_name FROM information_schema.columns 
@@ -158,7 +148,6 @@ def init_db():
     """)
     if not cursor.fetchone():
         cursor.execute("ALTER TABLE rd ADD COLUMN motivo_recusa TEXT;")
-    
     # Coluna para adicionais individuais
     cursor.execute("""
         SELECT column_name FROM information_schema.columns 
@@ -270,7 +259,7 @@ def format_currency(value):
     s = f"{value:,.2f}"
     parts = s.split('.')
     left = parts[0].replace(',','.')
-    right= parts[1]
+    right = parts[1]
     return f"{left},{right}"
 
 @app.route('/', methods=['GET','POST'])
@@ -348,7 +337,7 @@ def index():
 def add_rd():
     if not can_add():
         flash("Acesso negado.")
-        return "Acesso negado",403
+        return "Acesso negado", 403
 
     solicitante     = request.form['solicitante'].strip()
     funcionario     = request.form['funcionario'].strip()
@@ -405,11 +394,11 @@ def edit_form(id):
 
     if not rd:
         flash("RD não encontrada.")
-        return "RD não encontrada",404
+        return "RD não encontrada", 404
 
     if not can_edit(rd[6]):
         flash("Acesso negado.")
-        return "Acesso negado",403
+        return "Acesso negado", 403
 
     return render_template('edit_form.html', rd=rd)
 
@@ -417,7 +406,7 @@ def edit_form(id):
 def edit_submit(id):
     if not can_edit_status(id):
         flash("Acesso negado.")
-        return "Acesso negado",403
+        return "Acesso negado", 403
 
     solicitante     = request.form['solicitante'].strip()
     funcionario     = request.form['funcionario'].strip()
@@ -487,22 +476,21 @@ def approve(id):
     current_date = datetime.now().strftime('%Y-%m-%d')
 
     if status=='Pendente' and is_gestor():
-        new_status='Aprovado'
+        new_status = 'Aprovado'
         cursor.execute("""
             UPDATE rd SET status=%s, aprovado_data=%s
             WHERE id=%s
         """, (new_status, current_date, id))
-
     elif status=='Aprovado' and is_financeiro():
         if rd_tipo.lower()=='reembolso':
-            new_status='Fechado'
+            new_status = 'Fechado'
             cursor.execute("""
                 UPDATE rd
                 SET status=%s, data_fechamento=%s
                 WHERE id=%s
             """, (new_status, current_date, id))
         else:
-            new_status='Liberado'
+            new_status = 'Liberado'
             valor_total = valor + (valor_adic or 0)
             falta_liberar = valor_total - (valor_liberado or 0)
             if falta_liberar > 0:
@@ -518,11 +506,9 @@ def approve(id):
                 SET status=%s, liberado_data=%s, valor_liberado=%s
                 WHERE id=%s
             """, (new_status, current_date, valor_liberado, id))
-
     elif status=='Fechamento Solicitado' and is_gestor():
-        new_status='Fechado'
+        new_status = 'Fechado'
         cursor.execute("UPDATE rd SET status=%s WHERE id=%s", (new_status, id))
-
     else:
         conn.close()
         flash("Não é possível aprovar/liberar esta RD.")
@@ -628,7 +614,7 @@ def adicional_submit(id):
 
 @app.route('/fechamento_submit/<id>', methods=['POST'])
 def fechamento_submit(id):
-    if not can_close(status):
+    if not can_close(request.form.get('status')):
         flash("Ação não permitida.")
         return redirect(url_for('index'))
 
