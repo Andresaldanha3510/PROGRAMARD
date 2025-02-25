@@ -934,7 +934,12 @@ def editar_funcionario(id):
 def consulta_rd(id_func):
     conn = get_pg_connection()
     cursor = conn.cursor()
-    # Seleciona os RDs do funcionário (usando o nome, conforme cadastro) que não estão fechados
+    # Busca o nome do funcionário para exibir no template
+    cursor.execute("SELECT nome FROM funcionarios WHERE id = %s", (id_func,))
+    row = cursor.fetchone()
+    funcionario_nome = row[0] if row else "Desconhecido"
+    
+    # Busca os RDs que não estão fechados para este funcionário
     query = """
         SELECT id, data, valor, status 
         FROM rd
@@ -948,7 +953,7 @@ def consulta_rd(id_func):
     rd_list = cursor.fetchall()
     cursor.close()
     conn.close()
-    return render_template('listagem_rds.html', rd_list=rd_list)
+    return render_template('listagem_rds.html', rd_list=rd_list, funcionario_nome=funcionario_nome)
 
 if __name__ == '__main__':
     init_db()
