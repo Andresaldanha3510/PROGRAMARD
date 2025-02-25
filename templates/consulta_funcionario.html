@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Consulta de Funcionários</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f2f2f2;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 800px;
+      margin: 50px auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 5px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h2 {
+      text-align: center;
+      color: #333;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      color: #555;
+    }
+    select, input[type="text"] {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    button {
+      display: inline-block;
+      padding: 10px 20px;
+      margin-top: 20px;
+      background: #28a745;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background: #218838;
+    }
+    .flash {
+      color: green;
+      text-align: center;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Consulta de Funcionários</h2>
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="flash">
+          {% for message in messages %}
+            <p>{{ message }}</p>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    <form id="consultaForm">
+      <label for="funcionario">Selecione o Funcionário:</label>
+      <select id="funcionario" name="funcionario">
+        <option value="">-- Selecione --</option>
+        {% for func in funcionarios %}
+          <option value="{{ func[0] }}" data-nome="{{ func[1] }}" data-centro="{{ func[2] }}" data-unidade="{{ func[3] }}">
+            {{ func[1] }}
+          </option>
+        {% endfor %}
+      </select>
+      
+      <label for="centroCusto">Centro de Custo:</label>
+      <input type="text" id="centroCusto" name="centroCusto" readonly>
+      
+      <label for="unidadeNegocio">Unidade de Negócio:</label>
+      <input type="text" id="unidadeNegocio" name="unidadeNegocio" readonly>
+      
+      <button type="button" onclick="buscarRDs()">Consultar RD's Pendentes</button>
+    </form>
+    
+    <div id="resultadoRDs">
+      <!-- Aqui os RDs pendentes serão exibidos (por exemplo, via redirecionamento ou AJAX) -->
+    </div>
+  </div>
+  
+  <script>
+    // Preenche os campos de centro de custo e unidade de negócio ao selecionar um funcionário
+    document.getElementById('funcionario').addEventListener('change', function() {
+      var selected = this.options[this.selectedIndex];
+      document.getElementById('centroCusto').value = selected.getAttribute('data-centro') || '';
+      document.getElementById('unidadeNegocio').value = selected.getAttribute('data-unidade') || '';
+    });
+    
+    function buscarRDs() {
+      var idFunc = document.getElementById('funcionario').value;
+      if (!idFunc) {
+        alert("Selecione um funcionário!");
+        return;
+      }
+      // Redireciona para a rota que exibe os RDs pendentes para o funcionário selecionado
+      window.location.href = "/consulta_rd/" + idFunc;
+    }
+  </script>
+</body>
+</html>
