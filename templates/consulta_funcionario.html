@@ -19,42 +19,32 @@
       border-radius: 5px;
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
-    h2 {
-      text-align: center;
-      color: #333;
-    }
-    label {
-      display: block;
-      margin-top: 15px;
-      color: #555;
-    }
-    select, input[type="text"] {
+    h2 { text-align: center; color: #333; }
+    table {
       width: 100%;
-      padding: 8px;
-      margin-top: 5px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      box-sizing: border-box;
-    }
-    button {
-      display: inline-block;
-      padding: 10px 20px;
+      border-collapse: collapse;
       margin-top: 20px;
+    }
+    th, td {
+      padding: 10px;
+      border: 1px solid #ccc;
+      text-align: left;
+    }
+    th { background-color: #28a745; color: #fff; }
+    .btn {
+      display: inline-block;
+      padding: 8px 12px;
+      margin: 5px;
       background: #28a745;
       color: #fff;
       border: none;
       border-radius: 4px;
+      text-decoration: none;
       cursor: pointer;
-      font-size: 16px;
+      font-size: 14px;
     }
-    button:hover {
-      background: #218838;
-    }
-    .flash {
-      color: green;
-      text-align: center;
-      margin-top: 10px;
-    }
+    .btn-back { background: #6c757d; }
+    .flash { text-align: center; color: green; margin-top: 10px; }
   </style>
 </head>
 <body>
@@ -69,48 +59,35 @@
         </div>
       {% endif %}
     {% endwith %}
-    <form id="consultaForm">
-      <label for="funcionario">Selecione o Funcionário:</label>
-      <select id="funcionario" name="funcionario">
-        <option value="">-- Selecione --</option>
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Nome</th>
+          <th>Centro de Custo</th>
+          <th>Unidade de Negócio</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
         {% for func in funcionarios %}
-          <option value="{{ func[0] }}" data-nome="{{ func[1] }}" data-centro="{{ func[2] }}" data-unidade="{{ func[3] }}">
-            {{ func[1] }}
-          </option>
+          <tr>
+            <td>{{ func[0] }}</td>
+            <td>{{ func[1] }}</td>
+            <td>{{ func[2] }}</td>
+            <td>{{ func[3] }}</td>
+            <td>
+              <a href="{{ url_for('editar_funcionario', id=func[0]) }}" class="btn"><i class="fas fa-edit"></i> Editar</a>
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="5">Nenhum funcionário cadastrado.</td>
+          </tr>
         {% endfor %}
-      </select>
-      
-      <label for="centroCusto">Centro de Custo:</label>
-      <input type="text" id="centroCusto" name="centroCusto" readonly>
-      
-      <label for="unidadeNegocio">Unidade de Negócio:</label>
-      <input type="text" id="unidadeNegocio" name="unidadeNegocio" readonly>
-      
-      <button type="button" onclick="buscarRDs()">Consultar RD's Pendentes</button>
-    </form>
-    
-    <div id="resultadoRDs">
-      <!-- Aqui os RDs pendentes serão exibidos (por exemplo, via redirecionamento ou AJAX) -->
-    </div>
+      </tbody>
+    </table>
+    <a href="{{ url_for('index') }}" class="btn btn-back"><i class="fas fa-arrow-left"></i> Voltar</a>
   </div>
-  
-  <script>
-    // Preenche os campos de centro de custo e unidade de negócio ao selecionar um funcionário
-    document.getElementById('funcionario').addEventListener('change', function() {
-      var selected = this.options[this.selectedIndex];
-      document.getElementById('centroCusto').value = selected.getAttribute('data-centro') || '';
-      document.getElementById('unidadeNegocio').value = selected.getAttribute('data-unidade') || '';
-    });
-    
-    function buscarRDs() {
-      var idFunc = document.getElementById('funcionario').value;
-      if (!idFunc) {
-        alert("Selecione um funcionário!");
-        return;
-      }
-      // Redireciona para a rota que exibe os RDs pendentes para o funcionário selecionado
-      window.location.href = "/consulta_rd/" + idFunc;
-    }
-  </script>
 </body>
 </html>
