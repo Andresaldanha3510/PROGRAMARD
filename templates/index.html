@@ -331,7 +331,15 @@
       </form>
       {% endif %}
       <div style="text-align:center; margin:20px 0;">
-        <a href="{{ url_for('export_excel') }}" class="btn btn-success"><i class="fas fa-file-excel"></i> Exportar para Excel</a>
+       <a href="{{ url_for('cadastro_funcionario') }}" class="btn btn-success" style="margin-right: 10px;">
+    <i class="fas fa-user-plus"></i> Cadastro Funcionários
+  </a>
+  <a href="{{ url_for('consulta_funcionario') }}" class="btn btn-success" style="margin-right: 10px;">
+    <i class="fas fa-search"></i> Consulta Funcionários
+  </a>
+  <a href="{{ url_for('export_excel') }}" class="btn btn-success">
+    <i class="fas fa-file-excel"></i> Exportar para Excel
+  </a>
       </div>
 
       <!-- Macro para mostrar os valores -->
