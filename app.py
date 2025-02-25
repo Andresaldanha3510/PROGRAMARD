@@ -2,8 +2,6 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 import psycopg2
 import os
 from datetime import datetime
-
-# Carrega variáveis de ambiente
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -127,7 +125,7 @@ def init_db():
         if not cursor.fetchone():
             cursor.execute(alter_cmd)
 
-    # Tabela para saldo global
+    # Cria tabela para saldo global
     create_saldo_global_table = """
     CREATE TABLE IF NOT EXISTS saldo_global (
         id SERIAL PRIMARY KEY,
@@ -138,6 +136,17 @@ def init_db():
     cursor.execute("SELECT COUNT(*) FROM saldo_global")
     if cursor.fetchone()[0] == 0:
         cursor.execute("INSERT INTO saldo_global (saldo) VALUES (30000)")
+
+    # Cria tabela de Funcionários para cadastro padronizado
+    create_funcionarios_table = """
+    CREATE TABLE IF NOT EXISTS funcionarios (
+        id SERIAL PRIMARY KEY,
+        nome TEXT NOT NULL,
+        centro_custo TEXT NOT NULL,
+        unidade_negocio TEXT NOT NULL
+    );
+    """
+    cursor.execute(create_funcionarios_table)
 
     conn.commit()
     cursor.close()
@@ -234,6 +243,7 @@ def format_currency(value):
     right = parts[1]
     return f"{left},{right}"
 
+# Rota principal (login e exibição dos RDs)
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
@@ -296,6 +306,8 @@ def index():
         adicional_id=adicional_id,
         fechamento_id=fechamento_id
     )
+
+# Rotas de gerenciamento de RDs (add, edit, approve, delete, etc.) permanecem conforme o código original
 
 @app.route('/add', methods=['POST'])
 def add_rd():
@@ -413,7 +425,6 @@ def edit_submit(id):
     """, (solicitante, funcionario, data, centro_custo, valor,
           arquivos_str, observacao, unidade_negocio, id))
     
-    # Se o solicitante estiver corrigindo uma RD que foi rejeitada, muda status para "Fechamento Solicitado" e limpa o motivo.
     if is_solicitante() and original_status == 'Fechamento Recusado':
         cursor.execute("UPDATE rd SET status='Fechamento Solicitado', motivo_recusa=NULL WHERE id=%s", (id,))
     
@@ -449,7 +460,6 @@ def approve(id):
             WHERE id=%s
         """, (new_status, current_date, id))
     elif status == 'Aprovado' and is_financeiro():
-        # Se for reembolso, fecha direto; caso contrário, libera (valor liberado não é recalculado aqui)
         if rd_tipo.lower() == 'reembolso':
             new_status = 'Fechado'
             cursor.execute("""
@@ -458,7 +468,6 @@ def approve(id):
             """, (new_status, current_date, id))
         else:
             new_status = 'Liberado'
-            # Aqui, o total de créditos já deve ter sido calculado na aprovação
             total_credit = valor + (valor_adic or 0)
             cursor.execute("""
                 UPDATE rd SET status=%s, liberado_data=%s
@@ -514,7 +523,6 @@ def delete_rd(id):
 
 @app.route('/adicional_submit/<id>', methods=['POST'])
 def adicional_submit(id):
-    # Processa anexos, se houver
     if 'arquivo' in request.files:
         conn = get_pg_connection()
         cursor = conn.cursor()
@@ -553,7 +561,6 @@ def adicional_submit(id):
         return redirect(url_for('index'))
 
     novo_total = (valor_adic_atual or 0) + novo_valor_adicional
-    # Registra cada adicional individualmente
     if adicionais_individuais:
         additional_entries = [x.strip() for x in adicionais_individuais.split(',')]
         next_index = len(additional_entries) + 1
@@ -575,7 +582,6 @@ def adicional_submit(id):
 
 @app.route('/fechamento_submit/<id>', methods=['POST'])
 def fechamento_submit(id):
-    # Processa anexos, se houver
     if 'arquivo' in request.files:
         conn = get_pg_connection()
         cursor = conn.cursor()
@@ -601,7 +607,6 @@ def fechamento_submit(id):
 
     conn = get_pg_connection()
     cursor = conn.cursor()
-    # Recalcula o total de créditos a partir do valor solicitado e do valor adicional
     cursor.execute("SELECT valor, valor_adicional, status FROM rd WHERE id=%s", (id,))
     rd_info = cursor.fetchone()
     if not rd_info:
@@ -664,7 +669,6 @@ def reject_fechamento(id):
 
 @app.route('/reenviar_fechamento/<id>', methods=['POST'])
 def reenviar_fechamento(id):
-    # O solicitante deverá corrigir via formulário de edição
     flash("Utilize o botão 'Corrigir e reenviar' para editar a RD.")
     return redirect(url_for('index'))
 
@@ -763,7 +767,6 @@ def registrar_saldo_devolvido(id):
 
     conn = get_pg_connection()
     cursor = conn.cursor()
-    # Recalcula o total de créditos a partir de "valor" e "valor_adicional"
     cursor.execute("SELECT valor, valor_adicional, valor_despesa, data_saldo_devolvido FROM rd WHERE id=%s", (id,))
     rd_info = cursor.fetchone()
     if not rd_info:
@@ -854,6 +857,67 @@ def logout():
     session.clear()
     flash("Logout realizado com sucesso.")
     return redirect(url_for('index'))
+
+# -------------------------------------------------
+# Novas Rotas para Funcionários
+
+# Tela de cadastro de funcionários
+@app.route('/cadastro_funcionario', methods=['GET'])
+def cadastro_funcionario():
+    return render_template('cadastro_funcionario.html')
+
+# Processa o cadastro do funcionário
+@app.route('/cadastrar_funcionario', methods=['POST'])
+def cadastrar_funcionario():
+    nome = request.form['nome'].strip()
+    centro_custo = request.form['centroCusto'].strip()
+    unidade_negocio = request.form['unidadeNegocio'].strip()
+
+    conn = get_pg_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO funcionarios (nome, centro_custo, unidade_negocio)
+        VALUES (%s, %s, %s)
+    """, (nome, centro_custo, unidade_negocio))
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    flash("Funcionário cadastrado com sucesso!")
+    return redirect(url_for('cadastro_funcionario'))
+
+# Tela de consulta de funcionários
+@app.route('/consulta_funcionario', methods=['GET'])
+def consulta_funcionario():
+    conn = get_pg_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, nome, centro_custo, unidade_negocio FROM funcionarios")
+    funcionarios = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return render_template('consulta_funcionario.html', funcionarios=funcionarios)
+
+# -------------------------------------------------
+# Nova Rota: Consulta de RDs (não fechados) para um Funcionário
+@app.route('/consulta_rd/<int:id_func>', methods=['GET'])
+def consulta_rd(id_func):
+    conn = get_pg_connection()
+    cursor = conn.cursor()
+    # Seleciona os RDs do funcionário (usando o nome, conforme cadastro) que não estão fechados
+    query = """
+        SELECT id, data, valor, status 
+        FROM rd
+        WHERE funcionario = (
+            SELECT nome FROM funcionarios WHERE id = %s
+        )
+        AND status != 'Fechado'
+        ORDER BY data DESC
+    """
+    cursor.execute(query, (id_func,))
+    rd_list = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return render_template('listagem_rds.html', rd_list=rd_list)
 
 if __name__ == '__main__':
     init_db()
