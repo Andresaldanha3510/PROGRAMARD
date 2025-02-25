@@ -19,15 +19,8 @@
       border-radius: 5px;
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
-    h2 {
-      text-align: center;
-      color: #333;
-    }
-    label {
-      display: block;
-      margin-top: 15px;
-      color: #555;
-    }
+    h2 { text-align: center; color: #333; }
+    label { display: block; margin-top: 15px; color: #555; }
     input[type="text"] {
       width: 100%;
       padding: 8px;
@@ -36,26 +29,21 @@
       border-radius: 4px;
       box-sizing: border-box;
     }
-    button {
+    .btn {
       display: block;
       width: 100%;
       padding: 10px;
       margin-top: 20px;
-      background: #28a745;
-      color: #fff;
       border: none;
       border-radius: 4px;
-      cursor: pointer;
-      font-size: 16px;
-    }
-    button:hover {
-      background: #218838;
-    }
-    .flash {
-      color: green;
       text-align: center;
-      margin-top: 10px;
+      font-size: 16px;
+      text-decoration: none;
+      cursor: pointer;
     }
+    .btn-submit { background: #28a745; color: #fff; }
+    .btn-back { background: #6c757d; color: #fff; margin-top: 10px; }
+    .flash { text-align: center; color: green; margin-top: 10px; }
   </style>
 </head>
 <body>
@@ -80,8 +68,9 @@
       <label for="unidadeNegocio">Unidade de Negócio:</label>
       <input type="text" id="unidadeNegocio" name="unidadeNegocio" placeholder="Digite a unidade de negócio" required>
       
-      <button type="submit">Cadastrar Funcionário</button>
+      <button type="submit" class="btn btn-submit">Cadastrar Funcionário</button>
     </form>
+    <a href="{{ url_for('index') }}" class="btn btn-back"><i class="fas fa-arrow-left"></i> Voltar</a>
   </div>
 </body>
 </html>
