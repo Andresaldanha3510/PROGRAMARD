@@ -897,6 +897,37 @@ def consulta_funcionario():
     conn.close()
     return render_template('consulta_funcionario.html', funcionarios=funcionarios)
 
+@app.route('/editar_funcionario/<int:id>', methods=['GET', 'POST'])
+def editar_funcionario(id):
+    if request.method == 'POST':
+        nome = request.form['nome'].strip()
+        centro_custo = request.form['centroCusto'].strip()
+        unidade_negocio = request.form['unidadeNegocio'].strip()
+        conn = get_pg_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE funcionarios
+            SET nome=%s, centro_custo=%s, unidade_negocio=%s
+            WHERE id=%s
+        """, (nome, centro_custo, unidade_negocio, id))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        flash("Funcionário atualizado com sucesso!")
+        return redirect(url_for('consulta_funcionario'))
+    else:
+        conn = get_pg_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, nome, centro_custo, unidade_negocio FROM funcionarios WHERE id=%s", (id,))
+        funcionario = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        return render_template('editar_funcionario.html', funcionario=funcionario)
+
+
+
+
+
 # -------------------------------------------------
 # Nova Rota: Consulta de RDs (não fechados) para um Funcionário
 @app.route('/consulta_rd/<int:id_func>', methods=['GET'])
