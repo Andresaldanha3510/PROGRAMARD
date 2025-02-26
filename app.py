@@ -52,10 +52,11 @@ app.jinja_env.globals.update(
     is_solicitante=lambda: session.get('user_role') == 'solicitante',
     is_financeiro=lambda: session.get('user_role') == 'financeiro'
 )
-app.secret_key = os.getenv('SECRET_KEY', 'secret123')
+
+secret_key = os.getenv('SECRET_KEY', 'secret123')
+app.secret_key = secret_key
 logging.debug("SECRET_KEY carregado corretamente.")
 
-# Configurações do PostgreSQL
 PG_HOST = os.getenv('PG_HOST', 'dpg-ctjqnsdds78s73erdqi0-a.oregon-postgres.render.com')
 PG_PORT = os.getenv('PG_PORT', '5432')
 PG_DB   = os.getenv('PG_DB', 'programard_db')
@@ -255,10 +256,10 @@ def index():
             flash("Credenciais inválidas.")
             return render_template('index.html', error="Credenciais inválidas", format_currency=format_currency)
         return redirect(url_for('index'))
-
+    
     if 'user_role' not in session:
         return render_template('index.html', error=None, format_currency=format_currency)
-
+    
     conn = get_pg_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM rd WHERE status='Pendente'")
@@ -276,8 +277,13 @@ def index():
     saldo_global = get_saldo_global()
     adicional_id = request.args.get('adicional')
     fechamento_id = request.args.get('fechamento')
+    
+    # Carrega funcionários para uso no formulário de RD e para filtrar
+    cursor.execute("SELECT nome FROM funcionarios ORDER BY nome ASC")
+    lista_funcionarios = cursor.fetchall()
+    
     conn.close()
-
+    
     return render_template(
         'index.html',
         error=None,
@@ -297,10 +303,9 @@ def index():
         can_request_additional=can_request_additional,
         can_close=can_close,
         adicional_id=adicional_id,
-        fechamento_id=fechamento_id
+        fechamento_id=fechamento_id,
+        funcionarios=lista_funcionarios
     )
-
-# Rotas de gerenciamento de RDs (add, edit, approve, delete, etc.) seguem abaixo
 
 @app.route('/add', methods=['POST'])
 def add_rd():
@@ -928,7 +933,8 @@ def solicitar_rd():
     
     if request.method == 'POST':
         solicitante = request.form['solicitante'].strip()
-        funcionario = request.form['funcionario'].strip()  # valor = NOME do funcionário
+        # O valor enviado pelo <select> é o nome do funcionário
+        funcionario = request.form['funcionario'].strip()
         data_str = request.form['data'].strip()
         centro_custo = request.form['centro_custo'].strip()
         unidade_negocio = request.form.get('unidade_negocio','').strip()
@@ -967,7 +973,7 @@ def solicitar_rd():
         return render_template('rd_form.html', funcionarios=funcionarios)
 
 # -------------------------------
-# Nova Rota: Consulta de RDs abertos para um Funcionário (Status != 'Fechado')
+# Rota para Consultar RDs abertos para um Funcionário (Status != 'Fechado')
 @app.route('/consulta_rd', methods=['GET', 'POST'])
 def consulta_rd():
     conn = get_pg_connection()
@@ -1002,6 +1008,106 @@ def consulta_rd():
                            rd_list=rd_list,
                            selected_func_id=selected_func_id,
                            selected_func_nome=selected_func_nome)
+
+@app.route('/registrar_saldo_devolvido/<id>', methods=['POST'])
+def registrar_saldo_devolvido(id):
+    if not is_financeiro():
+        flash("Acesso negado.")
+        return redirect(url_for('index'))
+
+    conn = get_pg_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT valor, valor_adicional, valor_despesa, data_saldo_devolvido FROM rd WHERE id=%s", (id,))
+    rd_info = cursor.fetchone()
+    if not rd_info:
+        conn.close()
+        flash("RD não encontrada.")
+        return redirect(url_for('index'))
+    valor, valor_adic, valor_desp, data_sal_dev = rd_info
+    if data_sal_dev:
+        conn.close()
+        flash("Saldo já registrado antes.")
+        return redirect(url_for('index'))
+    total_credit = valor + (valor_adic or 0)
+    if total_credit < (valor_desp or 0):
+        conn.close()
+        flash("Despesa maior que o total de créditos.")
+        return redirect(url_for('index'))
+    saldo_devolver = total_credit - (valor_desp or 0)
+    saldo = get_saldo_global()
+    set_saldo_global(saldo + saldo_devolver)
+    current_date = datetime.now().strftime('%Y-%m-%d')
+    cursor.execute("UPDATE rd SET data_saldo_devolvido=%s WHERE id=%s", (current_date, id))
+    conn.commit()
+    cursor.close()
+    conn.close()
+    flash(f"Saldo devolvido com sucesso. Valor = R${saldo_devolver:,.2f}")
+    return redirect(url_for('index'))
+
+@app.route('/export_excel', methods=['GET'])
+def export_excel():
+    conn = get_pg_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM rd ORDER BY id ASC")
+    rd_list = cursor.fetchall()
+    saldo_global = get_saldo_global()
+    output = io.BytesIO()
+    workbook = xlsxwriter.Workbook(output, {'in_memory': True})
+    worksheet = workbook.add_worksheet('Relatorio')
+
+    header = [
+      "Número RD", "Data Solicitação", "Solicitante", "Funcionário", "Valor Solicitado",
+      "Valor Adicional", "Data do Adicional", "Centro de Custo", "Valor Gasto", "Saldo a Devolver",
+      "Data de Fechamento", "Saldo Global"
+    ]
+    for col, h in enumerate(header):
+        worksheet.write(0, col, h)
+
+    rownum = 1
+    for rd_row in rd_list:
+        rd_id = rd_row[0]
+        rd_data = rd_row[3]
+        rd_solic = rd_row[1]
+        rd_func = rd_row[2]
+        rd_valor = rd_row[5]
+        rd_valor_adic = rd_row[7]
+        rd_adic_data = rd_row[8]
+        rd_ccusto = rd_row[4]
+        rd_desp = rd_row[9]
+        rd_saldo_dev = rd_row[10]
+        rd_data_fech = rd_row[11]
+
+        worksheet.write(rownum, 0, rd_id)
+        worksheet.write(rownum, 1, str(rd_data))
+        worksheet.write(rownum, 2, rd_solic)
+        worksheet.write(rownum, 3, rd_func)
+        worksheet.write(rownum, 4, float(rd_valor or 0))
+        worksheet.write(rownum, 5, float(rd_valor_adic or 0))
+        worksheet.write(rownum, 6, str(rd_adic_data or ''))
+        worksheet.write(rownum, 7, rd_ccusto)
+        worksheet.write(rownum, 8, float(rd_desp or 0))
+        worksheet.write(rownum, 9, float(rd_saldo_dev or 0))
+        worksheet.write(rownum, 10, str(rd_data_fech or ''))
+        worksheet.write(rownum, 11, float(saldo_global))
+        rownum += 1
+
+    workbook.close()
+    output.seek(0)
+    cursor.close()
+    conn.close()
+
+    return send_file(
+        output,
+        as_attachment=True,
+        download_name=f"Relatorio_RD_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    flash("Logout realizado com sucesso.")
+    return redirect(url_for('index'))
 
 if __name__ == '__main__':
     init_db()
