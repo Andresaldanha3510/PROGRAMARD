@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Consulta RD por Funcionário</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" referrerpolicy="no-referrer" />
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #f2f3f5; color: #2c3e50; margin: 0; padding: 20px; }
+    .container { max-width: 800px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 10px; box-shadow: 0 2px 15px rgba(0,0,0,0.1); }
+    h1 { text-align: center; }
+    .btn { padding: 8px 15px; border: none; border-radius: 5px; background-color: #3498db; color: #fff; text-decoration: none; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
+    th { background-color: #3498db; color: #fff; }
+    .form-group { margin-bottom: 15px; }
+    label { display: block; margin-bottom: 5px; }
+    select { width: 100%; padding: 8px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Consulta RD por Funcionário</h1>
+    <form method="POST" action="{{ url_for('consulta_rd_funcionario') }}">
+      <div class="form-group">
+        <label for="funcionario">Selecione o Funcionário:</label>
+        <select id="funcionario" name="funcionario" required>
+          <option value="">-- Selecione --</option>
+          {% for f in funcionarios %}
+            <option value="{{ f[1] }}">{{ f[1] }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit" class="btn"><i class="fas fa-search"></i> Consultar</button>
+    </form>
+    {% if results is not none %}
+      <h2>Resultados:</h2>
+      {% if results|length > 0 %}
+      <table>
+        <thead>
+          <tr>
+            <th>Número RD</th>
+            <th>Data</th>
+            <th>Valor</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for rd in results %}
+          <tr>
+            <td>{{ rd[0] }}</td>
+            <td>{{ rd[1] }}</td>
+            <td>R${{ rd[2] | float | round(2) }}</td>
+            <td>{{ rd[3] }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p>Nenhuma RD aberta encontrada para este funcionário.</p>
+      {% endif %}
+    {% endif %}
+  </div>
+</body>
+</html>
