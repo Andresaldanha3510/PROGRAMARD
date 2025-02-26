@@ -58,7 +58,7 @@
       display: block; margin-bottom: 5px; font-weight: 600;
       color: var(--header-color);
     }
-    .main-form input, .main-form textarea {
+    .main-form input, .main-form textarea, .main-form select {
       width: 100%; padding: 10px; margin-bottom: 15px;
       border: 1px solid var(--input-border);
       border-radius: 5px; font-size: 0.9rem; box-sizing: border-box;
@@ -304,8 +304,17 @@
       <form id="form-solicitacao" action="/add" method="POST" enctype="multipart/form-data" class="main-form" style="display:none;">
         <label id="lbl-solicitante" for="solicitante">Solicitante:</label>
         <input type="text" id="solicitante" name="solicitante" required>
+
+        <!-- ALTERADO: Substituímos o input de texto do funcionário por um <select> -->
         <label for="funcionario">Funcionário:</label>
-        <input type="text" id="funcionario" name="funcionario" required>
+        <select id="funcionario" name="funcionario" required>
+          <option value="">-- Selecione --</option>
+          {% for func in funcionarios %}
+            <option value="{{ func[0] }}">{{ func[0] }}</option>
+          {% endfor %}
+        </select>
+        <!-- Fim da alteração -->
+
         <label for="data">Data:</label>
         <input type="date" id="data" name="data" required>
         <label for="centro_custo">Centro de Custo:</label>
@@ -874,18 +883,7 @@ function getPublicUrl(filename){
   return "https://pub-1e6f8559bc2b413c889fbf4860462599.r2.dev/" + filename;
 }
 
-document.getElementById('btn-alelo')?.addEventListener('click', function(){
-  document.getElementById('form-solicitacao').style.display = 'block';
-  document.getElementById('rd-tipo').value = 'credito alelo';
-  document.getElementById('lbl-solicitante').innerText = 'Solicitante do RD Alelo';
-});
-document.getElementById('btn-reembolso')?.addEventListener('click', function(){
-  document.getElementById('form-solicitacao').style.display = 'block';
-  document.getElementById('rd-tipo').value = 'reembolso';
-  document.getElementById('lbl-solicitante').innerText = 'Solicitante do RD Reembolso';
-});
-
-// Handler para botão de recusa
+// Handler para recusa do fechamento
 $(document).on('click', '.btn-recusar', function(){
   var rdId = $(this).data('rdId');
   $('#formRecusa').attr('action', '/reject_fechamento/' + rdId);
