@@ -152,16 +152,6 @@ def init_db():
     cursor.close()
     conn.close()
 
-# Nova função para buscar os funcionários cadastrados
-def get_funcionarios():
-    conn = get_pg_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, nome FROM funcionarios ORDER BY nome")
-    funcionarios = cursor.fetchall()
-    cursor.close()
-    conn.close()
-    return funcionarios
-
 def generate_custom_id():
     current_year = datetime.now().year % 100
     conn = get_pg_connection()
@@ -314,11 +304,10 @@ def index():
         can_request_additional=can_request_additional,
         can_close=can_close,
         adicional_id=adicional_id,
-        fechamento_id=fechamento_id,
-        funcionarios=get_funcionarios()  # Envia a lista de funcionários para o template
+        fechamento_id=fechamento_id
     )
 
-# Rotas de gerenciamento de RDs (add, edit, approve, delete, etc.) – NÃO ALTERADAS
+# Rotas de gerenciamento de RDs (add, edit, approve, delete, etc.) permanecem conforme o código original
 
 @app.route('/add', methods=['POST'])
 def add_rd():
@@ -935,8 +924,12 @@ def editar_funcionario(id):
         conn.close()
         return render_template('editar_funcionario.html', funcionario=funcionario)
 
+
+
+
+
 # -------------------------------------------------
-# Nova Rota: Consulta de RDs abertos para um Funcionário
+# Nova Rota: Consulta de RDs (não fechados) para um Funcionário
 @app.route('/consulta_rd/<int:id_func>', methods=['GET'])
 def consulta_rd(id_func):
     conn = get_pg_connection()
