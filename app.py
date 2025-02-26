@@ -119,13 +119,13 @@ def init_db():
         ("adicionais_individuais", "ALTER TABLE rd ADD COLUMN adicionais_individuais TEXT;")
     ]:
         cursor.execute(
-            "SELECT column_name FROM information_schema.columns WHERE table_name='rd' AND column_name=%s;",
+            "SELECT column_name FROM information_schema.columns WHERE table_name='rd' AND column_name=%s;", 
             (col_name,)
         )
         if not cursor.fetchone():
             cursor.execute(alter_cmd)
 
-    # Tabela para saldo global
+    # Cria tabela para saldo global
     create_saldo_global_table = """
     CREATE TABLE IF NOT EXISTS saldo_global (
         id SERIAL PRIMARY KEY,
@@ -151,6 +151,16 @@ def init_db():
     conn.commit()
     cursor.close()
     conn.close()
+
+# Nova função para buscar os funcionários cadastrados
+def get_funcionarios():
+    conn = get_pg_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, nome FROM funcionarios ORDER BY nome")
+    funcionarios = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return funcionarios
 
 def generate_custom_id():
     current_year = datetime.now().year % 100
@@ -243,6 +253,7 @@ def format_currency(value):
     right = parts[1]
     return f"{left},{right}"
 
+# Rota principal (login e exibição dos RDs)
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
@@ -279,15 +290,9 @@ def index():
     fechamento_recusado = cursor.fetchall()
     cursor.execute("SELECT * FROM rd WHERE status='Fechado'")
     fechados = cursor.fetchall()
-
     saldo_global = get_saldo_global()
     adicional_id = request.args.get('adicional')
     fechamento_id = request.args.get('fechamento')
-
-    # Carrega a lista de funcionários para exibir no dropdown
-    cursor.execute("SELECT nome FROM funcionarios ORDER BY nome ASC")
-    lista_funcionarios = cursor.fetchall()
-
     conn.close()
 
     return render_template(
@@ -310,8 +315,10 @@ def index():
         can_close=can_close,
         adicional_id=adicional_id,
         fechamento_id=fechamento_id,
-        funcionarios=lista_funcionarios
+        funcionarios=get_funcionarios()  # Envia a lista de funcionários para o template
     )
+
+# Rotas de gerenciamento de RDs (add, edit, approve, delete, etc.) – NÃO ALTERADAS
 
 @app.route('/add', methods=['POST'])
 def add_rd():
@@ -381,18 +388,6 @@ def edit_form(id):
 
     return render_template('edit_form.html', rd=rd)
 
-def can_edit_status(id):
-    """Verifica se a RD com este id pode ser editada, 
-       de acordo com o status e a função can_edit acima."""
-    conn = get_pg_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT status FROM rd WHERE id=%s", (id,))
-    row = cursor.fetchone()
-    conn.close()
-    if not row:
-        return False
-    return can_edit(row[0])
-
 @app.route('/edit_submit/<id>', methods=['POST'])
 def edit_submit(id):
     if not can_edit_status(id):
@@ -441,7 +436,6 @@ def edit_submit(id):
     """, (solicitante, funcionario, data, centro_custo, valor,
           arquivos_str, observacao, unidade_negocio, id))
     
-    # Se o solicitante estiver corrigindo uma RD que foi rejeitada, muda status para "Fechamento Solicitado" e limpa o motivo.
     if is_solicitante() and original_status == 'Fechamento Recusado':
         cursor.execute("UPDATE rd SET status='Fechamento Solicitado', motivo_recusa=NULL WHERE id=%s", (id,))
     
@@ -450,16 +444,6 @@ def edit_submit(id):
     conn.close()
     flash("RD atualizada com sucesso.")
     return redirect(url_for('index'))
-
-def can_approve(status):
-    """Retorna True se o status e o user_role atual permitirem aprovar."""
-    if status == 'Pendente' and is_gestor():
-        return True
-    if status == 'Fechamento Solicitado' and is_gestor():
-        return True
-    if status == 'Aprovado' and is_financeiro():
-        return True
-    return False
 
 @app.route('/approve/<id>', methods=['POST'])
 def approve(id):
@@ -487,7 +471,6 @@ def approve(id):
             WHERE id=%s
         """, (new_status, current_date, id))
     elif status == 'Aprovado' and is_financeiro():
-        # Se for reembolso, fecha direto; caso contrário, libera
         if rd_tipo.lower() == 'reembolso':
             new_status = 'Fechado'
             cursor.execute("""
@@ -551,7 +534,6 @@ def delete_rd(id):
 
 @app.route('/adicional_submit/<id>', methods=['POST'])
 def adicional_submit(id):
-    # Processa anexos, se houver
     if 'arquivo' in request.files:
         conn = get_pg_connection()
         cursor = conn.cursor()
@@ -686,8 +668,8 @@ def reject_fechamento(id):
         return redirect(url_for('index'))
     
     cursor.execute("""
-        UPDATE rd
-        SET status='Fechamento Recusado', motivo_recusa=%s
+        UPDATE rd 
+        SET status='Fechamento Recusado', motivo_recusa=%s 
         WHERE id=%s
     """, (motivo, id))
     conn.commit()
@@ -758,10 +740,35 @@ def delete_file(id):
     flash("Arquivo excluído com sucesso.")
     return redirect(request.referrer or url_for('index'))
 
-#
-# ATENÇÃO: A rota repetida que causava o AssertionError foi removida.
-# Certifique-se de que só existe ESTA definição de /registrar_saldo_devolvido
-#
+def can_edit_status(id):
+    conn = get_pg_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT status FROM rd WHERE id=%s", (id,))
+    row = cursor.fetchone()
+    conn.close()
+    if not row:
+        return False
+    return can_edit(row[0])
+
+def can_request_additional_status(id):
+    conn = get_pg_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT status FROM rd WHERE id=%s", (id,))
+    st = cursor.fetchone()
+    conn.close()
+    if not st:
+        return False
+    return can_request_additional(st[0])
+
+def can_close_status(id):
+    conn = get_pg_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT status FROM rd WHERE id=%s", (id,))
+    st = cursor.fetchone()
+    conn.close()
+    if not st:
+        return False
+    return can_close(st[0])
 
 @app.route('/registrar_saldo_devolvido/<id>', methods=['POST'])
 def registrar_saldo_devolvido(id):
@@ -847,7 +854,6 @@ def export_excel():
 
     workbook.close()
     output.seek(0)
-    cursor.close()
     conn.close()
 
     return send_file(
@@ -863,14 +869,15 @@ def logout():
     flash("Logout realizado com sucesso.")
     return redirect(url_for('index'))
 
-# ----------------------------------------------------------------
-# Novas Rotas para Funcionários (cadastro, consulta, edição)
-# ----------------------------------------------------------------
+# -------------------------------------------------
+# Novas Rotas para Funcionários
 
+# Tela de cadastro de funcionários
 @app.route('/cadastro_funcionario', methods=['GET'])
 def cadastro_funcionario():
     return render_template('cadastro_funcionario.html')
 
+# Processa o cadastro do funcionário
 @app.route('/cadastrar_funcionario', methods=['POST'])
 def cadastrar_funcionario():
     nome = request.form['nome'].strip()
@@ -890,6 +897,7 @@ def cadastrar_funcionario():
     flash("Funcionário cadastrado com sucesso!")
     return redirect(url_for('cadastro_funcionario'))
 
+# Tela de consulta de funcionários
 @app.route('/consulta_funcionario', methods=['GET'])
 def consulta_funcionario():
     conn = get_pg_connection()
@@ -927,97 +935,32 @@ def editar_funcionario(id):
         conn.close()
         return render_template('editar_funcionario.html', funcionario=funcionario)
 
-# ----------------------------------------------------------------
-# Rota (Opcional) para Solicitar RD com dropdown de funcionários
-# ----------------------------------------------------------------
-
-@app.route('/solicitar_rd', methods=['GET', 'POST'])
-def solicitar_rd():
+# -------------------------------------------------
+# Nova Rota: Consulta de RDs abertos para um Funcionário
+@app.route('/consulta_rd/<int:id_func>', methods=['GET'])
+def consulta_rd(id_func):
     conn = get_pg_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, nome FROM funcionarios ORDER BY nome ASC")
-    funcionarios = cursor.fetchall()
+    # Busca o nome do funcionário para exibir no template
+    cursor.execute("SELECT nome FROM funcionarios WHERE id = %s", (id_func,))
+    row = cursor.fetchone()
+    funcionario_nome = row[0] if row else "Desconhecido"
+    
+    # Busca os RDs que não estão fechados para este funcionário
+    query = """
+        SELECT id, data, valor, status 
+        FROM rd
+        WHERE funcionario = (
+            SELECT nome FROM funcionarios WHERE id = %s
+        )
+        AND status != 'Fechado'
+        ORDER BY data DESC
+    """
+    cursor.execute(query, (id_func,))
+    rd_list = cursor.fetchall()
     cursor.close()
     conn.close()
-    
-    if request.method == 'POST':
-        solicitante = request.form['solicitante'].strip()
-        funcionario = request.form['funcionario'].strip()
-        data_str = request.form['data'].strip()
-        centro_custo = request.form['centro_custo'].strip()
-        unidade_negocio = request.form.get('unidade_negocio','').strip()
-        observacao = request.form.get('observacao','').strip()
-        rd_tipo = request.form.get('tipo','credito alelo').strip()
-        try:
-            valor = float(request.form['valor'].replace(',', '.'))
-        except:
-            flash("Valor inválido.")
-            return redirect(url_for('solicitar_rd'))
-        custom_id = generate_custom_id()
-        arquivos = []
-        if 'arquivo' in request.files:
-            for file in request.files.getlist('arquivo'):
-                if file.filename:
-                    filename = f"{custom_id}_{file.filename}"
-                    upload_file_to_r2(file, filename)
-                    arquivos.append(filename)
-        arquivos_str = ','.join(arquivos) if arquivos else None
-        conn = get_pg_connection()
-        cursor = conn.cursor()
-        cursor.execute("""
-          INSERT INTO rd
-            (id, solicitante, funcionario, data, centro_custo,
-             valor, status, arquivos, valor_liberado, observacao,
-             tipo, unidade_negocio)
-          VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 0, %s, %s, %s)
-        """, (custom_id, solicitante, funcionario, data_str, centro_custo,
-              valor, 'Pendente', arquivos_str, observacao, rd_tipo, unidade_negocio))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        flash("RD criada com sucesso!")
-        return redirect(url_for('index'))
-    else:
-        return render_template('rd_form.html', funcionarios=funcionarios)
-
-# ----------------------------------------------------------------
-# Rota para Consultar RDs abertos para um Funcionário
-# ----------------------------------------------------------------
-
-@app.route('/consulta_rd', methods=['GET', 'POST'])
-def consulta_rd():
-    conn = get_pg_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, nome FROM funcionarios ORDER BY nome ASC")
-    funcionarios = cursor.fetchall()
-    
-    rd_list = []
-    selected_func_id = None
-    selected_func_nome = None
-    
-    if request.method == 'POST':
-        selected_func_id = request.form.get("funcionario_id")
-        if selected_func_id:
-            cursor.execute("SELECT nome FROM funcionarios WHERE id=%s", (selected_func_id,))
-            row = cursor.fetchone()
-            if row:
-                selected_func_nome = row[0]
-                query = """
-                  SELECT id, data, valor, status
-                  FROM rd
-                  WHERE funcionario = %s
-                  AND status != 'Fechado'
-                  ORDER BY data DESC
-                """
-                cursor.execute(query, (selected_func_nome,))
-                rd_list = cursor.fetchall()
-    cursor.close()
-    conn.close()
-    return render_template('consulta_rd.html',
-                           funcionarios=funcionarios,
-                           rd_list=rd_list,
-                           selected_func_id=selected_func_id,
-                           selected_func_nome=selected_func_nome)
+    return render_template('listagem_rds.html', rd_list=rd_list, funcionario_nome=funcionario_nome)
 
 if __name__ == '__main__':
     init_db()
