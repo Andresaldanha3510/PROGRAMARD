@@ -72,7 +72,7 @@ def get_pg_connection():
 def init_db():
     conn = get_pg_connection()
     cursor = conn.cursor()
-    # Cria a tabela rd com todas as colunas (se ainda não existir)
+    # Cria a tabela rd (caso não exista) com todas as colunas necessárias
     create_rd_table = """
     CREATE TABLE IF NOT EXISTS rd (
         id TEXT PRIMARY KEY,
@@ -103,7 +103,7 @@ def init_db():
     """
     cursor.execute(create_rd_table)
 
-    # Usa ALTER TABLE ... IF NOT EXISTS para adicionar colunas que podem estar faltando
+    # Adiciona as colunas (usando ALTER TABLE ... IF NOT EXISTS)
     alter_commands = [
         "ALTER TABLE rd ADD COLUMN IF NOT EXISTS valor_liberado NUMERIC(15,2) DEFAULT 0;",
         "ALTER TABLE rd ADD COLUMN IF NOT EXISTS observacao TEXT;",
@@ -119,7 +119,7 @@ def init_db():
     for cmd in alter_commands:
         cursor.execute(cmd)
 
-    # Cria a tabela de saldo global
+    # Tabela de saldo global
     create_saldo_global_table = """
     CREATE TABLE IF NOT EXISTS saldo_global (
         id SERIAL PRIMARY KEY,
@@ -131,7 +131,7 @@ def init_db():
     if cursor.fetchone()[0] == 0:
         cursor.execute("INSERT INTO saldo_global (saldo) VALUES (30000)")
 
-    # Cria a tabela de Funcionários
+    # Tabela de Funcionários
     create_funcionarios_table = """
     CREATE TABLE IF NOT EXISTS funcionarios (
         id SERIAL PRIMARY KEY,
@@ -142,7 +142,7 @@ def init_db():
     """
     cursor.execute(create_funcionarios_table)
 
-    # Cria a tabela de Créditos Adicionais (registro individual)
+    # Tabela de Créditos Adicionais (registro individual)
     create_creditos_adicionais = """
     CREATE TABLE IF NOT EXISTS creditos_adicionais (
         id SERIAL PRIMARY KEY,
