@@ -72,7 +72,7 @@ def get_pg_connection():
 def init_db():
     conn = get_pg_connection()
     cursor = conn.cursor()
-    # Cria a tabela rd (caso não exista) com todas as colunas necessárias
+    # Cria a tabela rd com todas as colunas necessárias
     create_rd_table = """
     CREATE TABLE IF NOT EXISTS rd (
         id TEXT PRIMARY KEY,
@@ -103,7 +103,7 @@ def init_db():
     """
     cursor.execute(create_rd_table)
 
-    # Adiciona as colunas (usando ALTER TABLE ... IF NOT EXISTS)
+    # Adiciona as colunas caso não existam (usando ALTER TABLE ... IF NOT EXISTS)
     alter_commands = [
         "ALTER TABLE rd ADD COLUMN IF NOT EXISTS valor_liberado NUMERIC(15,2) DEFAULT 0;",
         "ALTER TABLE rd ADD COLUMN IF NOT EXISTS observacao TEXT;",
