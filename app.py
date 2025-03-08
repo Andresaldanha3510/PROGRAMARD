@@ -72,7 +72,7 @@ def get_pg_connection():
 def init_db():
     conn = get_pg_connection()
     cursor = conn.cursor()
-    # Cria a tabela RD com todas as colunas necessárias
+    # Cria a tabela rd com todas as colunas (se ainda não existir)
     create_rd_table = """
     CREATE TABLE IF NOT EXISTS rd (
         id TEXT PRIMARY KEY,
@@ -103,25 +103,21 @@ def init_db():
     """
     cursor.execute(create_rd_table)
 
-    # Caso a tabela já exista, garante que todas as colunas estejam presentes
-    for col_name, alter_cmd in [
-        ("valor_liberado", "ALTER TABLE rd ADD COLUMN valor_liberado NUMERIC(15,2) DEFAULT 0;"),
-        ("observacao", "ALTER TABLE rd ADD COLUMN observacao TEXT;"),
-        ("tipo", "ALTER TABLE rd ADD COLUMN tipo TEXT DEFAULT 'credito alelo';"),
-        ("data_saldo_devolvido", "ALTER TABLE rd ADD COLUMN data_saldo_devolvido DATE;"),
-        ("unidade_negocio", "ALTER TABLE rd ADD COLUMN unidade_negocio TEXT;"),
-        ("motivo_recusa", "ALTER TABLE rd ADD COLUMN motivo_recusa TEXT;"),
-        ("adicionais_individuais", "ALTER TABLE rd ADD COLUMN adicionais_individuais TEXT;"),
-        ("motivo_anexo_divergente", "ALTER TABLE rd ADD COLUMN motivo_anexo_divergente TEXT;"),
-        ("data_divergencia", "ALTER TABLE rd ADD COLUMN data_divergencia TIMESTAMP;"),
-        ("data_ultima_operacao", "ALTER TABLE rd ADD COLUMN data_ultima_operacao TIMESTAMP;")
-    ]:
-        cursor.execute(
-            "SELECT column_name FROM information_schema.columns WHERE table_name='rd' AND column_name=%s;", 
-            (col_name,)
-        )
-        if not cursor.fetchone():
-            cursor.execute(alter_cmd)
+    # Usa ALTER TABLE ... IF NOT EXISTS para adicionar colunas que podem estar faltando
+    alter_commands = [
+        "ALTER TABLE rd ADD COLUMN IF NOT EXISTS valor_liberado NUMERIC(15,2) DEFAULT 0;",
+        "ALTER TABLE rd ADD COLUMN IF NOT EXISTS observacao TEXT;",
+        "ALTER TABLE rd ADD COLUMN IF NOT EXISTS tipo TEXT DEFAULT 'credito alelo';",
+        "ALTER TABLE rd ADD COLUMN IF NOT EXISTS data_saldo_devolvido DATE;",
+        "ALTER TABLE rd ADD COLUMN IF NOT EXISTS unidade_negocio TEXT;",
+        "ALTER TABLE rd ADD COLUMN IF NOT EXISTS motivo_recusa TEXT;",
+        "ALTER TABLE rd ADD COLUMN IF NOT EXISTS adicionais_individuais TEXT;",
+        "ALTER TABLE rd ADD COLUMN IF NOT EXISTS motivo_anexo_divergente TEXT;",
+        "ALTER TABLE rd ADD COLUMN IF NOT EXISTS data_divergencia TIMESTAMP;",
+        "ALTER TABLE rd ADD COLUMN IF NOT EXISTS data_ultima_operacao TIMESTAMP;"
+    ]
+    for cmd in alter_commands:
+        cursor.execute(cmd)
 
     # Cria a tabela de saldo global
     create_saldo_global_table = """
@@ -307,7 +303,7 @@ def index():
     adicional_id = request.args.get('adicional')
     fechamento_id = request.args.get('fechamento')
     
-    # Consulta para divergências (para exibir popup para supervisor)
+    # Consulta para divergências (popup para supervisor)
     divergent_rds = []
     if session.get('user_role') == 'supervisor':
         cursor.execute("SELECT id, motivo_anexo_divergente, data_divergencia FROM rd WHERE motivo_anexo_divergente IS NOT NULL")
@@ -593,7 +589,7 @@ def delete_rd(id):
     flash("RD excluída com sucesso.")
     return redirect(url_for('index'))
 
-# Rota para crédito adicional (registro individual na tabela creditos_adicionais)
+# Rota para crédito adicional (registro individual)
 @app.route('/adicional_submit/<id>', methods=['POST'])
 def adicional_submit(id):
     if 'arquivo' in request.files:
@@ -633,7 +629,7 @@ def adicional_submit(id):
     flash("Crédito adicional registrado individualmente. A RD voltou para 'Pendente'.")
     return redirect(url_for('index'))
 
-# Rota para fechamento da RD (direciona para a aba 'Saldo Devolver')
+# Rota para fechamento da RD (direciona para 'Saldo Devolver')
 @app.route('/fechamento_submit/<id>', methods=['POST'])
 def fechamento_submit(id):
     if 'arquivo' in request.files:
@@ -687,7 +683,7 @@ def fechamento_submit(id):
     flash("Fechamento solicitado. RD está na aba 'Saldo Devolver'.")
     return redirect(url_for('index'))
 
-# Rota para confirmar a devolução do saldo (muda status para 'Fechado')
+# Rota para confirmar a devolução (muda status para 'Fechado')
 @app.route('/saldo_devolvido/<id>', methods=['POST'])
 def saldo_devolvido(id):
     if not (is_financeiro() or is_gestor()):
@@ -703,7 +699,7 @@ def saldo_devolvido(id):
     flash("Saldo devolvido. RD fechada.")
     return redirect(url_for('index'))
 
-# Rota para o supervisor editar arquivos (somente em RDs com status 'Liberado')
+# Rota para o supervisor editar arquivos (somente se RD estiver 'Liberado')
 @app.route('/supervisor_edit/<id>', methods=['GET', 'POST'])
 def supervisor_edit(id):
     if not is_supervisor():
@@ -718,7 +714,6 @@ def supervisor_edit(id):
         flash("RD não encontrada.")
         return redirect(url_for('index'))
     
-    # Permite edição apenas se o status for 'Liberado'
     if rd[6] != 'Liberado':
         flash("Somente RDs liberadas podem ser editadas pelo supervisor.")
         return redirect(url_for('index'))
@@ -744,7 +739,7 @@ def supervisor_edit(id):
     conn.close()
     return render_template('supervisor_edit.html', rd=rd)
 
-# Rota para registrar anexo divergente (gestor ou solicitante)
+# Rota para registrar anexo divergente (para gestor ou solicitante)
 @app.route('/anexo_divergente/<id>', methods=['GET', 'POST'])
 def anexo_divergente(id):
     if session.get('user_role') not in ['gestor', 'solicitante']:
