@@ -188,7 +188,6 @@
       min-width: 20px;
       text-align: center;
     }
-    /* Estilos para observação com toggle */
     .observation-short { }
     .toggle-observation { border: none; background: none; cursor: pointer; color: var(--primary-color); font-weight: bold; }
     .observation-full { display: none; }
@@ -261,7 +260,6 @@
   <h1>Gerenciamento de RDs</h1>
 
   {% if user_role is not defined %}
-    <!-- Formulário de Login -->
     <form action="/" method="POST" class="main-form">
       {% if error %}<p class="error-message">{{ error }}</p>{% endif %}
       <label for="username">Usuário:</label>
@@ -272,7 +270,6 @@
     </form>
   {% else %}
     {% if adicional_id %}
-      <!-- Formulário para solicitar crédito adicional -->
       <div class="form-adicional">
         <h2>Solicitar Crédito Adicional para RD #{{ adicional_id }}</h2>
         <form action="/adicional_submit/{{ adicional_id }}" method="POST" enctype="multipart/form-data" class="main-form">
@@ -284,7 +281,6 @@
         </form>
       </div>
     {% elif fechamento_id %}
-      <!-- Formulário de Fechamento -->
       <div class="form-fechamento">
         <h2>Fechamento da RD #{{ fechamento_id }}</h2>
         <form action="/fechamento_submit/{{ fechamento_id }}" method="POST" enctype="multipart/form-data" class="main-form">
@@ -332,17 +328,16 @@
       {% endif %}
       <div style="text-align:center; margin:20px 0;">
        <a href="{{ url_for('cadastro_funcionario') }}" class="btn btn-success" style="margin-right: 10px;">
-    <i class="fas fa-user-plus"></i> Cadastro Funcionários
-  </a>
-  <a href="{{ url_for('consulta_funcionario') }}" class="btn btn-success" style="margin-right: 10px;">
-    <i class="fas fa-search"></i> Consulta Funcionários
-  </a>
-  <a href="{{ url_for('export_excel') }}" class="btn btn-success">
-    <i class="fas fa-file-excel"></i> Exportar para Excel
-  </a>
+         <i class="fas fa-user-plus"></i> Cadastro Funcionários
+       </a>
+       <a href="{{ url_for('consulta_funcionario') }}" class="btn btn-success" style="margin-right: 10px;">
+         <i class="fas fa-search"></i> Consulta Funcionários
+       </a>
+       <a href="{{ url_for('export_excel') }}" class="btn btn-success">
+         <i class="fas fa-file-excel"></i> Exportar para Excel
+       </a>
       </div>
 
-      <!-- Macro para mostrar os valores -->
       {% macro mostrar_valores(rd) %}
         {% set valor = rd[5] %}
         {% set valor_adic = rd[7] if rd[7] else 0 %}
@@ -362,7 +357,7 @@
         </div>
       {% endmacro %}
 
-      <!-- Abas: Ordem: Pendentes, Aprovados, Liberados, Fechamento Solicitado, Fechamento Recusado, Fechados -->
+      <!-- Abas de Navegação -->
       <div class="tabs">
         <input type="radio" name="tab-control" id="tab1" checked>
         <input type="radio" name="tab-control" id="tab2">
@@ -374,7 +369,7 @@
           <label for="tab1">Pendentes {% if pendentes|length > 0 %}<span class="badge">{{ pendentes|length }}</span>{% endif %}</label>
           <label for="tab2">Aprovados {% if aprovados|length > 0 %}<span class="badge">{{ aprovados|length }}</span>{% endif %}</label>
           <label for="tab3">Liberados {% if liberados|length > 0 %}<span class="badge">{{ liberados|length }}</span>{% endif %}</label>
-          <label for="tab4">Fechamento Solicitado {% if fechamento_solicitado|length > 0 %}<span class="badge">{{ fechamento_solicitado|length }}</span>{% endif %}</label>
+          <label for="tab4">Saldo Devolver {% if saldo_devolver|length > 0 %}<span class="badge">{{ saldo_devolver|length }}</span>{% endif %}</label>
           <label for="tab5">Fechamento Recusado {% if fechamento_recusado|length > 0 %}<span class="badge">{{ fechamento_recusado|length }}</span>{% endif %}</label>
           <label for="tab6">Fechados {% if fechados|length > 0 %}<span class="badge">{{ fechados|length }}</span>{% endif %}</label>
         </div>
@@ -564,6 +559,14 @@
                   </td>
                   <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
                   <td data-label="Ações">
+                    {% if is_supervisor() %}
+                      <a href="{{ url_for('supervisor_edit', id=rd_id) }}" class="btn btn-edit"><i class="fas fa-edit"></i> Editar Arquivos</a>
+                    {% endif %}
+                    {% if (is_gestor() or is_solicitante()) and (rd[22] is not defined or not rd[22]) %}
+                      <a href="{{ url_for('anexo_divergente', id=rd_id) }}" class="btn btn-danger"><i class="fas fa-exclamation-triangle"></i> Anexo Divergente</a>
+                    {% elif rd[22] %}
+                      <span title="Motivo: {{ rd[22] }}">Divergente</span>
+                    {% endif %}
                     {% if can_edit_func(status) %}
                       <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit"><i class="fas fa-edit"></i> Editar</a>
                     {% endif %}
@@ -572,27 +575,15 @@
                         <button type="submit" class="btn btn-delete-rd"><i class="fas fa-trash-alt"></i> Excluir</button>
                       </form>
                     {% endif %}
-                    {% if can_request_additional(status) %}
-                      <form action="/" method="GET" class="action-form">
-                        <input type="hidden" name="adicional" value="{{ rd_id }}">
-                        <button type="submit" class="btn btn-additional"><i class="fas fa-plus"></i> Adicional</button>
-                      </form>
-                    {% endif %}
-                    {% if can_close(status) %}
-                      <form action="/" method="GET" class="action-form">
-                        <input type="hidden" name="fechamento" value="{{ rd_id }}">
-                        <button type="submit" class="btn btn-fechamento"><i class="fas fa-lock"></i> Fechamento</button>
-                      </form>
-                    {% endif %}
                   </td>
                 </tr>
                 {% endfor %}
               </tbody>
             </table>
           </div>
-          <!-- Aba Fechamento Solicitado -->
+          <!-- Aba Saldo Devolver -->
           <div class="tab-content" id="content4">
-            <table id="tabela-fechamento-solicitado" class="display">
+            <table id="tabela-saldo-devolver" class="display">
               <thead>
                 <tr>
                   <th>ID</th>
@@ -607,7 +598,7 @@
                 </tr>
               </thead>
               <tbody>
-                {% for rd in fechamento_solicitado %}
+                {% for rd in saldo_devolver %}
                 {% set rd_id = rd[0] %}
                 {% set status = rd[6] %}
                 <tr>
@@ -639,14 +630,9 @@
                   </td>
                   <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
                   <td data-label="Ações">
-                    {% if can_approve_func(status) %}
-                      <form action="/approve/{{ rd_id }}" method="POST" class="action-form" style="display:inline-block;">
-                        <button type="submit" class="btn btn-approve"><i class="fas fa-check"></i> Fechar</button>
-                      </form>
-                    {% endif %}
-                    {% if is_gestor() and status == 'Fechamento Solicitado' %}
-                      <button type="button" class="btn btn-danger btn-recusar" data-rd-id="{{ rd_id }}"><i class="fas fa-times"></i> Recusar</button>
-                    {% endif %}
+                    <form action="/saldo_devolvido/{{ rd_id }}" method="POST" class="action-form">
+                      <button type="submit" class="btn btn-warning"><i class="fas fa-money-bill-wave"></i> Saldo Devolvido</button>
+                    </form>
                   </td>
                 </tr>
                 {% endfor %}
@@ -760,15 +746,7 @@
                   </td>
                   <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
                   <td data-label="Ações">
-                    {% if is_financeiro() %}
-                      {% if not rd[18] %}
-                        <form action="/registrar_saldo_devolvido/{{ rd_id }}" method="POST" class="action-form">
-                          <button type="submit" class="btn btn-warning"><i class="fas fa-money-bill-wave"></i> Saldo Devolvido</button>
-                        </form>
-                      {% else %}
-                        <span style="color: var(--success-color); font-weight:600;">Devolvido em {{ rd[18] }}</span>
-                      {% endif %}
-                    {% endif %}
+                    <!-- Botão "Saldo Devolvido" removido daqui -->
                   </td>
                 </tr>
                 {% endfor %}
@@ -803,6 +781,21 @@
   </div>
 </div>
 
+<!-- Modal para notificação de divergência -->
+<div id="divergentModal" class="modal">
+  <div class="modal-content">
+    <span class="close-btn" id="closeDivergentModal">&times;</span>
+    <h3>Notificação: Arquivos Divergentes</h3>
+    <ul id="divergentList">
+      {% for rd in divergent_rds %}
+        <li>
+          RD: {{ rd[0] }} - Motivo: {{ rd[1] }} - Data: {{ rd[2] }}
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
 <footer>
   Desenvolvido por André Ferreira
 </footer>
@@ -811,17 +804,36 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script type="text/javascript" src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
 <script>
-// Inicializa DataTables
 $(document).ready(function(){
   $('#tabela-pendentes').DataTable();
   $('#tabela-aprovados').DataTable();
   $('#tabela-liberados').DataTable();
-  $('#tabela-fechamento-solicitado').DataTable();
+  $('#tabela-saldo-devolver').DataTable();
   $('#tabela-fechamento-recusado').DataTable();
   $('#tabela-fechados').DataTable();
+
+  {% if divergent_rds|length > 0 %}
+    $('#divergentModal').show();
+  {% endif %}
+
+  $('#closeDivergentModal').click(function(){ 
+    $('#divergentModal').hide();
+  });
+  
+  $('#closeFileModal').click(function(){ 
+    $('#fileModal').hide();
+  });
+  
+  $(window).click(function(e){
+    if(e.target == document.getElementById('fileModal')){
+      $('#fileModal').hide();
+    }
+    if(e.target == document.getElementById('divergentModal')){
+      $('#divergentModal').hide();
+    }
+  });
 });
 
-// Toggle para detalhes de valores
 $(document).on('click', '.toggle-details', function(){
   var details = $(this).closest('.valor-resumo').next('.rd-details');
   if(details.is(':visible')){
@@ -833,7 +845,6 @@ $(document).on('click', '.toggle-details', function(){
   }
 });
 
-// Toggle para observação
 function toggleObservation(btn) {
   var full = $(btn).siblings('.observation-full');
   if(full.is(':visible')){
@@ -845,7 +856,6 @@ function toggleObservation(btn) {
   }
 }
 
-// Abrir modal de arquivos
 $(document).on('click', '.btn-view-files', function(){
   let filesStr = $(this).data('files');    
   let rdId     = $(this).data('rdId');     
@@ -866,10 +876,6 @@ $(document).on('click', '.btn-view-files', function(){
   $('#modalFilesContainer').html(html);
   $('#fileModal').show();
 });
-$('#closeFileModal').click(function(){ $('#fileModal').hide(); });
-$(window).click(function(e){
-  if(e.target == document.getElementById('fileModal')){ $('#fileModal').hide(); }
-});
 function getPublicUrl(filename){
   return "https://pub-1e6f8559bc2b413c889fbf4860462599.r2.dev/" + filename;
 }
@@ -885,7 +891,6 @@ document.getElementById('btn-reembolso')?.addEventListener('click', function(){
   document.getElementById('lbl-solicitante').innerText = 'Solicitante do RD Reembolso';
 });
 
-// Handler para botão de recusa
 $(document).on('click', '.btn-recusar', function(){
   var rdId = $(this).data('rdId');
   $('#formRecusa').attr('action', '/reject_fechamento/' + rdId);
