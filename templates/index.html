@@ -404,8 +404,8 @@
                   <td data-label="Data">{{ rd[3] }}</td>
                   <td data-label="Centro de Custo">{{ rd[4] }}<br><small>{{ rd[19] }}</small></td>
                   <td data-label="Observação">
-                    {% if rd[15] %}
-                      {% set obs = rd[15] %}
+                    {% set obs = rd[15]|string %}
+                    {% if obs %}
                       {% if obs|length > 50 %}
                         <span class="observation-short">{{ obs[:50] }}...</span>
                         <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
@@ -472,8 +472,8 @@
                   <td data-label="Data">{{ rd[3] }}</td>
                   <td data-label="Centro de Custo">{{ rd[4] }}</td>
                   <td data-label="Observação">
-                    {% if rd[15] %}
-                      {% set obs = rd[15] %}
+                    {% set obs = rd[15]|string %}
+                    {% if obs %}
                       {% if obs|length > 50 %}
                         <span class="observation-short">{{ obs[:50] }}...</span>
                         <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
@@ -540,8 +540,8 @@
                   <td data-label="Data">{{ rd[3] }}</td>
                   <td data-label="Centro de Custo">{{ rd[4] }}</td>
                   <td data-label="Observação">
-                    {% if rd[15] %}
-                      {% set obs = rd[15] %}
+                    {% set obs = rd[15]|string %}
+                    {% if obs %}
                       {% if obs|length > 50 %}
                         <span class="observation-short">{{ obs[:50] }}...</span>
                         <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
@@ -565,9 +565,9 @@
                     {% if is_supervisor() %}
                       <a href="{{ url_for('supervisor_edit', id=rd_id) }}" class="btn btn-edit"><i class="fas fa-edit"></i> Editar Arquivos</a>
                     {% endif %}
-                    {% if (is_gestor() or is_solicitante()) and (rd[21] is not defined or not rd[21]) %}
+                    {% if (is_gestor() or is_solicitante()) and (rd[21]|string == "") %}
                       <a href="{{ url_for('anexo_divergente', id=rd_id) }}" class="btn btn-danger"><i class="fas fa-exclamation-triangle"></i> Anexo Divergente</a>
-                    {% elif rd[21] %}
+                    {% elif rd[21]|string %}
                       <span title="Motivo: {{ rd[21] }}">Divergente</span>
                     {% endif %}
                     {% if can_edit_func(status) %}
@@ -611,8 +611,8 @@
                   <td data-label="Data">{{ rd[3] }}</td>
                   <td data-label="Centro de Custo">{{ rd[4] }}</td>
                   <td data-label="Observação">
-                    {% if rd[15] %}
-                      {% set obs = rd[15] %}
+                    {% set obs = rd[15]|string %}
+                    {% if obs %}
                       {% if obs|length > 50 %}
                         <span class="observation-short">{{ obs[:50] }}...</span>
                         <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
@@ -669,8 +669,8 @@
                   <td data-label="Data">{{ rd[3] }}</td>
                   <td data-label="Centro de Custo">{{ rd[4] }}</td>
                   <td data-label="Observação">
-                    {% if rd[15] %}
-                      {% set obs = rd[15] %}
+                    {% set obs = rd[15]|string %}
+                    {% if obs %}
                       {% if obs|length > 50 %}
                         <span class="observation-short">{{ obs[:50] }}...</span>
                         <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
@@ -727,8 +727,8 @@
                   <td data-label="Data">{{ rd[3] }}</td>
                   <td data-label="Centro de Custo">{{ rd[4] }}</td>
                   <td data-label="Observação">
-                    {% if rd[15] %}
-                      {% set obs = rd[15] %}
+                    {% set obs = rd[15]|string %}
+                    {% if obs %}
                       {% if obs|length > 50 %}
                         <span class="observation-short">{{ obs[:50] }}...</span>
                         <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
