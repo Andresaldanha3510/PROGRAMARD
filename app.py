@@ -338,6 +338,21 @@ def index():
         divergent_rds=divergent_rds
     )
 
+# Rota para editar o saldo global (edit_saldo)
+@app.route('/edit_saldo', methods=['POST'])
+def edit_saldo():
+    if not is_financeiro():
+        flash("Acesso negado.")
+        return redirect(url_for('index'))
+    try:
+        novo_saldo = float(request.form['saldo_global'].replace(',', '.'))
+    except (ValueError, KeyError):
+        flash("Saldo inválido.")
+        return redirect(url_for('index'))
+    set_saldo_global(novo_saldo)
+    flash("Saldo Global atualizado com sucesso.")
+    return redirect(url_for('index'))
+
 # Adiciona nova RD
 @app.route('/add', methods=['POST'])
 def add_rd():
@@ -521,7 +536,6 @@ def approve(id):
                 WHERE id=%s
             """, (new_status, current_date, valor_total, current_date, id))
 
-    # Caso fechamento já tenha sido solicitado, gestor agora muda status para "Saldo Devolver"
     elif status == 'Fechamento Solicitado' and is_gestor():
         cursor.execute("SELECT saldo_devolver FROM rd WHERE id=%s", (id,))
         row_saldo_dev = cursor.fetchone()
@@ -692,97 +706,6 @@ def saldo_devolvido(id):
     conn.close()
     flash("Saldo devolvido. RD fechada.")
     return redirect(url_for('index'))
-
-# Logout
-@app.route('/logout')
-def logout():
-    session.clear()
-    flash("Logout realizado com sucesso.")
-    return redirect(url_for('index'))
-
-# Rotas para Funcionários (cadastro, consulta, edição)
-@app.route('/cadastro_funcionario', methods=['GET'])
-def cadastro_funcionario():
-    return render_template('cadastro_funcionario.html')
-
-@app.route('/cadastrar_funcionario', methods=['POST'])
-def cadastrar_funcionario():
-    nome = request.form['nome'].strip()
-    centro_custo = request.form['centroCusto'].strip()
-    unidade_negocio = request.form['unidadeNegocio'].strip()
-
-    conn = get_pg_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-        INSERT INTO funcionarios (nome, centro_custo, unidade_negocio)
-        VALUES (%s, %s, %s)
-    """, (nome, centro_custo, unidade_negocio))
-    conn.commit()
-    cursor.close()
-    conn.close()
-
-    flash("Funcionário cadastrado com sucesso!")
-    return redirect(url_for('cadastro_funcionario'))
-
-@app.route('/consulta_funcionario', methods=['GET'])
-def consulta_funcionario():
-    conn = get_pg_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, nome, centro_custo, unidade_negocio FROM funcionarios")
-    funcionarios = cursor.fetchall()
-    cursor.close()
-    conn.close()
-    return render_template('consulta_funcionario.html', funcionarios=funcionarios)
-
-@app.route('/editar_funcionario/<int:id>', methods=['GET', 'POST'])
-def editar_funcionario(id):
-    if request.method == 'POST':
-        nome = request.form['nome'].strip()
-        centro_custo = request.form['centroCusto'].strip()
-        unidade_negocio = request.form['unidadeNegocio'].strip()
-        conn = get_pg_connection()
-        cursor = conn.cursor()
-        cursor.execute("""
-            UPDATE funcionarios
-            SET nome=%s, centro_custo=%s, unidade_negocio=%s
-            WHERE id=%s
-        """, (nome, centro_custo, unidade_negocio, id))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        flash("Funcionário atualizado com sucesso!")
-        return redirect(url_for('consulta_funcionario'))
-    else:
-        conn = get_pg_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, nome, centro_custo, unidade_negocio FROM funcionarios WHERE id=%s", (id,))
-        funcionario = cursor.fetchone()
-        cursor.close()
-        conn.close()
-        return render_template('editar_funcionario.html', funcionario=funcionario)
-
-@app.route('/consulta_rd/<int:id_func>', methods=['GET'])
-def consulta_rd(id_func):
-    conn = get_pg_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT nome FROM funcionarios WHERE id = %s", (id_func,))
-    row = cursor.fetchone()
-    funcionario_nome = row[0] if row else "Desconhecido"
-    
-    query = """
-        SELECT id, data, valor, status 
-        FROM rd
-        WHERE funcionario = (
-            SELECT nome FROM funcionarios WHERE id = %s
-        )
-        AND status != 'Fechado'
-        ORDER BY data DESC
-    """
-    cursor.execute(query, (id_func,))
-    rd_list = cursor.fetchall()
-    cursor.close()
-    conn.close()
-    return render_template('listagem_rds.html', rd_list=rd_list, funcionario_nome=funcionario_nome)
 
 # Rota para o supervisor editar arquivos em RDs "Liberado"
 @app.route('/supervisor_edit/<id>', methods=['GET', 'POST'])
