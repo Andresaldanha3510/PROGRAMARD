@@ -260,6 +260,7 @@
   <h1>Gerenciamento de RDs</h1>
 
   {% if user_role is not defined %}
+    <!-- Formulário de Login -->
     <form action="/" method="POST" class="main-form">
       {% if error %}<p class="error-message">{{ error }}</p>{% endif %}
       <label for="username">Usuário:</label>
@@ -270,6 +271,7 @@
     </form>
   {% else %}
     {% if adicional_id %}
+      <!-- Formulário para Crédito Adicional -->
       <div class="form-adicional">
         <h2>Solicitar Crédito Adicional para RD #{{ adicional_id }}</h2>
         <form action="/adicional_submit/{{ adicional_id }}" method="POST" enctype="multipart/form-data" class="main-form">
@@ -281,6 +283,7 @@
         </form>
       </div>
     {% elif fechamento_id %}
+      <!-- Formulário para Fechamento -->
       <div class="form-fechamento">
         <h2>Fechamento da RD #{{ fechamento_id }}</h2>
         <form action="/fechamento_submit/{{ fechamento_id }}" method="POST" enctype="multipart/form-data" class="main-form">
@@ -401,8 +404,8 @@
                   <td data-label="Data">{{ rd[3] }}</td>
                   <td data-label="Centro de Custo">{{ rd[4] }}<br><small>{{ rd[19] }}</small></td>
                   <td data-label="Observação">
-                    {% if rd[16] %}
-                      {% set obs = rd[16] %}
+                    {% if rd[15] %}
+                      {% set obs = rd[15] %}
                       {% if obs|length > 50 %}
                         <span class="observation-short">{{ obs[:50] }}...</span>
                         <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
@@ -469,8 +472,8 @@
                   <td data-label="Data">{{ rd[3] }}</td>
                   <td data-label="Centro de Custo">{{ rd[4] }}</td>
                   <td data-label="Observação">
-                    {% if rd[16] %}
-                      {% set obs = rd[16] %}
+                    {% if rd[15] %}
+                      {% set obs = rd[15] %}
                       {% if obs|length > 50 %}
                         <span class="observation-short">{{ obs[:50] }}...</span>
                         <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
@@ -537,8 +540,8 @@
                   <td data-label="Data">{{ rd[3] }}</td>
                   <td data-label="Centro de Custo">{{ rd[4] }}</td>
                   <td data-label="Observação">
-                    {% if rd[16] %}
-                      {% set obs = rd[16] %}
+                    {% if rd[15] %}
+                      {% set obs = rd[15] %}
                       {% if obs|length > 50 %}
                         <span class="observation-short">{{ obs[:50] }}...</span>
                         <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
@@ -562,10 +565,10 @@
                     {% if is_supervisor() %}
                       <a href="{{ url_for('supervisor_edit', id=rd_id) }}" class="btn btn-edit"><i class="fas fa-edit"></i> Editar Arquivos</a>
                     {% endif %}
-                    {% if (is_gestor() or is_solicitante()) and (rd[22] is not defined or not rd[22]) %}
+                    {% if (is_gestor() or is_solicitante()) and (rd[21] is not defined or not rd[21]) %}
                       <a href="{{ url_for('anexo_divergente', id=rd_id) }}" class="btn btn-danger"><i class="fas fa-exclamation-triangle"></i> Anexo Divergente</a>
-                    {% elif rd[22] %}
-                      <span title="Motivo: {{ rd[22] }}">Divergente</span>
+                    {% elif rd[21] %}
+                      <span title="Motivo: {{ rd[21] }}">Divergente</span>
                     {% endif %}
                     {% if can_edit_func(status) %}
                       <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit"><i class="fas fa-edit"></i> Editar</a>
@@ -608,8 +611,8 @@
                   <td data-label="Data">{{ rd[3] }}</td>
                   <td data-label="Centro de Custo">{{ rd[4] }}</td>
                   <td data-label="Observação">
-                    {% if rd[16] %}
-                      {% set obs = rd[16] %}
+                    {% if rd[15] %}
+                      {% set obs = rd[15] %}
                       {% if obs|length > 50 %}
                         <span class="observation-short">{{ obs[:50] }}...</span>
                         <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
@@ -666,8 +669,8 @@
                   <td data-label="Data">{{ rd[3] }}</td>
                   <td data-label="Centro de Custo">{{ rd[4] }}</td>
                   <td data-label="Observação">
-                    {% if rd[16] %}
-                      {% set obs = rd[16] %}
+                    {% if rd[15] %}
+                      {% set obs = rd[15] %}
                       {% if obs|length > 50 %}
                         <span class="observation-short">{{ obs[:50] }}...</span>
                         <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
@@ -679,7 +682,7 @@
                       -
                     {% endif %}
                   </td>
-                  <td data-label="Motivo da Recusa">{{ rd[20] }}</td>
+                  <td data-label="Motivo da Recusa">{{ rd[19] }}</td>
                   <td data-label="Arquivos">
                     {% if rd[12] %}
                       <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}"><i class="fas fa-paperclip"></i> Anexos</button>
@@ -724,8 +727,8 @@
                   <td data-label="Data">{{ rd[3] }}</td>
                   <td data-label="Centro de Custo">{{ rd[4] }}</td>
                   <td data-label="Observação">
-                    {% if rd[16] %}
-                      {% set obs = rd[16] %}
+                    {% if rd[15] %}
+                      {% set obs = rd[15] %}
                       {% if obs|length > 50 %}
                         <span class="observation-short">{{ obs[:50] }}...</span>
                         <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
@@ -746,7 +749,7 @@
                   </td>
                   <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
                   <td data-label="Ações">
-                    <!-- Botão "Saldo Devolvido" removido daqui -->
+                    <!-- Sem botão para saldo devolvido nesta aba -->
                   </td>
                 </tr>
                 {% endfor %}
