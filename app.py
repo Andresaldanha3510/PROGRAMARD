@@ -51,6 +51,7 @@ secret_key = os.getenv('SECRET_KEY', 'secret123')
 app.secret_key = secret_key
 logging.debug("SECRET_KEY carregado corretamente.")
 
+# Configurações do PostgreSQL
 PG_HOST = os.getenv('PG_HOST', 'dpg-ctjqnsdds78s73erdqi0-a.oregon-postgres.render.com')
 PG_PORT = os.getenv('PG_PORT', '5432')
 PG_DB   = os.getenv('PG_DB', 'programard_db')
@@ -76,7 +77,7 @@ def init_db():
     conn = get_pg_connection()
     cursor = conn.cursor()
 
-    # Cria tabela RD se não existir
+    # Cria tabela RD se não existir (com todos os campos necessários)
     create_rd_table = """
     CREATE TABLE IF NOT EXISTS rd (
         id TEXT PRIMARY KEY,
@@ -107,7 +108,7 @@ def init_db():
     """
     cursor.execute(create_rd_table)
 
-    # Garante que as colunas extras existam (caso a tabela já exista)
+    # Garante que as colunas extras existam
     for col_name, alter_cmd in [
         ("valor_liberado", "ALTER TABLE rd ADD COLUMN valor_liberado NUMERIC(15,2) DEFAULT 0;"),
         ("observacao", "ALTER TABLE rd ADD COLUMN observacao TEXT;"),
@@ -187,6 +188,7 @@ def is_supervisor():
     return session.get('user_role') == 'supervisor'
 
 def can_add():
+    # Supervisor não poderá criar RD; apenas solicitante, gestor e financeiro
     return user_role() in ['solicitante', 'gestor', 'financeiro']
 
 def can_edit(status):
@@ -246,12 +248,9 @@ def format_currency(value):
     right = parts[1]
     return f"{left},{right}"
 
-# Função auxiliar para exibir valores da RD
+# Função auxiliar para exibir os valores da RD
 def mostrar_valores(rd):
-    try:
-        valor = rd[5] if rd[5] is not None else 0
-    except IndexError:
-        valor = 0
+    valor = rd[5] if rd[5] is not None else 0
     valor_adic = rd[7] if len(rd) > 7 and rd[7] is not None else 0
     total_credit = valor + valor_adic
     valor_despesa = rd[9] if len(rd) > 9 and rd[9] is not None else 0
