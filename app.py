@@ -51,11 +51,11 @@ secret_key = os.getenv('SECRET_KEY', 'secret123')
 app.secret_key = secret_key
 logging.debug("SECRET_KEY carregado corretamente.")
 
-PG_HOST = os.getenv('PG_HOST', 'localhost')
+PG_HOST = os.getenv('PG_HOST', 'dpg-ctjqnsdds78s73erdqi0-a.oregon-postgres.render.com')
 PG_PORT = os.getenv('PG_PORT', '5432')
-PG_DB   = os.getenv('PG_DB', 'postgres')
-PG_USER = os.getenv('PG_USER', 'postgres')
-PG_PASSWORD = os.getenv('PG_PASSWORD', 'postgres')
+PG_DB   = os.getenv('PG_DB', 'programard_db')
+PG_USER = os.getenv('PG_USER', 'programard_db_user')
+PG_PASSWORD = os.getenv('PG_PASSWORD', 'hU9wJmIfgiyCg02KFQ3a4AropKSMopXr')
 
 def get_pg_connection():
     try:
@@ -100,12 +100,14 @@ def init_db():
         data_saldo_devolvido DATE,
         unidade_negocio TEXT,
         motivo_recusa TEXT,
-        adicionais_individuais TEXT
+        adicionais_individuais TEXT,
+        divergencia_anexos BOOLEAN DEFAULT false,
+        motivo_divergencia TEXT
     );
     """
     cursor.execute(create_rd_table)
 
-    # Garante colunas extras
+    # Garante que as colunas extras existam (caso a tabela já exista)
     for col_name, alter_cmd in [
         ("valor_liberado", "ALTER TABLE rd ADD COLUMN valor_liberado NUMERIC(15,2) DEFAULT 0;"),
         ("observacao", "ALTER TABLE rd ADD COLUMN observacao TEXT;"),
@@ -189,11 +191,9 @@ def can_add():
     return user_role() in ['solicitante', 'gestor', 'financeiro']
 
 def can_edit(status):
-    # Exemplo de regra: não edita se estiver Fechado
     if status == 'Fechado':
         return False
     if is_solicitante():
-        # Permite editar se estiver em 'Pendente' ou 'Fechamento Recusado'
         return status in ['Pendente', 'Fechamento Recusado']
     if is_gestor() or is_financeiro():
         return True
@@ -209,9 +209,6 @@ def can_delete(status, solicitante):
     return False
 
 def can_approve(status):
-    # Pendente -> Aprovado (Gestor)
-    # Aprovado -> Liberado (Financeiro)
-    # Fechamento Solicitado -> Fechado (Gestor)
     if status == 'Pendente' and is_gestor():
         return True
     if status == 'Fechamento Solicitado' and is_gestor():
@@ -250,7 +247,6 @@ def format_currency(value):
     right = parts[1]
     return f"{left},{right}"
 
-# Disponibiliza funções úteis para os templates
 app.jinja_env.globals.update(
     get_r2_public_url=get_r2_public_url,
     is_gestor=is_gestor,
@@ -259,11 +255,9 @@ app.jinja_env.globals.update(
     is_supervisor=is_supervisor
 )
 
-@app.before_first_request
-def setup():
-    init_db()
+# Chama a inicialização do banco de dados imediatamente
+init_db()
 
-# Rota principal (login e exibição dos RDs)
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
@@ -303,12 +297,10 @@ def index():
     fechamento_recusado = cursor.fetchall()
     cursor.execute("SELECT * FROM rd WHERE status='Fechado'")
     fechados = cursor.fetchall()
-
     saldo_global = get_saldo_global()
     adicional_id = request.args.get('adicional')
     fechamento_id = request.args.get('fechamento')
 
-    # Se for supervisor, verifica se existem RDs com divergencia_anexos = TRUE e status='Liberado'
     divergentes = []
     if is_supervisor():
         cursor.execute("SELECT id, data, motivo_divergencia FROM rd WHERE divergencia_anexos=true AND status='Liberado'")
@@ -401,7 +393,7 @@ def edit_form(id):
         flash("RD não encontrada.")
         return "RD não encontrada", 404
 
-    if not can_edit(rd[6]):  # rd[6] = status
+    if not can_edit(rd[6]):
         flash("Acesso negado.")
         return "Acesso negado", 403
 
@@ -465,7 +457,6 @@ def edit_submit(id):
     """, (solicitante, funcionario, data, centro_custo, valor,
           arquivos_str, observacao, unidade_negocio, id))
     
-    # Se estava em Fechamento Recusado e é solicitante, volta para Fechamento Solicitado
     if is_solicitante() and original_status == 'Fechamento Recusado':
         cursor.execute("UPDATE rd SET status='Fechamento Solicitado', motivo_recusa=NULL WHERE id=%s", (id,))
     
@@ -545,12 +536,10 @@ def delete_rd(id):
         flash("Ação não permitida.")
         return redirect(url_for('index'))
 
-    # Se estava liberada e tinha valor_liberado, devolve esse valor ao saldo global
     if rd_status == 'Liberado' and rd_liberado and rd_liberado > 0:
         saldo = get_saldo_global()
         set_saldo_global(saldo + rd_liberado)
 
-    # Apaga arquivos do R2
     cursor.execute("SELECT arquivos FROM rd WHERE id=%s", (id,))
     arquivos_str = cursor.fetchone()[0]
     if arquivos_str:
@@ -746,10 +735,6 @@ def delete_file(id):
         return redirect(request.referrer or url_for('index'))
 
     arquivos_str, rd_status, rd_solic = row
-
-    # Permitir exclusão se:
-    # - supervisor e RD Liberado, OU
-    # - can_edit / can_delete conforme lógica existente
     can_delete_file = False
     if is_supervisor() and rd_status == 'Liberado':
         can_delete_file = True
@@ -777,7 +762,6 @@ def delete_file(id):
 
 @app.route('/supervisor_add_files/<id>', methods=['POST'])
 def supervisor_add_files(id):
-    # Rota para supervisor adicionar arquivos se RD estiver Liberada
     if not is_supervisor():
         flash("Acesso negado.")
         return redirect(url_for('index'))
@@ -812,7 +796,6 @@ def supervisor_add_files(id):
     flash("Anexos adicionados com sucesso.")
     return redirect(url_for('index'))
 
-# Marcar divergência de anexos (exige motivo)
 @app.route('/marcar_divergencia/<id>', methods=['POST'])
 def marcar_divergencia(id):
     if not (is_gestor() or is_solicitante()):
@@ -844,7 +827,6 @@ def marcar_divergencia(id):
     flash("Divergência marcada com sucesso.")
     return redirect(url_for('index'))
 
-# Supervisor corrige a divergência
 @app.route('/corrigir_divergencia/<id>', methods=['POST'])
 def corrigir_divergencia(id):
     if not is_supervisor():
@@ -970,8 +952,7 @@ def logout():
     flash("Logout realizado com sucesso.")
     return redirect(url_for('index'))
 
-# -------------------------------------------------
-# Novas Rotas para Funcionários
+# Rotas para Funcionários
 
 @app.route('/cadastro_funcionario', methods=['GET'])
 def cadastro_funcionario():
