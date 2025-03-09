@@ -187,7 +187,6 @@ def is_supervisor():
     return session.get('user_role') == 'supervisor'
 
 def can_add():
-    # Ajuste se quiser permitir que supervisor também crie RDs
     return user_role() in ['solicitante', 'gestor', 'financeiro']
 
 def can_edit(status):
@@ -247,15 +246,34 @@ def format_currency(value):
     right = parts[1]
     return f"{left},{right}"
 
+# Função auxiliar para exibir valores da RD
+def mostrar_valores(rd):
+    try:
+        valor = rd[5] if rd[5] is not None else 0
+    except IndexError:
+        valor = 0
+    valor_adic = rd[7] if len(rd) > 7 and rd[7] is not None else 0
+    total_credit = valor + valor_adic
+    valor_despesa = rd[9] if len(rd) > 9 and rd[9] is not None else 0
+    saldo_devolver = rd[10] if len(rd) > 10 and rd[10] is not None else (total_credit - valor_despesa)
+    return (
+        f"R${format_currency(valor)}<br>"
+        f"Adicional: R${format_currency(valor_adic)}<br>"
+        f"Total: R${format_currency(total_credit)}<br>"
+        f"Despesa: R${format_currency(valor_despesa)}<br>"
+        f"Saldo a Devolver: R${format_currency(saldo_devolver)}"
+    )
+
 app.jinja_env.globals.update(
     get_r2_public_url=get_r2_public_url,
     is_gestor=is_gestor,
     is_solicitante=is_solicitante,
     is_financeiro=is_financeiro,
-    is_supervisor=is_supervisor
+    is_supervisor=is_supervisor,
+    mostrar_valores=mostrar_valores
 )
 
-# Chama a inicialização do banco de dados imediatamente
+# Inicializa o banco de dados imediatamente
 init_db()
 
 @app.route('/', methods=['GET', 'POST'])
