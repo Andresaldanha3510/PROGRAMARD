@@ -10,7 +10,7 @@
   <!-- Estilos do DataTables -->
   <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css" />
   <style>
-    /* Seus estilos originais aqui */
+    /* Seus estilos originais */
     :root {
       --primary-color: #3498db;
       --secondary-color: #f39c12;
@@ -301,6 +301,7 @@
           <button type="button" id="btn-alelo" class="btn btn-primary"><i class="fas fa-plus-circle"></i> Solicitação RD Alelo</button>
           <button type="button" id="btn-reembolso" class="btn btn-secondary"><i class="fas fa-plus-circle"></i> Solicitação RD Reembolso</button>
         </div>
+        <!-- Formulário de Solicitação RD (inicialmente oculto) -->
         <form id="form-solicitacao" action="/add" method="POST" enctype="multipart/form-data" class="main-form" style="display:none;">
           <label id="lbl-solicitante" for="solicitante">Solicitante:</label>
           <input type="text" id="solicitante" name="solicitante" required>
@@ -318,6 +319,7 @@
           <textarea id="observacao" name="observacao" rows="3"></textarea>
           <label for="arquivo">Anexar Arquivos:</label>
           <input type="file" id="arquivo" name="arquivo" multiple>
+          <!-- Campo oculto para definir o tipo de RD -->
           <input type="hidden" name="tipo" id="rd-tipo" value="">
           <button type="submit"><i class="fas fa-plus-circle"></i> Enviar Solicitação</button>
         </form>
@@ -359,7 +361,6 @@
             <label for="tab6">Fechados {% if fechados|length > 0 %}<span class="badge">{{ fechados|length }}</span>{% endif %}</label>
           </div>
           <div class="content">
-            <!-- Conteúdo de cada aba -->
             <!-- Aba Pendentes -->
             <div class="tab-content" id="content1">
               <table id="tabela-pendentes" class="display">
@@ -494,8 +495,8 @@
                   {% for rd in liberados %}
                   {% set rd_id = rd[0] %}
                   {% set status = rd[6] %}
-                  {% set divergencia = rd[21] %} {# Ajuste conforme a ordem de colunas #}
-                  {% set motivo_div = rd[22] %} {# motivo_divergencia #}
+                  {% set divergencia = rd[21] %}
+                  {% set motivo_div = rd[22] %}
                   <tr>
                     <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
                     <td data-label="Solicitante">{{ rd[1] }}</td>
@@ -767,6 +768,7 @@
     </div>
   </div>
 
+  <!-- Scripts -->
   <script src="https://code.jquery.com/jquery-3.6.1.min.js"></script>
   <script type="text/javascript" src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
   <script>
@@ -777,6 +779,16 @@
       $('#tabela-fechamento-solicitado').DataTable();
       $('#tabela-fechamento-recusado').DataTable();
       $('#tabela-fechados').DataTable();
+    });
+
+    // Toggling do formulário de solicitação RD
+    document.getElementById("btn-alelo").addEventListener("click", function(){
+      document.getElementById("form-solicitacao").style.display = "block";
+      document.getElementById("rd-tipo").value = "credito alelo";
+    });
+    document.getElementById("btn-reembolso").addEventListener("click", function(){
+      document.getElementById("form-solicitacao").style.display = "block";
+      document.getElementById("rd-tipo").value = "reembolso";
     });
 
     // Modal para divergência
@@ -795,10 +807,20 @@
       this.submit();
     });
 
-    // Exemplo: se for supervisor e existirem divergentes, exibir alerta
+    // Alerta para supervisor se existirem RDs com anexos divergentes
     {% if is_supervisor() and divergentes and divergentes|length > 0 %}
       alert("Atenção! Existem RDs com anexos divergentes:\n\n{% for d in divergentes %}RD: {{ d[0] }} | Data: {{ d[1] }}\nMotivo: {{ d[2] }}\n\n{% endfor %}");
     {% endif %}
+
+    // Fechar modais ao clicar fora (opcional)
+    window.onclick = function(event) {
+      let modals = document.getElementsByClassName('modal');
+      for(let i = 0; i < modals.length; i++){
+        if(event.target == modals[i]){
+          modals[i].style.display = "none";
+        }
+      }
+    }
   </script>
 </body>
 </html>
