@@ -52,8 +52,7 @@ app.jinja_env.globals.update(
     get_r2_public_url=get_r2_public_url,
     is_gestor=lambda: session.get('user_role') == 'gestor',
     is_solicitante=lambda: session.get('user_role') == 'solicitante',
-    is_financeiro=lambda: session.get('user_role') == 'financeiro',
-    is_supervisor=lambda: session.get('user_role') == 'supervisor'
+    is_financeiro=lambda: session.get('user_role') == 'financeiro'
 )
 
 secret_key = os.getenv('SECRET_KEY', 'secret123')
@@ -117,8 +116,7 @@ def init_db():
         ("data_saldo_devolvido", "ALTER TABLE rd ADD COLUMN data_saldo_devolvido DATE;"),
         ("unidade_negocio", "ALTER TABLE rd ADD COLUMN unidade_negocio TEXT;"),
         ("motivo_recusa", "ALTER TABLE rd ADD COLUMN motivo_recusa TEXT;"),
-        ("adicionais_individuais", "ALTER TABLE rd ADD COLUMN adicionais_individuais TEXT;"),
-        ("motivo_divergencia", "ALTER TABLE rd ADD COLUMN motivo_divergencia TEXT;")
+        ("adicionais_individuais", "ALTER TABLE rd ADD COLUMN adicionais_individuais TEXT;")
     ]:
         cursor.execute(
             "SELECT column_name FROM information_schema.columns WHERE table_name='rd' AND column_name=%s;", 
@@ -184,20 +182,14 @@ def is_gestor():
 def is_financeiro():
     return user_role() == 'financeiro'
 
-def is_supervisor():
-    return user_role() == 'supervisor'
-
 def can_add():
     return user_role() in ['solicitante', 'gestor', 'financeiro']
 
 def can_edit(status):
-    # Se estiver fechado, não permite edição
     if status == 'Fechado':
         return False
-    # O supervisor não edita outros campos (apenas pode alterar anexos)
-    if is_supervisor():
-        return False
     if is_solicitante():
+        # Permite editar se estiver em 'Pendente' ou 'Fechamento Recusado'
         return status in ['Pendente', 'Fechamento Recusado']
     if is_gestor() or is_financeiro():
         return True
@@ -206,9 +198,6 @@ def can_edit(status):
 def can_delete(status, solicitante):
     if status == 'Fechado':
         return False
-    if is_supervisor():
-        # Supervisor pode excluir arquivos
-        return True
     if status == 'Pendente' and is_solicitante():
         return True
     if (is_gestor() or is_financeiro()) and status in ['Pendente', 'Aprovado', 'Liberado']:
@@ -269,9 +258,6 @@ def index():
         elif username == 'solicitante' and password == '102030':
             session['user_role'] = 'solicitante'
             flash("Login como solicitante bem-sucedido.")
-        elif username == 'supervisor' and password == '223344':
-            session['user_role'] = 'supervisor'
-            flash("Login como supervisor bem-sucedido.")
         else:
             flash("Credenciais inválidas.")
             return render_template('index.html', error="Credenciais inválidas", format_currency=format_currency)
@@ -294,9 +280,6 @@ def index():
     fechamento_recusado = cursor.fetchall()
     cursor.execute("SELECT * FROM rd WHERE status='Fechado'")
     fechados = cursor.fetchall()
-    # Consulta dos RDs que foram enviados para Anexo Divergente
-    cursor.execute("SELECT * FROM rd WHERE status='Anexo Divergente'")
-    anexos_divergentes = cursor.fetchall()
     saldo_global = get_saldo_global()
     adicional_id = request.args.get('adicional')
     fechamento_id = request.args.get('fechamento')
@@ -314,7 +297,6 @@ def index():
         fechamento_solicitado=fechamento_solicitado,
         fechamento_recusado=fechamento_recusado,
         fechados=fechados,
-        anexos_divergentes=anexos_divergentes,
         can_add=can_add(),
         can_delete_func=can_delete,
         can_edit_func=can_edit,
@@ -726,8 +708,7 @@ def delete_file(id):
         flash("Nenhum arquivo na RD.")
         return redirect(request.referrer or url_for('index'))
 
-    # Permite alteração se pode editar, se pode excluir ou se o usuário for supervisor
-    if not (can_edit(rd_status) or can_delete(rd_status, rd_solic) or is_supervisor()):
+    if not (can_edit(rd_status) or can_delete(rd_status, rd_solic)):
         conn.close()
         flash("Você não pode excluir arquivos desta RD.")
         return redirect(request.referrer or url_for('index'))
@@ -880,10 +861,12 @@ def logout():
 # -------------------------------------------------
 # Novas Rotas para Funcionários
 
+# Tela de cadastro de funcionários
 @app.route('/cadastro_funcionario', methods=['GET'])
 def cadastro_funcionario():
     return render_template('cadastro_funcionario.html')
 
+# Processa o cadastro do funcionário
 @app.route('/cadastrar_funcionario', methods=['POST'])
 def cadastrar_funcionario():
     nome = request.form['nome'].strip()
@@ -899,60 +882,78 @@ def cadastrar_funcionario():
     conn.commit()
     cursor.close()
     conn.close()
-    flash("Funcionário cadastrado com sucesso.")
+
+    flash("Funcionário cadastrado com sucesso!")
     return redirect(url_for('cadastro_funcionario'))
 
+# Tela de consulta de funcionários
 @app.route('/consulta_funcionario', methods=['GET'])
 def consulta_funcionario():
     conn = get_pg_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM funcionarios ORDER BY nome ASC")
+    cursor.execute("SELECT id, nome, centro_custo, unidade_negocio FROM funcionarios")
     funcionarios = cursor.fetchall()
+    cursor.close()
     conn.close()
     return render_template('consulta_funcionario.html', funcionarios=funcionarios)
 
-# -------------------------------------------------
-# Novas Rotas para a funcionalidade de Anexo Divergente
-# Rota acionada por gestor ou solicitante na aba Liberados para enviar a RD para Anexo Divergente
-@app.route('/anexo_divergente_submit/<id>', methods=['POST'])
-def anexo_divergente_submit(id):
-    # Apenas gestores e solicitantes podem acionar esta rota
-    if not (is_gestor() or is_solicitante()):
-        flash("Ação não permitida.")
-        return redirect(url_for('index'))
+@app.route('/editar_funcionario/<int:id>', methods=['GET', 'POST'])
+def editar_funcionario(id):
+    if request.method == 'POST':
+        nome = request.form['nome'].strip()
+        centro_custo = request.form['centroCusto'].strip()
+        unidade_negocio = request.form['unidadeNegocio'].strip()
+        conn = get_pg_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE funcionarios
+            SET nome=%s, centro_custo=%s, unidade_negocio=%s
+            WHERE id=%s
+        """, (nome, centro_custo, unidade_negocio, id))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        flash("Funcionário atualizado com sucesso!")
+        return redirect(url_for('consulta_funcionario'))
+    else:
+        conn = get_pg_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, nome, centro_custo, unidade_negocio FROM funcionarios WHERE id=%s", (id,))
+        funcionario = cursor.fetchone()
+        cursor.close()
+        conn.close()
+        return render_template('editar_funcionario.html', funcionario=funcionario)
 
-    motivo = request.form.get('motivo_divergencia', '').strip()
-    if not motivo:
-        flash("Informe o motivo da divergência.")
-        return redirect(url_for('index'))
 
-    conn = get_pg_connection()
-    cursor = conn.cursor()
-    cursor.execute("UPDATE rd SET status='Anexo Divergente', motivo_divergencia=%s WHERE id=%s", (motivo, id))
-    conn.commit()
-    cursor.close()
-    conn.close()
-    flash("RD movida para Anexo Divergente.")
-    return redirect(url_for('index'))
 
-# Rota para o supervisor marcar como corrigido e devolver a RD para a aba Liberados
-@app.route('/corrigir/<id>', methods=['POST'])
-def corrigir(id):
-    if not is_supervisor():
-        flash("Ação não permitida.")
-        return redirect(url_for('index'))
 
-    conn = get_pg_connection()
-    cursor = conn.cursor()
-    cursor.execute("UPDATE rd SET status='Liberado', motivo_divergencia=NULL WHERE id=%s", (id,))
-    conn.commit()
-    cursor.close()
-    conn.close()
-    flash("RD corrigida e retornada para Liberados.")
-    return redirect(url_for('index'))
 
 # -------------------------------------------------
-# Outras funções auxiliares permanecem...
+# Nova Rota: Consulta de RDs (não fechados) para um Funcionário
+@app.route('/consulta_rd/<int:id_func>', methods=['GET'])
+def consulta_rd(id_func):
+    conn = get_pg_connection()
+    cursor = conn.cursor()
+    # Busca o nome do funcionário para exibir no template
+    cursor.execute("SELECT nome FROM funcionarios WHERE id = %s", (id_func,))
+    row = cursor.fetchone()
+    funcionario_nome = row[0] if row else "Desconhecido"
+    
+    # Busca os RDs que não estão fechados para este funcionário
+    query = """
+        SELECT id, data, valor, status 
+        FROM rd
+        WHERE funcionario = (
+            SELECT nome FROM funcionarios WHERE id = %s
+        )
+        AND status != 'Fechado'
+        ORDER BY data DESC
+    """
+    cursor.execute(query, (id_func,))
+    rd_list = cursor.fetchall()
+    cursor.close()
+    conn.close()
+    return render_template('listagem_rds.html', rd_list=rd_list, funcionario_nome=funcionario_nome)
 
 if __name__ == '__main__':
     init_db()
