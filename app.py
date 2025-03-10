@@ -47,12 +47,6 @@ logging.basicConfig(level=logging.DEBUG)
 from markupsafe import Markup
 
 app = Flask(__name__)
-app.jinja_env.globals.update(
-    get_r2_public_url=get_r2_public_url,
-    is_gestor=lambda: session.get('user_role') == 'gestor',
-    is_solicitante=lambda: session.get('user_role') == 'solicitante',
-    is_financeiro=lambda: session.get('user_role') == 'financeiro'
-)
 
 secret_key = os.getenv('SECRET_KEY', 'secret123')
 app.secret_key = secret_key
@@ -82,7 +76,7 @@ def get_pg_connection():
 def init_db():
     conn = get_pg_connection()
     cursor = conn.cursor()
-    # Cria a tabela de RDs, se não existir
+    # Cria tabela RD se não existir
     create_rd_table = """
     CREATE TABLE IF NOT EXISTS rd (
         id TEXT PRIMARY KEY,
@@ -105,6 +99,7 @@ def init_db():
     );
     """
     cursor.execute(create_rd_table)
+
     # Garante que as colunas extras existam
     for col_name, alter_cmd in [
         ("valor_liberado", "ALTER TABLE rd ADD COLUMN valor_liberado NUMERIC(15,2) DEFAULT 0;"),
@@ -117,12 +112,14 @@ def init_db():
         ("motivo_divergencia", "ALTER TABLE rd ADD COLUMN motivo_divergencia TEXT;")
     ]:
         cursor.execute(
-            "SELECT column_name FROM information_schema.columns WHERE table_name='rd' AND column_name=%s;",
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name='rd' AND column_name=%s;",
             (col_name,)
         )
         if not cursor.fetchone():
             cursor.execute(alter_cmd)
-    # Cria a tabela de saldo global
+
+    # Cria tabela para saldo global
     create_saldo_global_table = """
     CREATE TABLE IF NOT EXISTS saldo_global (
         id SERIAL PRIMARY KEY,
@@ -133,7 +130,8 @@ def init_db():
     cursor.execute("SELECT COUNT(*) FROM saldo_global")
     if cursor.fetchone()[0] == 0:
         cursor.execute("INSERT INTO saldo_global (saldo) VALUES (30000)")
-    # Cria a tabela de funcionários
+
+    # Cria tabela de Funcionários para cadastro padronizado
     create_funcionarios_table = """
     CREATE TABLE IF NOT EXISTS funcionarios (
         id SERIAL PRIMARY KEY,
@@ -143,6 +141,7 @@ def init_db():
     );
     """
     cursor.execute(create_funcionarios_table)
+
     conn.commit()
     cursor.close()
     conn.close()
@@ -237,10 +236,6 @@ def format_currency(value):
     right = parts[1]
     return f"{left},{right}"
 
-# ----------------------------------------------------------------
-# ROTAS DO SISTEMA
-# ----------------------------------------------------------------
-
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
@@ -268,7 +263,6 @@ def index():
 
     conn = get_pg_connection()
     cursor = conn.cursor()
-
     if user_role() == 'supervisor':
         cursor.execute("SELECT * FROM rd WHERE status='Liberado'")
         liberados = cursor.fetchall()
@@ -297,6 +291,7 @@ def index():
     adicional_id = request.args.get('adicional')
     fechamento_id = request.args.get('fechamento')
     conn.close()
+
     return render_template(
         'index.html',
         error=None,
@@ -538,11 +533,13 @@ def adicional_submit(id):
         conn.commit()
         cursor.close()
         conn.close()
+
     try:
         novo_valor_adicional = float(request.form['valor_adicional'].replace(',', '.'))
     except (ValueError, KeyError):
         flash("Valor adicional inválido.")
         return redirect(url_for('index'))
+
     conn = get_pg_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT status, valor_adicional, adicionais_individuais, valor FROM rd WHERE id=%s", (id,))
@@ -556,6 +553,7 @@ def adicional_submit(id):
         conn.close()
         flash("Não é possível solicitar adicional agora.")
         return redirect(url_for('index'))
+
     novo_total = (valor_adic_atual or 0) + novo_valor_adicional
     add_data = datetime.now().strftime('%Y-%m-%d')
     if adicionais_individuais:
@@ -567,6 +565,7 @@ def adicional_submit(id):
         )
     else:
         novos_adicionais = f"Adicional 1:{novo_valor_adicional} em {add_data}"
+
     cursor.execute("""
         UPDATE rd
         SET valor_adicional=%s,
@@ -599,11 +598,13 @@ def fechamento_submit(id):
         conn.commit()
         cursor.close()
         conn.close()
+
     try:
         valor_despesa = float(request.form['valor_despesa'].replace(',', '.'))
     except (ValueError, KeyError):
         flash("Valor da despesa inválido.")
         return redirect(url_for('index'))
+
     conn = get_pg_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT valor, valor_adicional, status FROM rd WHERE id=%s", (id,))
@@ -654,8 +655,8 @@ def reject_fechamento(id):
         flash("Informe um motivo para a recusa.")
         return redirect(url_for('index'))
     cursor.execute("""
-        UPDATE rd 
-        SET status='Fechamento Recusado', motivo_recusa=%s 
+        UPDATE rd
+        SET status='Fechamento Recusado', motivo_recusa=%s
         WHERE id=%s
     """, (motivo, id))
     conn.commit()
@@ -766,9 +767,9 @@ def export_excel():
     workbook = xlsxwriter.Workbook(output, {'in_memory': True})
     worksheet = workbook.add_worksheet('Relatorio')
     header = [
-        "Número RD", "Data Solicitação", "Solicitante", "Funcionário", "Valor Solicitado",
-        "Valor Adicional", "Data do Adicional", "Centro de Custo", "Valor Gasto", "Saldo a Devolver",
-        "Data de Fechamento", "Saldo Global"
+      "Número RD", "Data Solicitação", "Solicitante", "Funcionário", "Valor Solicitado",
+      "Valor Adicional", "Data do Adicional", "Centro de Custo", "Valor Gasto", "Saldo a Devolver",
+      "Data de Fechamento", "Saldo Global"
     ]
     for col, h in enumerate(header):
         worksheet.write(0, col, h)
@@ -946,23 +947,24 @@ def corrigir_divergencia(id):
     return redirect(url_for('index'))
 
 # ----------------------------------------------------------------
-# Context Processor para disponibilizar mostrar_valores
+# CONTEXT PROCESSOR: mostrar_valores
 # ----------------------------------------------------------------
 @app.context_processor
 def utility_processor():
     def mostrar_valores(rd):
+        # Indices: rd[5] = valor, rd[7] = valor_adicional, rd[9] = valor_despesa, rd[10] = saldo_devolver
         valor = rd[5] or 0
         valor_adic = rd[7] or 0
         valor_total = valor + valor_adic
         valor_despesa = rd[9] or 0
-        saldo_devolver = rd[10]
-        if saldo_devolver is None:
-            saldo_devolver = valor_total - valor_despesa
+        saldo_devolver = rd[10] if rd[10] is not None else (valor_total - valor_despesa)
+
         val_str = format_currency(valor)
         adic_str = format_currency(valor_adic)
         total_str = format_currency(valor_total)
         desp_str = format_currency(valor_despesa)
         saldo_str = format_currency(saldo_devolver)
+
         html = f"""
         <div class="valor-resumo">
           <span>R${val_str}</span>
@@ -977,6 +979,7 @@ def utility_processor():
         </div>
         """
         return Markup(html)
+
     return dict(mostrar_valores=mostrar_valores)
 
 if __name__ == '__main__':
