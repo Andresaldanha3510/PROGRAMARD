@@ -47,7 +47,6 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 app = Flask(__name__)
-# Disponibiliza funções úteis para os templates
 app.jinja_env.globals.update(
     get_r2_public_url=get_r2_public_url,
     is_gestor=lambda: session.get('user_role') == 'gestor',
@@ -84,7 +83,6 @@ def init_db():
     conn = get_pg_connection()
     cursor = conn.cursor()
 
-    # Cria tabela RD se não existir
     create_rd_table = """
     CREATE TABLE IF NOT EXISTS rd (
         id TEXT PRIMARY KEY,
@@ -108,7 +106,6 @@ def init_db():
     """
     cursor.execute(create_rd_table)
 
-    # Verifica colunas extras
     for col_name, alter_cmd in [
         ("valor_liberado", "ALTER TABLE rd ADD COLUMN valor_liberado NUMERIC(15,2) DEFAULT 0;"),
         ("observacao", "ALTER TABLE rd ADD COLUMN observacao TEXT;"),
@@ -120,14 +117,12 @@ def init_db():
         ("motivo_divergencia", "ALTER TABLE rd ADD COLUMN motivo_divergencia TEXT;")
     ]:
         cursor.execute(
-            "SELECT column_name FROM information_schema.columns "
-            "WHERE table_name='rd' AND column_name=%s;",
+            "SELECT column_name FROM information_schema.columns WHERE table_name='rd' AND column_name=%s;",
             (col_name,)
         )
         if not cursor.fetchone():
             cursor.execute(alter_cmd)
 
-    # Tabela de saldo_global
     create_saldo_global_table = """
     CREATE TABLE IF NOT EXISTS saldo_global (
         id SERIAL PRIMARY KEY,
@@ -139,7 +134,6 @@ def init_db():
     if cursor.fetchone()[0] == 0:
         cursor.execute("INSERT INTO saldo_global (saldo) VALUES (30000)")
 
-    # Tabela de Funcionários
     create_funcionarios_table = """
     CREATE TABLE IF NOT EXISTS funcionarios (
         id SERIAL PRIMARY KEY,
@@ -275,9 +269,11 @@ def index():
     cursor = conn.cursor()
 
     if user_role() == 'supervisor':
-        # Supervisor enxerga apenas Liberados
+        # O supervisor vê os RDs Liberados e também os divergentes em uma aba separada.
         cursor.execute("SELECT * FROM rd WHERE status='Liberado'")
         liberados = cursor.fetchall()
+        cursor.execute("SELECT * FROM rd WHERE status='Liberado' AND motivo_divergencia IS NOT NULL")
+        divergentes = cursor.fetchall()
         pendentes = []
         aprovados = []
         fechamento_solicitado = []
@@ -296,6 +292,7 @@ def index():
         fechamento_recusado = cursor.fetchall()
         cursor.execute("SELECT * FROM rd WHERE status='Fechado'")
         fechados = cursor.fetchall()
+        divergentes = None  # Apenas o supervisor verá a aba de divergências
 
     saldo_global = get_saldo_global()
     adicional_id = request.args.get('adicional')
@@ -312,6 +309,7 @@ def index():
         pendentes=pendentes,
         aprovados=aprovados,
         liberados=liberados,
+        divergentes=divergentes,
         fechamento_solicitado=fechamento_solicitado,
         fechamento_recusado=fechamento_recusado,
         fechados=fechados,
@@ -407,7 +405,7 @@ def can_edit_status(id):
 def edit_submit(id):
     if not can_edit_status(id):
         flash("Acesso negado.")
-        return "Acesso negado", 403
+        return "Acesso negada", 403
 
     solicitante     = request.form['solicitante'].strip()
     funcionario     = request.form['funcionario'].strip()
@@ -451,7 +449,6 @@ def edit_submit(id):
     """, (solicitante, funcionario, data, centro_custo, valor,
           arquivos_str, observacao, unidade_negocio, id))
     
-    # Se for solicitante e estava em 'Fechamento Recusado', volta para 'Fechamento Solicitado'
     if is_solicitante() and original_status == 'Fechamento Recusado':
         cursor.execute("UPDATE rd SET status='Fechamento Solicitado', motivo_recusa=NULL WHERE id=%s", (id,))
     
@@ -550,7 +547,6 @@ def delete_rd(id):
 
 @app.route('/adicional_submit/<id>', methods=['POST'])
 def adicional_submit(id):
-    # Se supervisor enviar arquivo por engano aqui, não salva divergência
     if 'arquivo' in request.files:
         conn = get_pg_connection()
         cursor = conn.cursor()
@@ -569,8 +565,7 @@ def adicional_submit(id):
         conn.close()
 
     try:
-        valor_adicional_str = request.form['valor_adicional'].replace(',', '.')
-        novo_valor_adicional = float(valor_adicional_str)
+        novo_valor_adicional = float(request.form['valor_adicional'].replace(',', '.'))
     except (ValueError, KeyError):
         flash("Valor adicional inválido.")
         return redirect(url_for('index'))
@@ -660,7 +655,7 @@ def fechamento_submit(id):
         flash("Valor da despesa maior que o total de créditos solicitados.")
         return redirect(url_for('index'))
     saldo_devolver = total_credit - valor_despesa
-    data_fech = datetime.now().strftime('%Y-%m-%d')
+    data_fech = datetime.now().strftime('%Y-%m-%d')  # data do fechamento
     cursor.execute("""
         UPDATE rd
         SET valor_despesa=%s, saldo_devolver=%s, data_fechamento=%s,
@@ -744,7 +739,6 @@ def delete_file(id):
         flash("Nenhum arquivo na RD.")
         return redirect(request.referrer or url_for('index'))
 
-    # Permitir que supervisor também possa excluir
     if not (can_edit(rd_status) or can_delete(rd_status, rd_solic) or user_role() == 'supervisor'):
         conn.close()
         flash("Você não pode excluir arquivos desta RD.")
@@ -865,8 +859,7 @@ def logout():
     flash("Logout realizado com sucesso.")
     return redirect(url_for('index'))
 
-# -------------------------------------------------
-# Rotas para Funcionários
+# -------------------- Rotas para Funcionários --------------------
 @app.route('/cadastro_funcionario', methods=['GET'])
 def cadastro_funcionario():
     return render_template('cadastro_funcionario.html')
@@ -909,11 +902,9 @@ def excluir_funcionario(id):
     flash("Funcionário excluído com sucesso.")
     return redirect(url_for('consulta_funcionario'))
 
-# ---------------------------------------
-# Rota supervisor_arquivos para ANEXOS
+# -------------------- Rota para Anexos do Supervisor --------------------
 @app.route('/supervisor_arquivos/<id>', methods=['POST'])
 def supervisor_arquivos(id):
-    # Supervisor pode anexar / remover
     if user_role() != 'supervisor':
         flash("Acesso negado.")
         return redirect(url_for('index'))
@@ -946,11 +937,10 @@ def supervisor_arquivos(id):
     flash("Arquivos anexados com sucesso.")
     return redirect(url_for('index'))
 
-# ---------------------------------------
-# Divergências
+# -------------------- Rotas para Divergência --------------------
 @app.route('/divergencia/<id>', methods=['POST'])
 def set_divergencia(id):
-    # gestor ou solicitante digitam a divergência
+    # Apenas gestor ou solicitante podem registrar divergência
     if user_role() not in ['gestor', 'solicitante']:
         flash("Acesso negado.")
         return redirect(url_for('index'))
@@ -974,22 +964,21 @@ def set_divergencia(id):
         conn.close()
         return redirect(url_for('index'))
 
-    # Salva a causa digitada
     cursor.execute("""
         UPDATE rd
-        SET motivo_divergencia=%s
-        WHERE id=%s
+        SET motivo_divergencia = %s
+        WHERE id = %s
     """, (motivo, id))
     conn.commit()
     cursor.close()
     conn.close()
 
-    flash("Divergência registrada com sucesso. Supervisor será notificado.")
+    flash("Divergência registrada com sucesso. O supervisor será notificado.")
     return redirect(url_for('index'))
 
 @app.route('/corrigir_divergencia/<id>', methods=['POST'])
 def corrigir_divergencia(id):
-    # supervisor clica em "Corrigir"
+    # Apenas o supervisor pode corrigir a divergência
     if user_role() != 'supervisor':
         flash("Acesso negado.")
         return redirect(url_for('index'))
@@ -1003,15 +992,24 @@ def corrigir_divergencia(id):
         conn.close()
         return redirect(url_for('index'))
 
-    # Ao corrigir, limpamos
+    if not row[0]:
+        flash("Não há divergência registrada para esta RD.")
+        conn.close()
+        return redirect(url_for('index'))
+
+    # Limpa o campo, removendo a notificação de divergência
     cursor.execute("""
         UPDATE rd
-        SET motivo_divergencia=NULL
-        WHERE id=%s
+        SET motivo_divergencia = NULL
+        WHERE id = %s
     """, (id,))
     conn.commit()
     cursor.close()
     conn.close()
 
-    flash("Divergência removida. Ajustes realizados.")
+    flash("Divergência removida. O RD não aparece mais como divergente.")
     return redirect(url_for('index'))
+
+if __name__ == '__main__':
+    init_db()
+    app.run(debug=True)
