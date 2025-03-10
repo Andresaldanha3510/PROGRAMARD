@@ -116,10 +116,12 @@ def init_db():
         ("data_saldo_devolvido", "ALTER TABLE rd ADD COLUMN data_saldo_devolvido DATE;"),
         ("unidade_negocio", "ALTER TABLE rd ADD COLUMN unidade_negocio TEXT;"),
         ("motivo_recusa", "ALTER TABLE rd ADD COLUMN motivo_recusa TEXT;"),
-        ("adicionais_individuais", "ALTER TABLE rd ADD COLUMN adicionais_individuais TEXT;")
+        ("adicionais_individuais", "ALTER TABLE rd ADD COLUMN adicionais_individuais TEXT;"),
+        # ### ADIÇÃO 1: nova coluna para divergência ###
+        ("motivo_divergencia", "ALTER TABLE rd ADD COLUMN motivo_divergencia TEXT;")
     ]:
         cursor.execute(
-            "SELECT column_name FROM information_schema.columns WHERE table_name='rd' AND column_name=%s;", 
+            "SELECT column_name FROM information_schema.columns WHERE table_name='rd' AND column_name=%s;",
             (col_name,)
         )
         if not cursor.fetchone():
@@ -182,6 +184,7 @@ def is_gestor():
 def is_financeiro():
     return user_role() == 'financeiro'
 
+# Permissões atuais
 def can_add():
     return user_role() in ['solicitante', 'gestor', 'financeiro']
 
@@ -243,12 +246,12 @@ def format_currency(value):
     right = parts[1]
     return f"{left},{right}"
 
-# Rota principal (login e exibição dos RDs)
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '').strip()
+
         if username == 'gestor' and password == '115289':
             session['user_role'] = 'gestor'
             flash("Login como gestor bem-sucedido.")
@@ -258,31 +261,51 @@ def index():
         elif username == 'solicitante' and password == '102030':
             session['user_role'] = 'solicitante'
             flash("Login como solicitante bem-sucedido.")
+        # ### ADIÇÃO 2: novo login para supervisor ###
+        elif username == 'supervisor' and password == '223344':
+            session['user_role'] = 'supervisor'
+            flash("Login como supervisor bem-sucedido.")
+        # -------------------------------------------
         else:
             flash("Credenciais inválidas.")
             return render_template('index.html', error="Credenciais inválidas", format_currency=format_currency)
+
         return redirect(url_for('index'))
 
+    # Se não estiver logado, mostra login
     if 'user_role' not in session:
         return render_template('index.html', error=None, format_currency=format_currency)
 
     conn = get_pg_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM rd WHERE status='Pendente'")
-    pendentes = cursor.fetchall()
-    cursor.execute("SELECT * FROM rd WHERE status='Aprovado'")
-    aprovados = cursor.fetchall()
-    cursor.execute("SELECT * FROM rd WHERE status='Liberado'")
-    liberados = cursor.fetchall()
-    cursor.execute("SELECT * FROM rd WHERE status='Fechamento Solicitado'")
-    fechamento_solicitado = cursor.fetchall()
-    cursor.execute("SELECT * FROM rd WHERE status='Fechamento Recusado'")
-    fechamento_recusado = cursor.fetchall()
-    cursor.execute("SELECT * FROM rd WHERE status='Fechado'")
-    fechados = cursor.fetchall()
+
+    # ### ADIÇÃO 3: se for supervisor, só carrega 'Liberados'; caso contrário, carrega tudo ###
+    if user_role() == 'supervisor':
+        cursor.execute("SELECT * FROM rd WHERE status='Liberado'")
+        liberados = cursor.fetchall()
+        pendentes = []
+        aprovados = []
+        fechamento_solicitado = []
+        fechamento_recusado = []
+        fechados = []
+    else:
+        cursor.execute("SELECT * FROM rd WHERE status='Pendente'")
+        pendentes = cursor.fetchall()
+        cursor.execute("SELECT * FROM rd WHERE status='Aprovado'")
+        aprovados = cursor.fetchall()
+        cursor.execute("SELECT * FROM rd WHERE status='Liberado'")
+        liberados = cursor.fetchall()
+        cursor.execute("SELECT * FROM rd WHERE status='Fechamento Solicitado'")
+        fechamento_solicitado = cursor.fetchall()
+        cursor.execute("SELECT * FROM rd WHERE status='Fechamento Recusado'")
+        fechamento_recusado = cursor.fetchall()
+        cursor.execute("SELECT * FROM rd WHERE status='Fechado'")
+        fechados = cursor.fetchall()
+
     saldo_global = get_saldo_global()
     adicional_id = request.args.get('adicional')
     fechamento_id = request.args.get('fechamento')
+
     conn.close()
 
     return render_template(
@@ -306,8 +329,6 @@ def index():
         adicional_id=adicional_id,
         fechamento_id=fechamento_id
     )
-
-# Rotas de gerenciamento de RDs (add, edit, approve, delete, etc.) permanecem conforme o código original
 
 @app.route('/add', methods=['POST'])
 def add_rd():
@@ -425,6 +446,7 @@ def edit_submit(id):
     """, (solicitante, funcionario, data, centro_custo, valor,
           arquivos_str, observacao, unidade_negocio, id))
     
+    # Se for solicitante e estava em Fechamento Recusado, volta para Fechamento Solicitado
     if is_solicitante() and original_status == 'Fechamento Recusado':
         cursor.execute("UPDATE rd SET status='Fechamento Solicitado', motivo_recusa=NULL WHERE id=%s", (id,))
     
@@ -708,10 +730,12 @@ def delete_file(id):
         flash("Nenhum arquivo na RD.")
         return redirect(request.referrer or url_for('index'))
 
-    if not (can_edit(rd_status) or can_delete(rd_status, rd_solic)):
+    # ### ADIÇÃO 4: permitir supervisor excluir arquivos ###
+    if not (can_edit(rd_status) or can_delete(rd_status, rd_solic) or user_role() == 'supervisor'):
         conn.close()
         flash("Você não pode excluir arquivos desta RD.")
         return redirect(request.referrer or url_for('index'))
+    # ------------------------------------------------------
 
     arqs = arquivos_str.split(',')
     if filename not in arqs:
@@ -860,13 +884,10 @@ def logout():
 
 # -------------------------------------------------
 # Novas Rotas para Funcionários
-
-# Tela de cadastro de funcionários
 @app.route('/cadastro_funcionario', methods=['GET'])
 def cadastro_funcionario():
     return render_template('cadastro_funcionario.html')
 
-# Processa o cadastro do funcionário
 @app.route('/cadastrar_funcionario', methods=['POST'])
 def cadastrar_funcionario():
     nome = request.form['nome'].strip()
@@ -882,79 +903,130 @@ def cadastrar_funcionario():
     conn.commit()
     cursor.close()
     conn.close()
-
-    flash("Funcionário cadastrado com sucesso!")
+    flash("Funcionário cadastrado com sucesso.")
     return redirect(url_for('cadastro_funcionario'))
 
-# Tela de consulta de funcionários
 @app.route('/consulta_funcionario', methods=['GET'])
 def consulta_funcionario():
     conn = get_pg_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, nome, centro_custo, unidade_negocio FROM funcionarios")
+    cursor.execute("SELECT * FROM funcionarios ORDER BY id")
     funcionarios = cursor.fetchall()
-    cursor.close()
     conn.close()
     return render_template('consulta_funcionario.html', funcionarios=funcionarios)
 
-@app.route('/editar_funcionario/<int:id>', methods=['GET', 'POST'])
-def editar_funcionario(id):
-    if request.method == 'POST':
-        nome = request.form['nome'].strip()
-        centro_custo = request.form['centroCusto'].strip()
-        unidade_negocio = request.form['unidadeNegocio'].strip()
-        conn = get_pg_connection()
-        cursor = conn.cursor()
-        cursor.execute("""
-            UPDATE funcionarios
-            SET nome=%s, centro_custo=%s, unidade_negocio=%s
-            WHERE id=%s
-        """, (nome, centro_custo, unidade_negocio, id))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        flash("Funcionário atualizado com sucesso!")
-        return redirect(url_for('consulta_funcionario'))
-    else:
-        conn = get_pg_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, nome, centro_custo, unidade_negocio FROM funcionarios WHERE id=%s", (id,))
-        funcionario = cursor.fetchone()
-        cursor.close()
-        conn.close()
-        return render_template('editar_funcionario.html', funcionario=funcionario)
-
-
-
-
-
-# -------------------------------------------------
-# Nova Rota: Consulta de RDs (não fechados) para um Funcionário
-@app.route('/consulta_rd/<int:id_func>', methods=['GET'])
-def consulta_rd(id_func):
+@app.route('/excluir_funcionario/<int:id>', methods=['POST'])
+def excluir_funcionario(id):
     conn = get_pg_connection()
     cursor = conn.cursor()
-    # Busca o nome do funcionário para exibir no template
-    cursor.execute("SELECT nome FROM funcionarios WHERE id = %s", (id_func,))
-    row = cursor.fetchone()
-    funcionario_nome = row[0] if row else "Desconhecido"
-    
-    # Busca os RDs que não estão fechados para este funcionário
-    query = """
-        SELECT id, data, valor, status 
-        FROM rd
-        WHERE funcionario = (
-            SELECT nome FROM funcionarios WHERE id = %s
-        )
-        AND status != 'Fechado'
-        ORDER BY data DESC
-    """
-    cursor.execute(query, (id_func,))
-    rd_list = cursor.fetchall()
+    cursor.execute("DELETE FROM funcionarios WHERE id=%s", (id,))
+    conn.commit()
     cursor.close()
     conn.close()
-    return render_template('listagem_rds.html', rd_list=rd_list, funcionario_nome=funcionario_nome)
+    flash("Funcionário excluído com sucesso.")
+    return redirect(url_for('consulta_funcionario'))
 
-if __name__ == '__main__':
-    init_db()
-    app.run(debug=True)
+# -------------------------------------------------
+# ### ADIÇÃO 5: Rota para o supervisor anexar arquivos na RD (opcional) ###
+@app.route('/supervisor_arquivos/<id>', methods=['POST'])
+def supervisor_arquivos(id):
+    if session.get('user_role') != 'supervisor':
+        flash("Acesso negado.")
+        return redirect(url_for('index'))
+
+    if 'arquivo' not in request.files:
+        flash("Nenhum arquivo selecionado.")
+        return redirect(url_for('index'))
+
+    conn = get_pg_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT arquivos FROM rd WHERE id=%s", (id,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        flash("RD não encontrada.")
+        return redirect(url_for('index'))
+
+    arquivos_atuais = row[0].split(',') if (row[0] is not None and row[0] != '') else []
+    for file in request.files.getlist('arquivo'):
+        if file.filename:
+            filename = f"{id}_{file.filename}"
+            upload_file_to_r2(file, filename)
+            arquivos_atuais.append(filename)
+
+    arquivos_str = ','.join(arquivos_atuais) if arquivos_atuais else None
+    cursor.execute("UPDATE rd SET arquivos=%s WHERE id=%s", (arquivos_str, id))
+    conn.commit()
+    cursor.close()
+    conn.close()
+    flash("Arquivos anexados com sucesso.")
+    return redirect(url_for('index'))
+
+# -------------------------------------------------
+# ### ADIÇÃO 6: Rotas para lidar com divergências ###
+@app.route('/divergencia/<id>', methods=['POST'])
+def set_divergencia(id):
+    # Somente gestor ou solicitante podem marcar divergência
+    if user_role() not in ['gestor', 'solicitante']:
+        flash("Acesso negado.")
+        return redirect(url_for('index'))
+
+    motivo = request.form.get('motivo_divergencia', '').strip()
+    if not motivo:
+        flash("É necessário informar o motivo da divergência.")
+        return redirect(url_for('index'))
+
+    conn = get_pg_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT status FROM rd WHERE id=%s", (id,))
+    row = cursor.fetchone()
+    if not row:
+        flash("RD não encontrada.")
+        conn.close()
+        return redirect(url_for('index'))
+
+    if row[0] != 'Liberado':
+        flash("Só é possível marcar divergência em RDs liberadas.")
+        conn.close()
+        return redirect(url_for('index'))
+
+    cursor.execute("""
+        UPDATE rd
+        SET motivo_divergencia=%s
+        WHERE id=%s
+    """, (motivo, id))
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    flash("Divergência registrada com sucesso. Supervisor será notificado.")
+    return redirect(url_for('index'))
+
+@app.route('/corrigir_divergencia/<id>', methods=['POST'])
+def corrigir_divergencia(id):
+    # Somente supervisor pode corrigir divergência
+    if user_role() != 'supervisor':
+        flash("Acesso negado.")
+        return redirect(url_for('index'))
+
+    conn = get_pg_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT motivo_divergencia FROM rd WHERE id=%s", (id,))
+    row = cursor.fetchone()
+    if not row:
+        flash("RD não encontrada.")
+        conn.close()
+        return redirect(url_for('index'))
+
+    # Limpa o campo de divergência
+    cursor.execute("""
+        UPDATE rd
+        SET motivo_divergencia=NULL
+        WHERE id=%s
+    """, (id,))
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    flash("Divergência removida. Ajustes realizados.")
+    return redirect(url_for('index'))
