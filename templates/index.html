@@ -10,7 +10,6 @@
   <!-- Estilos do DataTables -->
   <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css" />
   <style>
-    /* (Inclua aqui todo o CSS original – sem omitir nada) */
     :root {
       --primary-color: #3498db;
       --secondary-color: #f39c12;
@@ -27,8 +26,7 @@
     }
     body {
       font-family: 'Inter', sans-serif;
-      margin: 0; 
-      padding: 0;
+      margin: 0; padding: 0;
       background-color: var(--background-color);
       color: var(--text-color);
     }
@@ -159,18 +157,14 @@
       background-color: var(--primary-color); color: #fff;
     }
     /* Exibe a aba selecionada */
-    {% if user_role == 'supervisor' %}
-      /* Supervisor vê somente Liberados e Divergências */
-      #tab3:checked ~ .content #content3,
-      #tab7:checked ~ .content #content7 { display: block; }
-    {% else %}
-      #tab1:checked ~ .content #content1,
-      #tab2:checked ~ .content #content2,
-      #tab3:checked ~ .content #content3,
-      #tab4:checked ~ .content #content4,
-      #tab5:checked ~ .content #content5,
-      #tab6:checked ~ .content #content6 { display: block; }
-    {% endif %}
+    #tab1:checked ~ .content #content1,
+    #tab2:checked ~ .content #content2,
+    #tab3:checked ~ .content #content3,
+    #tab4:checked ~ .content #content4,
+    #tab5:checked ~ .content #content5,
+    #tab6:checked ~ .content #content6 {
+      display: block;
+    }
     .valor-resumo {
       display: flex; align-items: center; gap: 10px;
     }
@@ -194,26 +188,40 @@
       min-width: 20px;
       text-align: center;
     }
+    /* Estilos para observação com toggle */
+    .observation-short { }
     .toggle-observation { border: none; background: none; cursor: pointer; color: var(--primary-color); font-weight: bold; }
     .observation-full { display: none; }
     .modal {
-      display: none; position: fixed; z-index: 9999;
-      left: 0; top: 0; width: 100%; height: 100%;
-      overflow: auto; background-color: rgba(0,0,0,0.5);
+      display: none;
+      position: fixed; 
+      z-index: 9999; 
+      left: 0; top: 0;
+      width: 100%; height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.5);
     }
     .modal-content {
-      background-color: #fff; margin: 5% auto;
-      padding: 20px; border-radius: 10px; max-width: 600px;
+      background-color: #fff;
+      margin: 5% auto;
+      padding: 20px;
+      border-radius: 10px;
+      max-width: 600px;
       position: relative;
     }
     .close-btn {
-      position: absolute; top: 10px; right: 15px;
-      color: #999; font-size: 1.2rem; cursor: pointer;
+      position: absolute;
+      top: 10px; right: 15px;
+      color: #999;
+      font-size: 1.2rem;
+      cursor: pointer;
       font-weight: 600;
     }
     .close-btn:hover { color: #333; }
     .modal-content h3 {
-      margin-top: 0; font-weight: 600; margin-bottom: 15px;
+      margin-top: 0;
+      font-weight: 600;
+      margin-bottom: 15px;
       text-align: center;
     }
     .file-item {
@@ -221,14 +229,6 @@
     }
     .file-item form { margin: 0; padding: 0; display: inline-block; }
   </style>
-  <script>
-    // Função para abrir modal de divergência (gestor/solicitante)
-    function openDivergenciaModal(btn) {
-      var rdId = btn.getAttribute('data-rd-id');
-      document.getElementById('formDivergencia').action = '/divergencia/' + rdId;
-      document.getElementById('divergenciaModal').style.display = 'block';
-    }
-  </script>
 </head>
 <body>
 {% if user_role is defined %}
@@ -243,6 +243,7 @@
   {% endif %}
 </div>
 {% endif %}
+
 <div class="container">
   {% with messages = get_flashed_messages() %}
     {% if messages %}
@@ -253,10 +254,12 @@
       </ul>
     {% endif %}
   {% endwith %}
+
   <div style="text-align:center; margin-top:20px;">
     <img src="https://pub-1e6f8559bc2b413c889fbf4860462599.r2.dev/download.png" alt="Logo Tecsul" style="max-width:200px; height:auto;">
   </div>
   <h1>Gerenciamento de RDs</h1>
+
   {% if user_role is not defined %}
     <!-- Formulário de Login -->
     <form action="/" method="POST" class="main-form">
@@ -269,7 +272,7 @@
     </form>
   {% else %}
     {% if adicional_id %}
-      <!-- Formulário para crédito adicional -->
+      <!-- Formulário para solicitar crédito adicional -->
       <div class="form-adicional">
         <h2>Solicitar Crédito Adicional para RD #{{ adicional_id }}</h2>
         <form action="/adicional_submit/{{ adicional_id }}" method="POST" enctype="multipart/form-data" class="main-form">
@@ -294,70 +297,224 @@
       </div>
     {% else %}
       {% if can_add %}
-        <div style="text-align:center; margin-bottom:20px;">
-          <button type="button" id="btn-alelo" class="btn btn-primary">
-            <i class="fas fa-plus-circle"></i> Solicitação RD Alelo
-          </button>
-          <button type="button" id="btn-reembolso" class="btn btn-secondary">
-            <i class="fas fa-plus-circle"></i> Solicitação RD Reembolso
-          </button>
-        </div>
-        <form id="form-solicitacao" action="/add" method="POST" enctype="multipart/form-data" class="main-form" style="display:none;">
-          <label id="lbl-solicitante" for="solicitante">Solicitante:</label>
-          <input type="text" id="solicitante" name="solicitante" required>
-          <label for="funcionario">Funcionário:</label>
-          <input type="text" id="funcionario" name="funcionario" required>
-          <label for="data">Data:</label>
-          <input type="date" id="data" name="data" required>
-          <label for="centro_custo">Centro de Custo:</label>
-          <input type="text" id="centro_custo" name="centro_custo" required>
-          <label for="unidade_negocio">Unidade de Negócio:</label>
-          <input type="text" id="unidade_negocio" name="unidade_negocio" placeholder="cod. Filial">
-          <label for="valor">Valor (R$):</label>
-          <input type="number" id="valor" name="valor" step="0.01" required>
-          <label for="observacao">Observação:</label>
-          <textarea id="observacao" name="observacao" rows="3"></textarea>
-          <label for="arquivo">Anexar Arquivos:</label>
-          <input type="file" id="arquivo" name="arquivo" multiple>
-          <input type="hidden" name="tipo" id="rd-tipo" value="">
-          <button type="submit">
-            <i class="fas fa-plus-circle"></i> Enviar Solicitação
-          </button>
-        </form>
+      <div style="text-align:center; margin-bottom:20px;">
+        <button type="button" id="btn-alelo" class="btn btn-primary"><i class="fas fa-plus-circle"></i> Solicitação RD Alelo</button>
+        <button type="button" id="btn-reembolso" class="btn btn-secondary"><i class="fas fa-plus-circle"></i> Solicitação RD Reembolso</button>
+      </div>
+      <form id="form-solicitacao" action="/add" method="POST" enctype="multipart/form-data" class="main-form" style="display:none;">
+        <label id="lbl-solicitante" for="solicitante">Solicitante:</label>
+        <input type="text" id="solicitante" name="solicitante" required>
+        <label for="funcionario">Funcionário:</label>
+        <input type="text" id="funcionario" name="funcionario" required>
+        <label for="data">Data:</label>
+        <input type="date" id="data" name="data" required>
+        <label for="centro_custo">Centro de Custo:</label>
+        <input type="text" id="centro_custo" name="centro_custo" required>
+        <label for="unidade_negocio">Unidade de Negócio:</label>
+        <input type="text" id="unidade_negocio" name="unidade_negocio" placeholder="cod. Filial">
+        <label for="valor">Valor (R$):</label>
+        <input type="number" id="valor" name="valor" step="0.01" required>
+        <label for="observacao">Observação:</label>
+        <textarea id="observacao" name="observacao" rows="3"></textarea>
+        <label for="arquivo">Anexar Arquivos:</label>
+        <input type="file" id="arquivo" name="arquivo" multiple>
+        <input type="hidden" name="tipo" id="rd-tipo" value="">
+        <button type="submit"><i class="fas fa-plus-circle"></i> Enviar Solicitação</button>
+      </form>
       {% endif %}
-      {% if is_financeiro() %}
-        <h2>Editar Saldo Global</h2>
-        <form action="{{ url_for('edit_saldo') }}" method="POST" class="main-form">
-          <label for="saldo_global">Saldo Global (R$):</label>
-          <input type="number" id="saldo_global" name="saldo_global" step="0.01" value="{{ saldo_global }}" required>
-          <button type="submit"><i class="fas fa-sync-alt"></i> Atualizar Saldo</button>
-        </form>
+      {% if user_role == 'financeiro' %}
+      <h2>Editar Saldo Global</h2>
+      <form action="{{ url_for('edit_saldo') }}" method="POST" class="main-form">
+        <label for="saldo_global">Saldo Global (R$):</label>
+        <input type="number" id="saldo_global" name="saldo_global" step="0.01" value="{{ saldo_global }}" required>
+        <button type="submit"><i class="fas fa-sync-alt"></i> Atualizar Saldo</button>
+      </form>
       {% endif %}
       <div style="text-align:center; margin:20px 0;">
-        <a href="{{ url_for('cadastro_funcionario') }}" class="btn btn-success" style="margin-right: 10px;">
-          <i class="fas fa-user-plus"></i> Cadastro Funcionários
-        </a>
-        <a href="{{ url_for('consulta_funcionario') }}" class="btn btn-success" style="margin-right: 10px;">
-          <i class="fas fa-search"></i> Consulta Funcionários
-        </a>
-        <a href="{{ url_for('export_excel') }}" class="btn btn-success">
-          <i class="fas fa-file-excel"></i> Exportar para Excel
-        </a>
+       <a href="{{ url_for('cadastro_funcionario') }}" class="btn btn-success" style="margin-right: 10px;">
+    <i class="fas fa-user-plus"></i> Cadastro Funcionários
+  </a>
+  <a href="{{ url_for('consulta_funcionario') }}" class="btn btn-success" style="margin-right: 10px;">
+    <i class="fas fa-search"></i> Consulta Funcionários
+  </a>
+  <a href="{{ url_for('export_excel') }}" class="btn btn-success">
+    <i class="fas fa-file-excel"></i> Exportar para Excel
+  </a>
       </div>
-      <!-- Se todos os usuários podem ver a aba Divergentes, exibimos-a para todos -->
-      {% if user_role == 'supervisor' %}
-        <!-- Supervisor vê apenas duas abas: Liberados e Divergentes -->
-        <input type="radio" name="tab-control" id="tab3" checked>
-        <input type="radio" name="tab-control" id="tab7">
+
+      <!-- Macro para mostrar os valores -->
+      {% macro mostrar_valores(rd) %}
+        {% set valor = rd[5] %}
+        {% set valor_adic = rd[7] if rd[7] else 0 %}
+        {% set valor_total = valor + valor_adic %}
+        {% set valor_despesa = rd[9] if rd[9] else 0 %}
+        {% set saldo_devolver = rd[10] if rd[10] else (valor_total - valor_despesa) %}
+        <div class="valor-resumo">
+          <span>R${{ format_currency(valor) }}</span>
+          <button class="toggle-details" title="Exibir detalhes">+</button>
+        </div>
+        <div class="rd-details">
+          <strong>Valor Solicitado:</strong> R${{ format_currency(valor) }}<br>
+          <strong>Valor Adicional:</strong> R${{ format_currency(valor_adic) }}<br>
+          <strong>Total da RD:</strong> R${{ format_currency(valor_total) }}<br>
+          <strong>Valor Gasto (Despesa):</strong> R${{ format_currency(valor_despesa) }}<br>
+          <strong>Saldo a Devolver:</strong> R${{ format_currency(saldo_devolver) }}
+        </div>
+      {% endmacro %}
+
+      <!-- Abas: Ordem: Pendentes, Aprovados, Liberados, Fechamento Solicitado, Fechamento Recusado, Fechados -->
+      <div class="tabs">
+        <input type="radio" name="tab-control" id="tab1" checked>
+        <input type="radio" name="tab-control" id="tab2">
+        <input type="radio" name="tab-control" id="tab3">
+        <input type="radio" name="tab-control" id="tab4">
+        <input type="radio" name="tab-control" id="tab5">
+        <input type="radio" name="tab-control" id="tab6">
         <div class="tab-labels">
-          <label for="tab3">
-            Liberados {% if liberados|length > 0 %}<span class="badge">{{ liberados|length }}</span>{% endif %}
-          </label>
-          <label for="tab7">
-            Divergências {% if divergentes and divergentes|length > 0 %}<span class="badge">{{ divergentes|length }}</span>{% endif %}
-          </label>
+          <label for="tab1">Pendentes {% if pendentes|length > 0 %}<span class="badge">{{ pendentes|length }}</span>{% endif %}</label>
+          <label for="tab2">Aprovados {% if aprovados|length > 0 %}<span class="badge">{{ aprovados|length }}</span>{% endif %}</label>
+          <label for="tab3">Liberados {% if liberados|length > 0 %}<span class="badge">{{ liberados|length }}</span>{% endif %}</label>
+          <label for="tab4">Fechamento Solicitado {% if fechamento_solicitado|length > 0 %}<span class="badge">{{ fechamento_solicitado|length }}</span>{% endif %}</label>
+          <label for="tab5">Fechamento Recusado {% if fechamento_recusado|length > 0 %}<span class="badge">{{ fechamento_recusado|length }}</span>{% endif %}</label>
+          <label for="tab6">Fechados {% if fechados|length > 0 %}<span class="badge">{{ fechados|length }}</span>{% endif %}</label>
         </div>
         <div class="content">
+          <!-- Aba Pendentes -->
+          <div class="tab-content" id="content1">
+            <table id="tabela-pendentes" class="display">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Solicitante</th>
+                  <th>Funcionário</th>
+                  <th>Data</th>
+                  <th>Centro de Custo</th>
+                  <th>Observação</th>
+                  <th>Arquivos</th>
+                  <th>Valores</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for rd in pendentes %}
+                {% set rd_id = rd[0] %}
+                {% set status = rd[6] %}
+                <tr>
+                  <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
+                  <td data-label="Solicitante">{{ rd[1] }}</td>
+                  <td data-label="Funcionário">{{ rd[2] }}</td>
+                  <td data-label="Data">{{ rd[3] }}</td>
+                  <td data-label="Centro de Custo">{{ rd[4] }}<br><small>{{ rd[19] }}</small></td>
+                  <td data-label="Observação">
+                    {% if rd[16] %}
+                      {% set obs = rd[16] %}
+                      {% if obs|length > 50 %}
+                        <span class="observation-short">{{ obs[:50] }}...</span>
+                        <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
+                        <div class="observation-full">{{ obs }}</div>
+                      {% else %}
+                        {{ obs }}
+                      {% endif %}
+                    {% else %}
+                      -
+                    {% endif %}
+                  </td>
+                  <td data-label="Arquivos">
+                    {% if rd[12] %}
+                      <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}"><i class="fas fa-paperclip"></i> Anexos</button>
+                    {% else %}
+                      -
+                    {% endif %}
+                  </td>
+                  <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
+                  <td data-label="Ações">
+                    {% if can_approve_func(status) %}
+                      <form action="/approve/{{ rd_id }}" method="POST" class="action-form">
+                        <button type="submit" class="btn btn-approve"><i class="fas fa-check"></i> Aprovar</button>
+                      </form>
+                    {% endif %}
+                    {% if can_edit_func(status) %}
+                      <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit"><i class="fas fa-edit"></i> Editar</a>
+                    {% endif %}
+                    {% if can_delete_func(status, rd[1]) %}
+                      <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
+                        <button type="submit" class="btn btn-delete-rd"><i class="fas fa-trash-alt"></i> Excluir</button>
+                      </form>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <!-- Aba Aprovados -->
+          <div class="tab-content" id="content2">
+            <table id="tabela-aprovados" class="display">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Solicitante</th>
+                  <th>Funcionário</th>
+                  <th>Data</th>
+                  <th>Centro de Custo</th>
+                  <th>Observação</th>
+                  <th>Arquivos</th>
+                  <th>Valores</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for rd in aprovados %}
+                {% set rd_id = rd[0] %}
+                {% set status = rd[6] %}
+                <tr>
+                  <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
+                  <td data-label="Solicitante">{{ rd[1] }}</td>
+                  <td data-label="Funcionário">{{ rd[2] }}</td>
+                  <td data-label="Data">{{ rd[3] }}</td>
+                  <td data-label="Centro de Custo">{{ rd[4] }}</td>
+                  <td data-label="Observação">
+                    {% if rd[16] %}
+                      {% set obs = rd[16] %}
+                      {% if obs|length > 50 %}
+                        <span class="observation-short">{{ obs[:50] }}...</span>
+                        <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
+                        <div class="observation-full">{{ obs }}</div>
+                      {% else %}
+                        {{ obs }}
+                      {% endif %}
+                    {% else %}
+                      -
+                    {% endif %}
+                  </td>
+                  <td data-label="Arquivos">
+                    {% if rd[12] %}
+                      <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}"><i class="fas fa-paperclip"></i> Anexos</button>
+                    {% else %}
+                      -
+                    {% endif %}
+                  </td>
+                  <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
+                  <td data-label="Ações">
+                    {% if can_approve_func(status) %}
+                      <form action="/approve/{{ rd_id }}" method="POST" class="action-form">
+                        <button type="submit" class="btn btn-approve"><i class="fas fa-check"></i> Liberar</button>
+                      </form>
+                    {% endif %}
+                    {% if can_edit_func(status) %}
+                      <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit"><i class="fas fa-edit"></i> Editar</a>
+                    {% endif %}
+                    {% if can_delete_func(status, rd[1]) %}
+                      <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
+                        <button type="submit" class="btn btn-delete-rd"><i class="fas fa-trash-alt"></i> Excluir</button>
+                      </form>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
           <!-- Aba Liberados -->
           <div class="tab-content" id="content3">
             <table id="tabela-liberados" class="display">
@@ -383,7 +540,7 @@
                   <td data-label="Solicitante">{{ rd[1] }}</td>
                   <td data-label="Funcionário">{{ rd[2] }}</td>
                   <td data-label="Data">{{ rd[3] }}</td>
-                  <td data-label="Centro de Custo">{{ rd[4] }}<br><small>{{ rd[19] }}</small></td>
+                  <td data-label="Centro de Custo">{{ rd[4] }}</td>
                   <td data-label="Observação">
                     {% if rd[16] %}
                       {% set obs = rd[16] %}
@@ -400,29 +557,31 @@
                   </td>
                   <td data-label="Arquivos">
                     {% if rd[12] %}
-                      <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd_id }}">
-                        <i class="fas fa-paperclip"></i> Anexos
-                      </button>
+                      <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}"><i class="fas fa-paperclip"></i> Anexos</button>
                     {% else %}
                       -
                     {% endif %}
-                    <!-- Supervisor pode anexar arquivos extras -->
-                    <form action="/supervisor_arquivos/{{ rd_id }}" method="POST" enctype="multipart/form-data" style="margin-top:5px;">
-                      <input type="file" name="arquivo" multiple>
-                      <button type="submit" class="btn btn-primary" style="margin-top:5px;">
-                        <i class="fas fa-upload"></i> Anexar
-                      </button>
-                    </form>
                   </td>
-                  <td data-label="Valores">
-                    {{ mostrar_valores(rd) }}
-                  </td>
+                  <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
                   <td data-label="Ações">
+                    {% if can_edit_func(status) %}
+                      <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit"><i class="fas fa-edit"></i> Editar</a>
+                    {% endif %}
                     {% if can_delete_func(status, rd[1]) %}
-                      <form action="/delete/{{ rd_id }}" method="POST">
-                        <button type="submit" class="btn btn-delete-rd">
-                          <i class="fas fa-trash-alt"></i> Excluir
-                        </button>
+                      <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
+                        <button type="submit" class="btn btn-delete-rd"><i class="fas fa-trash-alt"></i> Excluir</button>
+                      </form>
+                    {% endif %}
+                    {% if can_request_additional(status) %}
+                      <form action="/" method="GET" class="action-form">
+                        <input type="hidden" name="adicional" value="{{ rd_id }}">
+                        <button type="submit" class="btn btn-additional"><i class="fas fa-plus"></i> Adicional</button>
+                      </form>
+                    {% endif %}
+                    {% if can_close(status) %}
+                      <form action="/" method="GET" class="action-form">
+                        <input type="hidden" name="fechamento" value="{{ rd_id }}">
+                        <button type="submit" class="btn btn-fechamento"><i class="fas fa-lock"></i> Fechamento</button>
                       </form>
                     {% endif %}
                   </td>
@@ -431,9 +590,9 @@
               </tbody>
             </table>
           </div>
-          <!-- Aba Divergências -->
-          <div class="tab-content" id="content7">
-            <table id="tabela-divergentes" class="display">
+          <!-- Aba Fechamento Solicitado -->
+          <div class="tab-content" id="content4">
+            <table id="tabela-fechamento-solicitado" class="display">
               <thead>
                 <tr>
                   <th>ID</th>
@@ -448,7 +607,129 @@
                 </tr>
               </thead>
               <tbody>
-                {% for rd in divergentes %}
+                {% for rd in fechamento_solicitado %}
+                {% set rd_id = rd[0] %}
+                {% set status = rd[6] %}
+                <tr>
+                  <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
+                  <td data-label="Solicitante">{{ rd[1] }}</td>
+                  <td data-label="Funcionário">{{ rd[2] }}</td>
+                  <td data-label="Data">{{ rd[3] }}</td>
+                  <td data-label="Centro de Custo">{{ rd[4] }}</td>
+                  <td data-label="Observação">
+                    {% if rd[16] %}
+                      {% set obs = rd[16] %}
+                      {% if obs|length > 50 %}
+                        <span class="observation-short">{{ obs[:50] }}...</span>
+                        <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
+                        <div class="observation-full">{{ obs }}</div>
+                      {% else %}
+                        {{ obs }}
+                      {% endif %}
+                    {% else %}
+                      -
+                    {% endif %}
+                  </td>
+                  <td data-label="Arquivos">
+                    {% if rd[12] %}
+                      <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}"><i class="fas fa-paperclip"></i> Anexos</button>
+                    {% else %}
+                      -
+                    {% endif %}
+                  </td>
+                  <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
+                  <td data-label="Ações">
+                    {% if can_approve_func(status) %}
+                      <form action="/approve/{{ rd_id }}" method="POST" class="action-form" style="display:inline-block;">
+                        <button type="submit" class="btn btn-approve"><i class="fas fa-check"></i> Fechar</button>
+                      </form>
+                    {% endif %}
+                    {% if is_gestor() and status == 'Fechamento Solicitado' %}
+                      <button type="button" class="btn btn-danger btn-recusar" data-rd-id="{{ rd_id }}"><i class="fas fa-times"></i> Recusar</button>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <!-- Aba Fechamento Recusado -->
+          <div class="tab-content" id="content5">
+            <table id="tabela-fechamento-recusado" class="display">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Solicitante</th>
+                  <th>Funcionário</th>
+                  <th>Data</th>
+                  <th>Centro de Custo</th>
+                  <th>Observação</th>
+                  <th>Motivo da Recusa</th>
+                  <th>Arquivos</th>
+                  <th>Valores</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for rd in fechamento_recusado %}
+                {% set rd_id = rd[0] %}
+                <tr>
+                  <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
+                  <td data-label="Solicitante">{{ rd[1] }}</td>
+                  <td data-label="Funcionário">{{ rd[2] }}</td>
+                  <td data-label="Data">{{ rd[3] }}</td>
+                  <td data-label="Centro de Custo">{{ rd[4] }}</td>
+                  <td data-label="Observação">
+                    {% if rd[16] %}
+                      {% set obs = rd[16] %}
+                      {% if obs|length > 50 %}
+                        <span class="observation-short">{{ obs[:50] }}...</span>
+                        <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
+                        <div class="observation-full">{{ obs }}</div>
+                      {% else %}
+                        {{ obs }}
+                      {% endif %}
+                    {% else %}
+                      -
+                    {% endif %}
+                  </td>
+                  <td data-label="Motivo da Recusa">{{ rd[20] }}</td>
+                  <td data-label="Arquivos">
+                    {% if rd[12] %}
+                      <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}"><i class="fas fa-paperclip"></i> Anexos</button>
+                    {% else %}
+                      -
+                    {% endif %}
+                  </td>
+                  <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
+                  <td data-label="Ações">
+                    {% if is_solicitante() %}
+                      <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit"><i class="fas fa-edit"></i> Corrigir e reenviar</a>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <!-- Aba Fechados -->
+          <div class="tab-content" id="content6">
+            <table id="tabela-fechados" class="display">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Solicitante</th>
+                  <th>Funcionário</th>
+                  <th>Data</th>
+                  <th>Centro de Custo</th>
+                  <th>Observação</th>
+                  <th>Arquivos</th>
+                  <th>Valores</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for rd in fechados %}
                 {% set rd_id = rd[0] %}
                 <tr>
                   <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
@@ -472,505 +753,29 @@
                   </td>
                   <td data-label="Arquivos">
                     {% if rd[12] %}
-                      <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd_id }}">
-                        <i class="fas fa-paperclip"></i> Anexos
-                      </button>
+                      <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}"><i class="fas fa-paperclip"></i> Anexos</button>
                     {% else %}
                       -
                     {% endif %}
-                    <!-- Supervisor pode também anexar arquivos extras nesta aba -->
-                    <form action="/supervisor_arquivos/{{ rd_id }}" method="POST" enctype="multipart/form-data" style="margin-top:5px;">
-                      <input type="file" name="arquivo" multiple>
-                      <button type="submit" class="btn btn-primary" style="margin-top:5px;">
-                        <i class="fas fa-upload"></i> Anexar
-                      </button>
-                    </form>
                   </td>
-                  <td data-label="Valores">
-                    {{ mostrar_valores(rd) }}
-                  </td>
+                  <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
                   <td data-label="Ações">
-                    <!-- Botão para o supervisor confirmar que os anexos foram corrigidos -->
-                    <form action="/corrigir_divergencia/{{ rd_id }}" method="POST">
-                      <button type="submit" class="btn btn-success">
-                        <i class="fas fa-check"></i> Corrigir (Remover Divergência)
-                      </button>
-                    </form>
+                    {% if is_financeiro() %}
+                      {% if not rd[18] %}
+                        <form action="/registrar_saldo_devolvido/{{ rd_id }}" method="POST" class="action-form">
+                          <button type="submit" class="btn btn-warning"><i class="fas fa-money-bill-wave"></i> Saldo Devolvido</button>
+                        </form>
+                      {% else %}
+                        <span style="color: var(--success-color); font-weight:600;">Devolvido em {{ rd[18] }}</span>
+                      {% endif %}
+                    {% endif %}
                   </td>
                 </tr>
                 {% endfor %}
               </tbody>
             </table>
           </div>
-        {% else %}
-          <!-- Se não é supervisor, exibe as 6 abas originais -->
-          <input type="radio" name="tab-control" id="tab1" checked>
-          <input type="radio" name="tab-control" id="tab2">
-          <input type="radio" name="tab-control" id="tab3">
-          <input type="radio" name="tab-control" id="tab4">
-          <input type="radio" name="tab-control" id="tab5">
-          <input type="radio" name="tab-control" id="tab6">
-          <div class="tab-labels">
-            <label for="tab1">Pendentes {% if pendentes|length > 0 %}<span class="badge">{{ pendentes|length }}</span>{% endif %}</label>
-            <label for="tab2">Aprovados {% if aprovados|length > 0 %}<span class="badge">{{ aprovados|length }}</span>{% endif %}</label>
-            <label for="tab3">Liberados {% if liberados|length > 0 %}<span class="badge">{{ liberados|length }}</span>{% endif %}</label>
-            <label for="tab4">Fechamento Solicitado {% if fechamento_solicitado|length > 0 %}<span class="badge">{{ fechamento_solicitado|length }}</span>{% endif %}</label>
-            <label for="tab5">Fechamento Recusado {% if fechamento_recusado|length > 0 %}<span class="badge">{{ fechamento_recusado|length }}</span>{% endif %}</label>
-            <label for="tab6">Fechados {% if fechados|length > 0 %}<span class="badge">{{ fechados|length }}</span>{% endif %}</label>
-          </div>
-          <div class="content">
-            <!-- Aba Pendentes -->
-            <div class="tab-content" id="content1">
-              <table id="tabela-pendentes" class="display">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Solicitante</th>
-                    <th>Funcionário</th>
-                    <th>Data</th>
-                    <th>Centro de Custo</th>
-                    <th>Observação</th>
-                    <th>Arquivos</th>
-                    <th>Valores</th>
-                    <th>Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for rd in pendentes %}
-                  {% set rd_id = rd[0] %}
-                  {% set status = rd[6] %}
-                  <tr>
-                    <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
-                    <td data-label="Solicitante">{{ rd[1] }}</td>
-                    <td data-label="Funcionário">{{ rd[2] }}</td>
-                    <td data-label="Data">{{ rd[3] }}</td>
-                    <td data-label="Centro de Custo">{{ rd[4] }}<br><small>{{ rd[19] }}</small></td>
-                    <td data-label="Observação">
-                      {% if rd[16] %}
-                        {% set obs = rd[16] %}
-                        {% if obs|length > 50 %}
-                          <span class="observation-short">{{ obs[:50] }}...</span>
-                          <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
-                          <div class="observation-full">{{ obs }}</div>
-                        {% else %}
-                          {{ obs }}
-                        {% endif %}
-                      {% else %}
-                        -
-                      {% endif %}
-                    </td>
-                    <td data-label="Arquivos">
-                      {% if rd[12] %}
-                        <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd_id }}">
-                          <i class="fas fa-paperclip"></i> Anexos
-                        </button>
-                      {% else %}
-                        -
-                      {% endif %}
-                    </td>
-                    <td data-label="Valores">
-                      {{ mostrar_valores(rd) }}
-                    </td>
-                    <td data-label="Ações">
-                      {% if can_approve_func(status) %}
-                        <form action="/approve/{{ rd_id }}" method="POST" class="action-form">
-                          <button type="submit" class="btn btn-approve">
-                            <i class="fas fa-check"></i> Aprovar
-                          </button>
-                        </form>
-                      {% endif %}
-                      {% if can_edit_func(status) %}
-                        <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit">
-                          <i class="fas fa-edit"></i> Editar
-                        </a>
-                      {% endif %}
-                      {% if can_delete_func(status, rd[1]) %}
-                        <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
-                          <button type="submit" class="btn btn-delete-rd">
-                            <i class="fas fa-trash-alt"></i> Excluir
-                          </button>
-                        </form>
-                      {% endif %}
-                    </td>
-                  </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-            </div>
-            <!-- Aba Aprovados -->
-            <div class="tab-content" id="content2">
-              <table id="tabela-aprovados" class="display">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Solicitante</th>
-                    <th>Funcionário</th>
-                    <th>Data</th>
-                    <th>Centro de Custo</th>
-                    <th>Observação</th>
-                    <th>Arquivos</th>
-                    <th>Valores</th>
-                    <th>Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for rd in aprovados %}
-                  {% set rd_id = rd[0] %}
-                  {% set status = rd[6] %}
-                  <tr>
-                    <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
-                    <td data-label="Solicitante">{{ rd[1] }}</td>
-                    <td data-label="Funcionário">{{ rd[2] }}</td>
-                    <td data-label="Data">{{ rd[3] }}</td>
-                    <td data-label="Centro de Custo">{{ rd[4] }}</td>
-                    <td data-label="Observação">
-                      {% if rd[16] %}
-                        {% set obs = rd[16] %}
-                        {% if obs|length > 50 %}
-                          <span class="observation-short">{{ obs[:50] }}...</span>
-                          <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
-                          <div class="observation-full">{{ obs }}</div>
-                        {% else %}
-                          {{ obs }}
-                        {% endif %}
-                      {% else %}
-                        -
-                      {% endif %}
-                    </td>
-                    <td data-label="Arquivos">
-                      {% if rd[12] %}
-                        <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd_id }}">
-                          <i class="fas fa-paperclip"></i> Anexos
-                        </button>
-                      {% else %}
-                        -
-                      {% endif %}
-                    </td>
-                    <td data-label="Valores">
-                      {{ mostrar_valores(rd) }}
-                    </td>
-                    <td data-label="Ações">
-                      {% if can_approve_func(status) %}
-                        <form action="/approve/{{ rd_id }}" method="POST" class="action-form">
-                          <button type="submit" class="btn btn-approve">
-                            <i class="fas fa-check"></i> Liberar
-                          </button>
-                        </form>
-                      {% endif %}
-                      {% if can_edit_func(status) %}
-                        <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit">
-                          <i class="fas fa-edit"></i> Editar
-                        </a>
-                      {% endif %}
-                      {% if can_delete_func(status, rd[1]) %}
-                        <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
-                          <button type="submit" class="btn btn-delete-rd">
-                            <i class="fas fa-trash-alt"></i> Excluir
-                          </button>
-                        </form>
-                      {% endif %}
-                    </td>
-                  </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-            </div>
-            <!-- Aba Liberados -->
-            <div class="tab-content" id="content3">
-              <table id="tabela-liberados" class="display">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Solicitante</th>
-                    <th>Funcionário</th>
-                    <th>Data</th>
-                    <th>Centro de Custo</th>
-                    <th>Observação</th>
-                    <th>Arquivos</th>
-                    <th>Valores</th>
-                    <th>Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for rd in liberados %}
-                  {% set rd_id = rd[0] %}
-                  {% set status = rd[6] %}
-                  <tr>
-                    <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
-                    <td data-label="Solicitante">{{ rd[1] }}</td>
-                    <td data-label="Funcionário">{{ rd[2] }}</td>
-                    <td data-label="Data">{{ rd[3] }}</td>
-                    <td data-label="Centro de Custo">{{ rd[4] }}</td>
-                    <td data-label="Observação">
-                      {% if rd[16] %}
-                        {% set obs = rd[16] %}
-                        {% if obs|length > 50 %}
-                          <span class="observation-short">{{ obs[:50] }}...</span>
-                          <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
-                          <div class="observation-full">{{ obs }}</div>
-                        {% else %}
-                          {{ obs }}
-                        {% endif %}
-                      {% else %}
-                        -
-                      {% endif %}
-                    </td>
-                    <td data-label="Arquivos">
-                      {% if rd[12] %}
-                        <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd_id }}">
-                          <i class="fas fa-paperclip"></i> Anexos
-                        </button>
-                      {% else %}
-                        -
-                      {% endif %}
-                      <!-- Botão para marcar anexos divergentes (aparece para gestor e solicitante) -->
-                      {% if user_role in ['gestor','solicitante'] %}
-                        <button class="btn btn-divergencia" data-rd-id="{{ rd_id }}" onclick="openDivergenciaModal(this)">
-                          <i class="fas fa-exclamation-triangle"></i> Anexos Divergentes
-                        </button>
-                      {% endif %}
-                    </td>
-                    <td data-label="Valores">
-                      {{ mostrar_valores(rd) }}
-                    </td>
-                    <td data-label="Ações">
-                      {% if can_edit_func(status) %}
-                        <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit">
-                          <i class="fas fa-edit"></i> Editar
-                        </a>
-                      {% endif %}
-                      {% if can_delete_func(status, rd[1]) %}
-                        <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
-                          <button type="submit" class="btn btn-delete-rd">
-                            <i class="fas fa-trash-alt"></i> Excluir
-                          </button>
-                        </form>
-                      {% endif %}
-                      {% if can_request_additional(status) %}
-                        <form action="/" method="GET" class="action-form">
-                          <input type="hidden" name="adicional" value="{{ rd_id }}">
-                          <button type="submit" class="btn btn-additional">
-                            <i class="fas fa-plus"></i> Adicional
-                          </button>
-                        </form>
-                      {% endif %}
-                      {% if can_close(status) %}
-                        <form action="/" method="GET" class="action-form">
-                          <input type="hidden" name="fechamento" value="{{ rd_id }}">
-                          <button type="submit" class="btn btn-fechamento">
-                            <i class="fas fa-lock"></i> Fechamento
-                          </button>
-                        </form>
-                      {% endif %}
-                    </td>
-                  </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-            </div>
-            <!-- Aba Fechamento Solicitado -->
-            <div class="tab-content" id="content4">
-              <table id="tabela-fechamento-solicitado" class="display">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Solicitante</th>
-                    <th>Funcionário</th>
-                    <th>Data</th>
-                    <th>Centro de Custo</th>
-                    <th>Observação</th>
-                    <th>Arquivos</th>
-                    <th>Valores</th>
-                    <th>Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for rd in fechamento_solicitado %}
-                  {% set rd_id = rd[0] %}
-                  {% set status = rd[6] %}
-                  <tr>
-                    <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
-                    <td data-label="Solicitante">{{ rd[1] }}</td>
-                    <td data-label="Funcionário">{{ rd[2] }}</td>
-                    <td data-label="Data">{{ rd[3] }}</td>
-                    <td data-label="Centro de Custo">{{ rd[4] }}</td>
-                    <td data-label="Observação">
-                      {% if rd[16] %}
-                        {% set obs = rd[16] %}
-                        {% if obs|length > 50 %}
-                          <span class="observation-short">{{ obs[:50] }}...</span>
-                          <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
-                          <div class="observation-full">{{ obs }}</div>
-                        {% else %}
-                          {{ obs }}
-                        {% endif %}
-                      {% else %}
-                        -
-                      {% endif %}
-                    </td>
-                    <td data-label="Arquivos">
-                      {% if rd[12] %}
-                        <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd_id }}">
-                          <i class="fas fa-paperclip"></i> Anexos
-                        </button>
-                      {% else %}
-                        -
-                      {% endif %}
-                    </td>
-                    <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
-                    <td data-label="Ações">
-                      {% if can_approve_func(status) %}
-                        <form action="/approve/{{ rd_id }}" method="POST" class="action-form" style="display:inline-block;">
-                          <button type="submit" class="btn btn-approve">
-                            <i class="fas fa-check"></i> Fechar
-                          </button>
-                        </form>
-                      {% endif %}
-                      {% if is_gestor() and status == 'Fechamento Solicitado' %}
-                        <button type="button" class="btn btn-danger btn-recusar" data-rd-id="{{ rd_id }}">
-                          <i class="fas fa-times"></i> Recusar
-                        </button>
-                      {% endif %}
-                    </td>
-                  </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-            </div>
-            <!-- Aba Fechamento Recusado -->
-            <div class="tab-content" id="content5">
-              <table id="tabela-fechamento-recusado" class="display">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Solicitante</th>
-                    <th>Funcionário</th>
-                    <th>Data</th>
-                    <th>Centro de Custo</th>
-                    <th>Observação</th>
-                    <th>Motivo da Recusa</th>
-                    <th>Arquivos</th>
-                    <th>Valores</th>
-                    <th>Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for rd in fechamento_recusado %}
-                  {% set rd_id = rd[0] %}
-                  <tr>
-                    <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
-                    <td data-label="Solicitante">{{ rd[1] }}</td>
-                    <td data-label="Funcionário">{{ rd[2] }}</td>
-                    <td data-label="Data">{{ rd[3] }}</td>
-                    <td data-label="Centro de Custo">{{ rd[4] }}</td>
-                    <td data-label="Observação">
-                      {% if rd[16] %}
-                        {% set obs = rd[16] %}
-                        {% if obs|length > 50 %}
-                          <span class="observation-short">{{ obs[:50] }}...</span>
-                          <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
-                          <div class="observation-full">{{ obs }}</div>
-                        {% else %}
-                          {{ obs }}
-                        {% endif %}
-                      {% else %}
-                        -
-                      {% endif %}
-                    </td>
-                    <td data-label="Motivo da Recusa">{{ rd[20] }}</td>
-                    <td data-label="Arquivos">
-                      {% if rd[12] %}
-                        <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd_id }}">
-                          <i class="fas fa-paperclip"></i> Anexos
-                        </button>
-                      {% else %}
-                        -
-                      {% endif %}
-                    </td>
-                    <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
-                    <td data-label="Ações">
-                      {% if is_solicitante() %}
-                        <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit">
-                          <i class="fas fa-edit"></i> Corrigir e reenviar
-                        </a>
-                      {% endif %}
-                    </td>
-                  </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-            </div>
-            <!-- Aba Fechados -->
-            <div class="tab-content" id="content6">
-              <table id="tabela-fechados" class="display">
-                <thead>
-                  <tr>
-                    <th>ID</th>
-                    <th>Solicitante</th>
-                    <th>Funcionário</th>
-                    <th>Data</th>
-                    <th>Centro de Custo</th>
-                    <th>Observação</th>
-                    <th>Arquivos</th>
-                    <th>Valores</th>
-                    <th>Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for rd in fechados %}
-                  {% set rd_id = rd[0] %}
-                  <tr>
-                    <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
-                    <td data-label="Solicitante">{{ rd[1] }}</td>
-                    <td data-label="Funcionário">{{ rd[2] }}</td>
-                    <td data-label="Data">{{ rd[3] }}</td>
-                    <td data-label="Centro de Custo">{{ rd[4] }}</td>
-                    <td data-label="Observação">
-                      {% if rd[16] %}
-                        {% set obs = rd[16] %}
-                        {% if obs|length > 50 %}
-                          <span class="observation-short">{{ obs[:50] }}...</span>
-                          <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
-                          <div class="observation-full">{{ obs }}</div>
-                        {% else %}
-                          {{ obs }}
-                        {% endif %}
-                      {% else %}
-                        -
-                      {% endif %}
-                    </td>
-                    <td data-label="Arquivos">
-                      {% if rd[12] %}
-                        <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd_id }}">
-                          <i class="fas fa-paperclip"></i> Anexos
-                        </button>
-                      {% else %}
-                        -
-                      {% endif %}
-                    </td>
-                    <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
-                    <td data-label="Ações">
-                      {% if is_financeiro() %}
-                        {% if not rd[18] %}
-                          <form action="/registrar_saldo_devolvido/{{ rd_id }}" method="POST" class="action-form">
-                            <button type="submit" class="btn btn-warning">
-                              <i class="fas fa-money-bill-wave"></i> Saldo Devolvido
-                            </button>
-                          </form>
-                        {% else %}
-                          <span style="color: var(--success-color); font-weight:600;">
-                            Devolvido em {{ rd[18] }}
-                          </span>
-                        {% endif %}
-                      {% endif %}
-                    </td>
-                  </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        {% endif %}
+        </div>
       </div>
     {% endif %}
   {% endif %}
@@ -998,142 +803,98 @@
   </div>
 </div>
 
-<!-- Modal para divergência de anexos -->
-<div id="divergenciaModal" class="modal">
-  <div class="modal-content">
-    <span class="close-btn" id="closeDivergenciaModal">&times;</span>
-    <h3>Informe o Motivo da Divergência</h3>
-    <form id="formDivergencia" method="POST">
-      <textarea name="motivo_divergencia" id="motivo_divergencia" rows="4" style="width:100%;" placeholder="Explique a divergência..."></textarea>
-      <br>
-      <button type="submit" class="btn btn-divergencia">Enviar Divergência</button>
-    </form>
-  </div>
-</div>
+<footer>
+  Desenvolvido por André Ferreira
+</footer>
 
+<!-- jQuery e DataTables -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script type="text/javascript" src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
 <script>
-  $(document).ready(function() {
-    $('#tabela-pendentes').DataTable();
-    $('#tabela-aprovados').DataTable();
-    $('#tabela-liberados').DataTable();
-    $('#tabela-fechamento-solicitado').DataTable();
-    $('#tabela-fechamento-recusado').DataTable();
-    $('#tabela-fechados').DataTable();
-    $('#tabela-divergentes').DataTable();
-  });
-  function toggleObservation(btn) {
-    const obsFull = btn.parentNode.querySelector('.observation-full');
-    if(!obsFull) return;
-    if(obsFull.style.display === 'none' || obsFull.style.display === '') {
-      obsFull.style.display = 'block';
-      btn.textContent = '-';
-    } else {
-      obsFull.style.display = 'none';
-      btn.textContent = '+';
-    }
+// Inicializa DataTables
+$(document).ready(function(){
+  $('#tabela-pendentes').DataTable();
+  $('#tabela-aprovados').DataTable();
+  $('#tabela-liberados').DataTable();
+  $('#tabela-fechamento-solicitado').DataTable();
+  $('#tabela-fechamento-recusado').DataTable();
+  $('#tabela-fechados').DataTable();
+});
+
+// Toggle para detalhes de valores
+$(document).on('click', '.toggle-details', function(){
+  var details = $(this).closest('.valor-resumo').next('.rd-details');
+  if(details.is(':visible')){
+    details.slideUp();
+    $(this).text('+');
+  } else {
+    details.slideDown();
+    $(this).text('-');
   }
-  document.querySelectorAll('.toggle-details').forEach(button => {
-    button.addEventListener('click', () => {
-      const details = button.parentNode.nextElementSibling;
-      if(details.style.display === 'none' || details.style.display === '') {
-        details.style.display = 'block';
-        button.textContent = '-';
-      } else {
-        details.style.display = 'none';
-        button.textContent = '+';
-      }
-    });
+});
+
+// Toggle para observação
+function toggleObservation(btn) {
+  var full = $(btn).siblings('.observation-full');
+  if(full.is(':visible')){
+    full.slideUp();
+    $(btn).text('+');
+  } else {
+    full.slideDown();
+    $(btn).text('-');
+  }
+}
+
+// Abrir modal de arquivos
+$(document).on('click', '.btn-view-files', function(){
+  let filesStr = $(this).data('files');    
+  let rdId     = $(this).data('rdId');     
+  if(!filesStr){ return; }
+  let filesArr = filesStr.split(',');
+  let html = '';
+  filesArr.forEach(function(arquivo){
+    html += `
+      <div class="file-item">
+        <a href="${getPublicUrl(arquivo)}" class="arquivo-link" target="_blank">${arquivo}</a>
+        <form action="/delete_file/${rdId}" method="POST" style="margin-left:10px;">
+          <input type="hidden" name="filename" value="${arquivo}">
+          <button type="submit" class="btn btn-delete-file" title="Excluir Arquivo"><i class="fas fa-times"></i></button>
+        </form>
+      </div>
+    `;
   });
-  // Modal de Anexos
-  const fileModal = document.getElementById('fileModal');
-  const closeFileModal = document.getElementById('closeFileModal');
-  const modalFilesContainer = document.getElementById('modalFilesContainer');
-  document.querySelectorAll('.btn-view-files').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const files = btn.getAttribute('data-files');
-      const rdId = btn.getAttribute('data-rd-id');
-      modalFilesContainer.innerHTML = '';
-      if(!files){
-        modalFilesContainer.innerHTML = '<p>Nenhum arquivo anexo.</p>';
-      } else {
-        const arrFiles = files.split(',');
-        arrFiles.forEach(f => {
-          const fileDiv = document.createElement('div');
-          fileDiv.classList.add('file-item');
-          const link = document.createElement('a');
-          link.href = "{{ get_r2_public_url('') }}" + f;
-          link.target = '_blank';
-          link.classList.add('arquivo-link');
-          link.innerText = f;
-          fileDiv.appendChild(link);
-          const formDelete = document.createElement('form');
-          formDelete.method = 'POST';
-          formDelete.action = '/delete_file/' + rdId;
-          formDelete.style.display = 'inline-block';
-          const inputHidden = document.createElement('input');
-          inputHidden.type = 'hidden';
-          inputHidden.name = 'filename';
-          inputHidden.value = f;
-          formDelete.appendChild(inputHidden);
-          const btnDelete = document.createElement('button');
-          btnDelete.type = 'submit';
-          btnDelete.classList.add('btn-delete-file');
-          btnDelete.innerHTML = '<i class="fas fa-trash"></i>';
-          formDelete.appendChild(btnDelete);
-          fileDiv.appendChild(formDelete);
-          modalFilesContainer.appendChild(fileDiv);
-        });
-      }
-      fileModal.style.display = 'block';
-    });
-  });
-  closeFileModal.addEventListener('click', () => {
-    fileModal.style.display = 'none';
-  });
-  // Modal de Recusa
-  const recusaModal = document.getElementById('recusaModal');
-  const closeRecusaModal = document.getElementById('closeRecusaModal');
-  const formRecusa = document.getElementById('formRecusa');
-  document.querySelectorAll('.btn-recusar').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const rdId = btn.getAttribute('data-rd-id');
-      formRecusa.action = '/reject_fechamento/' + rdId;
-      recusaModal.style.display = 'block';
-    });
-  });
-  closeRecusaModal.addEventListener('click', () => {
-    recusaModal.style.display = 'none';
-  });
-  // Modal de Divergência
-  const divergenciaModal = document.getElementById('divergenciaModal');
-  const closeDivergenciaModal = document.getElementById('closeDivergenciaModal');
-  const formDivergencia = document.getElementById('formDivergencia');
-  document.querySelectorAll('.btn-divergencia').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const rdId = btn.getAttribute('data-rd-id');
-      formDivergencia.action = '/divergencia/' + rdId;
-      divergenciaModal.style.display = 'block';
-    });
-  });
-  closeDivergenciaModal.addEventListener('click', () => {
-    divergenciaModal.style.display = 'none';
-  });
-  // Botões para RD Alelo/Reembolso
-  document.getElementById('btn-alelo')?.addEventListener('click', () => {
-    document.getElementById('form-solicitacao').style.display = 'block';
-    document.getElementById('rd-tipo').value = 'credito alelo';
-    document.getElementById('lbl-solicitante').textContent = 'Solicitante (Alelo):';
-  });
-  document.getElementById('btn-reembolso')?.addEventListener('click', () => {
-    document.getElementById('form-solicitacao').style.display = 'block';
-    document.getElementById('rd-tipo').value = 'reembolso';
-    document.getElementById('lbl-solicitante').textContent = 'Solicitante (Reembolso):';
-  });
+  $('#modalFilesContainer').html(html);
+  $('#fileModal').show();
+});
+$('#closeFileModal').click(function(){ $('#fileModal').hide(); });
+$(window).click(function(e){
+  if(e.target == document.getElementById('fileModal')){ $('#fileModal').hide(); }
+});
+function getPublicUrl(filename){
+  return "https://pub-1e6f8559bc2b413c889fbf4860462599.r2.dev/" + filename;
+}
+
+document.getElementById('btn-alelo')?.addEventListener('click', function(){
+  document.getElementById('form-solicitacao').style.display = 'block';
+  document.getElementById('rd-tipo').value = 'credito alelo';
+  document.getElementById('lbl-solicitante').innerText = 'Solicitante do RD Alelo';
+});
+document.getElementById('btn-reembolso')?.addEventListener('click', function(){
+  document.getElementById('form-solicitacao').style.display = 'block';
+  document.getElementById('rd-tipo').value = 'reembolso';
+  document.getElementById('lbl-solicitante').innerText = 'Solicitante do RD Reembolso';
+});
+
+// Handler para botão de recusa
+$(document).on('click', '.btn-recusar', function(){
+  var rdId = $(this).data('rdId');
+  $('#formRecusa').attr('action', '/reject_fechamento/' + rdId);
+  $('#recusaModal').show();
+});
+$('#closeRecusaModal').click(function(){ $('#recusaModal').hide(); });
+$(window).click(function(e){
+  if(e.target == document.getElementById('recusaModal')){ $('#recusaModal').hide(); }
+});
 </script>
-<footer>
-  Desenvolvido Por André Ferreira
-</footer>
 </body>
 </html>
