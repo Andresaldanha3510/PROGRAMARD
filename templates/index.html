@@ -228,6 +228,21 @@
       display: flex; align-items: center; margin-bottom: 8px;
     }
     .file-item form { margin: 0; padding: 0; display: inline-block; }
+
+    /* -- OCULTAR AS DEMAIS ABAS SE FOR SUPERVISOR -- */
+    {% if user_role == 'supervisor' %}
+    #tab1, #tab2, #tab4, #tab5, #tab6,
+    label[for="tab1"], label[for="tab2"], label[for="tab4"], label[for="tab5"], label[for="tab6"],
+    #content1, #content2, #content4, #content5, #content6 {
+      display: none !important;
+    }
+    #tab3 {
+      display: block !important;
+    }
+    #tab3:checked ~ .content #content3 {
+      display: block !important;
+    }
+    {% endif %}
   </style>
 </head>
 <body>
@@ -331,15 +346,15 @@
       </form>
       {% endif %}
       <div style="text-align:center; margin:20px 0;">
-       <a href="{{ url_for('cadastro_funcionario') }}" class="btn btn-success" style="margin-right: 10px;">
-    <i class="fas fa-user-plus"></i> Cadastro Funcionários
-  </a>
-  <a href="{{ url_for('consulta_funcionario') }}" class="btn btn-success" style="margin-right: 10px;">
-    <i class="fas fa-search"></i> Consulta Funcionários
-  </a>
-  <a href="{{ url_for('export_excel') }}" class="btn btn-success">
-    <i class="fas fa-file-excel"></i> Exportar para Excel
-  </a>
+        <a href="{{ url_for('cadastro_funcionario') }}" class="btn btn-success" style="margin-right: 10px;">
+          <i class="fas fa-user-plus"></i> Cadastro Funcionários
+        </a>
+        <a href="{{ url_for('consulta_funcionario') }}" class="btn btn-success" style="margin-right: 10px;">
+          <i class="fas fa-search"></i> Consulta Funcionários
+        </a>
+        <a href="{{ url_for('export_excel') }}" class="btn btn-success">
+          <i class="fas fa-file-excel"></i> Exportar para Excel
+        </a>
       </div>
 
       <!-- Macro para mostrar os valores -->
@@ -447,6 +462,7 @@
               </tbody>
             </table>
           </div>
+
           <!-- Aba Aprovados -->
           <div class="tab-content" id="content2">
             <table id="tabela-aprovados" class="display">
@@ -515,6 +531,7 @@
               </tbody>
             </table>
           </div>
+
           <!-- Aba Liberados -->
           <div class="tab-content" id="content3">
             <table id="tabela-liberados" class="display">
@@ -557,7 +574,7 @@
                   </td>
                   <td data-label="Arquivos">
                     {% if rd[12] %}
-                      <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}"><i class="fas fa-paperclip"></i> Anexos</button>
+                      <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd_id }}"><i class="fas fa-paperclip"></i> Anexos</button>
                     {% else %}
                       -
                     {% endif %}
@@ -584,12 +601,47 @@
                         <button type="submit" class="btn btn-fechamento"><i class="fas fa-lock"></i> Fechamento</button>
                       </form>
                     {% endif %}
+
+                    <!-- BOTÃO 'Anexos Divergentes' para gestor/solicitante -->
+                    {% if user_role in ['gestor', 'solicitante'] %}
+                      <button type="button" class="btn btn-warning btn-divergencia" data-rd-id="{{ rd_id }}">
+                        <i class="fas fa-exclamation-triangle"></i> Anexos Divergentes
+                      </button>
+                    {% endif %}
+
+                    <!-- Se existir divergência (ex: rd[22] = motivo_divergencia), exibe -->
+                    {% if rd[22] %}
+                      <div style="color:red; margin-top:5px;">
+                        Divergência em anexos: {{ rd[22] }}
+                      </div>
+                    {% endif %}
+
+                    <!-- Supervisor pode corrigir divergência se existir -->
+                    {% if user_role == 'supervisor' and rd[22] %}
+                      <form action="{{ url_for('corrigir_divergencia', id=rd_id) }}" method="POST" style="margin-top:5px;">
+                        <button class="btn btn-success" type="submit">
+                          <i class="fas fa-check"></i> Corrigir (Remover Divergência)
+                        </button>
+                      </form>
+                    {% endif %}
+
+                    <!-- Se for supervisor, mostrar form p/ anexar arquivos extras -->
+                    {% if user_role == 'supervisor' %}
+                      <form action="/supervisor_arquivos/{{ rd_id }}" method="POST" enctype="multipart/form-data" style="margin-top:8px;">
+                        <label style="display:block; font-size:0.85rem; margin-bottom:5px;">Anexar Arquivos Extras:</label>
+                        <input type="file" name="arquivo" multiple style="margin-bottom:5px;">
+                        <button type="submit" class="btn btn-primary">
+                          <i class="fas fa-upload"></i> Enviar
+                        </button>
+                      </form>
+                    {% endif %}
                   </td>
                 </tr>
                 {% endfor %}
               </tbody>
             </table>
           </div>
+
           <!-- Aba Fechamento Solicitado -->
           <div class="tab-content" id="content4">
             <table id="tabela-fechamento-solicitado" class="display">
@@ -653,6 +705,7 @@
               </tbody>
             </table>
           </div>
+
           <!-- Aba Fechamento Recusado -->
           <div class="tab-content" id="content5">
             <table id="tabela-fechamento-recusado" class="display">
@@ -712,6 +765,7 @@
               </tbody>
             </table>
           </div>
+
           <!-- Aba Fechados -->
           <div class="tab-content" id="content6">
             <table id="tabela-fechados" class="display">
@@ -803,98 +857,173 @@
   </div>
 </div>
 
-<footer>
-  Desenvolvido por André Ferreira
-</footer>
+<!-- Modal para divergência de anexos -->
+<div id="divergenciaModal" class="modal">
+  <div class="modal-content">
+    <span class="close-btn" id="closeDivergenciaModal">&times;</span>
+    <h3>Informe o Motivo da Divergência</h3>
+    <form id="formDivergencia" method="POST">
+      <textarea name="motivo_divergencia" id="motivo_divergencia" rows="4" style="width:100%;" placeholder="Explique a divergência..."></textarea>
+      <br>
+      <button type="submit" class="btn btn-warning">Enviar Divergência</button>
+    </form>
+  </div>
+</div>
 
-<!-- jQuery e DataTables -->
+<!-- Scripts -->
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script type="text/javascript" src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
 <script>
-// Inicializa DataTables
-$(document).ready(function(){
-  $('#tabela-pendentes').DataTable();
-  $('#tabela-aprovados').DataTable();
-  $('#tabela-liberados').DataTable();
-  $('#tabela-fechamento-solicitado').DataTable();
-  $('#tabela-fechamento-recusado').DataTable();
-  $('#tabela-fechados').DataTable();
-});
+  // Mostra/esconde form de RD Alelo/Reembolso
+  const btnAlelo = document.getElementById('btn-alelo');
+  const btnReembolso = document.getElementById('btn-reembolso');
+  const formSolicitacao = document.getElementById('form-solicitacao');
+  const rdTipo = document.getElementById('rd-tipo');
 
-// Toggle para detalhes de valores
-$(document).on('click', '.toggle-details', function(){
-  var details = $(this).closest('.valor-resumo').next('.rd-details');
-  if(details.is(':visible')){
-    details.slideUp();
-    $(this).text('+');
-  } else {
-    details.slideDown();
-    $(this).text('-');
+  if(btnAlelo) {
+    btnAlelo.addEventListener('click', () => {
+      formSolicitacao.style.display = 'block';
+      rdTipo.value = 'credito alelo';
+      document.getElementById('lbl-solicitante').textContent = 'Solicitante (Alelo):';
+    });
   }
-});
-
-// Toggle para observação
-function toggleObservation(btn) {
-  var full = $(btn).siblings('.observation-full');
-  if(full.is(':visible')){
-    full.slideUp();
-    $(btn).text('+');
-  } else {
-    full.slideDown();
-    $(btn).text('-');
+  if(btnReembolso) {
+    btnReembolso.addEventListener('click', () => {
+      formSolicitacao.style.display = 'block';
+      rdTipo.value = 'reembolso';
+      document.getElementById('lbl-solicitante').textContent = 'Solicitante (Reembolso):';
+    });
   }
-}
 
-// Abrir modal de arquivos
-$(document).on('click', '.btn-view-files', function(){
-  let filesStr = $(this).data('files');    
-  let rdId     = $(this).data('rdId');     
-  if(!filesStr){ return; }
-  let filesArr = filesStr.split(',');
-  let html = '';
-  filesArr.forEach(function(arquivo){
-    html += `
-      <div class="file-item">
-        <a href="${getPublicUrl(arquivo)}" class="arquivo-link" target="_blank">${arquivo}</a>
-        <form action="/delete_file/${rdId}" method="POST" style="margin-left:10px;">
-          <input type="hidden" name="filename" value="${arquivo}">
-          <button type="submit" class="btn btn-delete-file" title="Excluir Arquivo"><i class="fas fa-times"></i></button>
-        </form>
-      </div>
-    `;
+  // DataTables
+  $(document).ready(function() {
+    $('#tabela-pendentes').DataTable();
+    $('#tabela-aprovados').DataTable();
+    $('#tabela-liberados').DataTable();
+    $('#tabela-fechamento-solicitado').DataTable();
+    $('#tabela-fechamento-recusado').DataTable();
+    $('#tabela-fechados').DataTable();
   });
-  $('#modalFilesContainer').html(html);
-  $('#fileModal').show();
-});
-$('#closeFileModal').click(function(){ $('#fileModal').hide(); });
-$(window).click(function(e){
-  if(e.target == document.getElementById('fileModal')){ $('#fileModal').hide(); }
-});
-function getPublicUrl(filename){
-  return "https://pub-1e6f8559bc2b413c889fbf4860462599.r2.dev/" + filename;
-}
 
-document.getElementById('btn-alelo')?.addEventListener('click', function(){
-  document.getElementById('form-solicitacao').style.display = 'block';
-  document.getElementById('rd-tipo').value = 'credito alelo';
-  document.getElementById('lbl-solicitante').innerText = 'Solicitante do RD Alelo';
-});
-document.getElementById('btn-reembolso')?.addEventListener('click', function(){
-  document.getElementById('form-solicitacao').style.display = 'block';
-  document.getElementById('rd-tipo').value = 'reembolso';
-  document.getElementById('lbl-solicitante').innerText = 'Solicitante do RD Reembolso';
-});
+  // Observação toggle
+  function toggleObservation(btn) {
+    const obsFull = btn.parentNode.querySelector('.observation-full');
+    if(obsFull.style.display === 'none' || obsFull.style.display === '') {
+      obsFull.style.display = 'block';
+      btn.textContent = '-';
+    } else {
+      obsFull.style.display = 'none';
+      btn.textContent = '+';
+    }
+  }
 
-// Handler para botão de recusa
-$(document).on('click', '.btn-recusar', function(){
-  var rdId = $(this).data('rdId');
-  $('#formRecusa').attr('action', '/reject_fechamento/' + rdId);
-  $('#recusaModal').show();
-});
-$('#closeRecusaModal').click(function(){ $('#recusaModal').hide(); });
-$(window).click(function(e){
-  if(e.target == document.getElementById('recusaModal')){ $('#recusaModal').hide(); }
-});
+  // Valores RD - exibe/esconde detalhes
+  document.querySelectorAll('.toggle-details').forEach(button => {
+    button.addEventListener('click', () => {
+      const details = button.parentNode.nextElementSibling;
+      if(details.style.display === 'none' || details.style.display === '') {
+        details.style.display = 'block';
+        button.textContent = '-';
+      } else {
+        details.style.display = 'none';
+        button.textContent = '+';
+      }
+    });
+  });
+
+  // Modal de Anexos
+  const fileModal = document.getElementById('fileModal');
+  const closeFileModal = document.getElementById('closeFileModal');
+  const modalFilesContainer = document.getElementById('modalFilesContainer');
+
+  document.querySelectorAll('.btn-view-files').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const files = btn.getAttribute('data-files');
+      const rdId = btn.getAttribute('data-rd-id');
+      modalFilesContainer.innerHTML = '';
+      if(!files) {
+        modalFilesContainer.innerHTML = '<p>Nenhum arquivo anexo.</p>';
+      } else {
+        const arrFiles = files.split(',');
+        arrFiles.forEach(f => {
+          // Montar link de download
+          const fileDiv = document.createElement('div');
+          fileDiv.classList.add('file-item');
+          const link = document.createElement('a');
+          link.href = "{{ get_r2_public_url('') }}" + f;
+          link.target = '_blank';
+          link.classList.add('arquivo-link');
+          link.innerText = f;
+          fileDiv.appendChild(link);
+
+          // Botão excluir
+          const formDelete = document.createElement('form');
+          formDelete.method = 'POST';
+          formDelete.action = '/delete_file/' + rdId;
+          formDelete.style.display = 'inline-block';
+          const inputHidden = document.createElement('input');
+          inputHidden.type = 'hidden';
+          inputHidden.name = 'filename';
+          inputHidden.value = f;
+          formDelete.appendChild(inputHidden);
+
+          const btnDelete = document.createElement('button');
+          btnDelete.type = 'submit';
+          btnDelete.classList.add('btn-delete-file');
+          btnDelete.innerHTML = '<i class="fas fa-trash"></i>';
+          formDelete.appendChild(btnDelete);
+
+          fileDiv.appendChild(formDelete);
+
+          modalFilesContainer.appendChild(fileDiv);
+        });
+      }
+      fileModal.style.display = 'block';
+    });
+  });
+
+  closeFileModal.addEventListener('click', () => {
+    fileModal.style.display = 'none';
+  });
+
+  // Modal de Recusa Fechamento
+  const recusaModal = document.getElementById('recusaModal');
+  const closeRecusaModal = document.getElementById('closeRecusaModal');
+  const formRecusa = document.getElementById('formRecusa');
+
+  document.querySelectorAll('.btn-recusar').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const rdId = btn.getAttribute('data-rd-id');
+      formRecusa.action = '/reject_fechamento/' + rdId;
+      recusaModal.style.display = 'block';
+    });
+  });
+  closeRecusaModal.addEventListener('click', () => {
+    recusaModal.style.display = 'none';
+  });
+
+  // Modal de Divergência
+  const divergenciaModal = document.getElementById('divergenciaModal');
+  const closeDivergenciaModal = document.getElementById('closeDivergenciaModal');
+  const formDivergencia = document.getElementById('formDivergencia');
+
+  document.querySelectorAll('.btn-divergencia').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const rdId = btn.getAttribute('data-rd-id');
+      // Ajusta a action do formulário
+      formDivergencia.action = '/divergencia/' + rdId;
+      // Exibe o modal
+      divergenciaModal.style.display = 'block';
+    });
+  });
+
+  closeDivergenciaModal.addEventListener('click', () => {
+    divergenciaModal.style.display = 'none';
+  });
 </script>
+
+<footer>
+  Desenvolvido Por André Ferreira
+</footer>
 </body>
 </html>
