@@ -10,6 +10,7 @@
   <!-- Estilos do DataTables -->
   <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css" />
   <style>
+    /* (Inclua aqui todo o CSS original – sem omitir nada) */
     :root {
       --primary-color: #3498db;
       --secondary-color: #f39c12;
@@ -26,7 +27,7 @@
     }
     body {
       font-family: 'Inter', sans-serif;
-      margin: 0;
+      margin: 0; 
       padding: 0;
       background-color: var(--background-color);
       color: var(--text-color);
@@ -35,35 +36,24 @@
     .top-bar {
       background: var(--header-color);
       padding: 10px 20px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      display: flex; justify-content: space-between; align-items: center;
       color: #fff;
     }
     .top-bar .user-info { font-weight: 600; }
     .top-bar a {
-      color: #fff;
-      margin-left: 10px;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
+      color: #fff; margin-left: 10px; text-decoration: none;
+      display: inline-flex; align-items: center;
     }
     .top-bar a:hover { text-decoration: underline; }
     .container {
-      max-width: 1200px;
-      margin: 20px auto;
-      padding: 20px;
-      background: #fff;
-      border-radius: 10px;
+      max-width: 1200px; margin: 20px auto; padding: 20px;
+      background: #fff; border-radius: 10px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.1);
     }
     h1, h2 { text-align: center; margin: 20px 0; font-weight: 700; }
     .main-form {
-      margin-bottom: 20px;
-      border: 1px solid var(--border-color);
-      border-radius: 10px;
-      padding: 20px;
-      background: #fff;
+      margin-bottom: 20px; border: 1px solid var(--border-color);
+      border-radius: 10px; padding: 20px; background: #fff;
       box-shadow: 0 2px 15px rgba(0,0,0,0.1);
     }
     .main-form label {
@@ -140,13 +130,12 @@
     .arquivo-link {
       text-decoration: none; color: var(--primary-color);
       font-size: 0.9rem; margin-right: 10px;
-      max-width: 250px; overflow: hidden;
-      text-overflow: ellipsis; white-space: nowrap;
+      max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
     .arquivo-link:hover { text-decoration: underline; }
     .error-message {
-      color: var(--danger-color); font-size: 0.85rem;
-      margin-bottom: 15px; list-style: none;
+      color: var(--danger-color); font-size: 0.85rem; margin-bottom: 15px;
+      list-style: none;
     }
     footer {
       text-align: center; color: var(--footer-text);
@@ -157,14 +146,12 @@
     .tabs { margin-top: 20px; }
     .tabs input[type="radio"] { display: none; }
     .tab-labels {
-      display: flex; justify-content: center; margin-bottom: 10px;
-      flex-wrap: wrap; gap: 5px;
+      display: flex; justify-content: center; margin-bottom: 10px; flex-wrap: wrap; gap: 5px;
     }
     .tab-labels label {
-      background-color: #ecf0f1; padding: 8px 15px;
-      margin: 2px; border-radius: 5px; cursor: pointer;
-      transition: background-color 0.3s; font-weight: 600;
-      display: inline-flex; align-items: center; gap: 5px;
+      background-color: #ecf0f1; padding: 8px 15px; margin: 2px;
+      border-radius: 5px; cursor: pointer; transition: background-color 0.3s;
+      font-weight: 600; display: inline-flex; align-items: center; gap: 5px;
     }
     .tab-labels label:hover { background-color: #ddd; }
     .tab-content { display: none; }
@@ -172,35 +159,42 @@
       background-color: var(--primary-color); color: #fff;
     }
     /* Exibe a aba selecionada */
-    #tab1:checked ~ .content #content1,
-    #tab2:checked ~ .content #content2,
-    #tab3:checked ~ .content #content3,
-    #tab4:checked ~ .content #content4,
-    #tab5:checked ~ .content #content5,
-    #tab6:checked ~ .content #content6,
-    #tab7:checked ~ .content #content7 { display: block; }
+    {% if user_role == 'supervisor' %}
+      /* Supervisor vê somente Liberados e Divergências */
+      #tab3:checked ~ .content #content3,
+      #tab7:checked ~ .content #content7 { display: block; }
+    {% else %}
+      #tab1:checked ~ .content #content1,
+      #tab2:checked ~ .content #content2,
+      #tab3:checked ~ .content #content3,
+      #tab4:checked ~ .content #content4,
+      #tab5:checked ~ .content #content5,
+      #tab6:checked ~ .content #content6 { display: block; }
+    {% endif %}
     .valor-resumo {
       display: flex; align-items: center; gap: 10px;
     }
     .valor-resumo span { font-weight: 600; }
     .valor-resumo button.toggle-details {
-      border: none; background: none; font-weight: 700;
-      font-size: 1.1rem; cursor: pointer; color: var(--primary-color);
+      border: none; background: none; font-weight: 700; font-size: 1.1rem;
+      cursor: pointer; color: var(--primary-color);
     }
     .rd-details {
       background: #fafafa; padding: 10px; margin-top: 5px;
-      border: 1px solid #ddd; border-radius: 5px; display: none;
+      border: 1px solid #ddd; border-radius: 5px;
+      display: none;
     }
     .badge {
-      background-color: var(--danger-color); color: #fff;
-      font-size: 0.75rem; padding: 3px 6px;
-      border-radius: 10px; display: inline-block;
-      min-width: 20px; text-align: center;
+      background-color: var(--danger-color);
+      color: #fff;
+      font-size: 0.75rem;
+      padding: 3px 6px;
+      border-radius: 10px;
+      display: inline-block;
+      min-width: 20px;
+      text-align: center;
     }
-    .toggle-observation {
-      border: none; background: none; cursor: pointer;
-      color: var(--primary-color); font-weight: bold;
-    }
+    .toggle-observation { border: none; background: none; cursor: pointer; color: var(--primary-color); font-weight: bold; }
     .observation-full { display: none; }
     .modal {
       display: none; position: fixed; z-index: 9999;
@@ -226,12 +220,9 @@
       display: flex; align-items: center; margin-bottom: 8px;
     }
     .file-item form { margin: 0; padding: 0; display: inline-block; }
-    .btn-divergencia {
-      background-color: #3498db; color: #fff;
-    }
   </style>
   <script>
-    // Função para abrir o modal de divergência
+    // Função para abrir modal de divergência (gestor/solicitante)
     function openDivergenciaModal(btn) {
       var rdId = btn.getAttribute('data-rd-id');
       document.getElementById('formDivergencia').action = '/divergencia/' + rdId;
@@ -252,7 +243,6 @@
   {% endif %}
 </div>
 {% endif %}
-
 <div class="container">
   {% with messages = get_flashed_messages() %}
     {% if messages %}
@@ -263,18 +253,14 @@
       </ul>
     {% endif %}
   {% endwith %}
-
   <div style="text-align:center; margin-top:20px;">
     <img src="https://pub-1e6f8559bc2b413c889fbf4860462599.r2.dev/download.png" alt="Logo Tecsul" style="max-width:200px; height:auto;">
   </div>
   <h1>Gerenciamento de RDs</h1>
-
   {% if user_role is not defined %}
     <!-- Formulário de Login -->
     <form action="/" method="POST" class="main-form">
-      {% if error %}
-        <p class="error-message">{{ error }}</p>
-      {% endif %}
+      {% if error %}<p class="error-message">{{ error }}</p>{% endif %}
       <label for="username">Usuário:</label>
       <input type="text" id="username" name="username" required>
       <label for="password">Senha:</label>
@@ -283,7 +269,7 @@
     </form>
   {% else %}
     {% if adicional_id %}
-      <!-- Formulário para solicitar crédito adicional -->
+      <!-- Formulário para crédito adicional -->
       <div class="form-adicional">
         <h2>Solicitar Crédito Adicional para RD #{{ adicional_id }}</h2>
         <form action="/adicional_submit/{{ adicional_id }}" method="POST" enctype="multipart/form-data" class="main-form">
@@ -334,10 +320,11 @@
           <label for="arquivo">Anexar Arquivos:</label>
           <input type="file" id="arquivo" name="arquivo" multiple>
           <input type="hidden" name="tipo" id="rd-tipo" value="">
-          <button type="submit"><i class="fas fa-plus-circle"></i> Enviar Solicitação</button>
+          <button type="submit">
+            <i class="fas fa-plus-circle"></i> Enviar Solicitação
+          </button>
         </form>
       {% endif %}
-
       {% if is_financeiro() %}
         <h2>Editar Saldo Global</h2>
         <form action="{{ url_for('edit_saldo') }}" method="POST" class="main-form">
@@ -346,7 +333,6 @@
           <button type="submit"><i class="fas fa-sync-alt"></i> Atualizar Saldo</button>
         </form>
       {% endif %}
-
       <div style="text-align:center; margin:20px 0;">
         <a href="{{ url_for('cadastro_funcionario') }}" class="btn btn-success" style="margin-right: 10px;">
           <i class="fas fa-user-plus"></i> Cadastro Funcionários
@@ -358,42 +344,23 @@
           <i class="fas fa-file-excel"></i> Exportar para Excel
         </a>
       </div>
-
-      <!-- Abas -->
-      <div class="tabs">
-        {% if user_role == 'supervisor' %}
-          <input type="radio" name="tab-control" id="tab1">
-          <input type="radio" name="tab-control" id="tab2">
-          <input type="radio" name="tab-control" id="tab3" checked>
-          <input type="radio" name="tab-control" id="tab4">
-          <input type="radio" name="tab-control" id="tab5">
-          <input type="radio" name="tab-control" id="tab6">
-          <input type="radio" name="tab-control" id="tab7">
-        {% else %}
-          <input type="radio" name="tab-control" id="tab1" checked>
-          <input type="radio" name="tab-control" id="tab2">
-          <input type="radio" name="tab-control" id="tab3">
-          <input type="radio" name="tab-control" id="tab4">
-          <input type="radio" name="tab-control" id="tab5">
-          <input type="radio" name="tab-control" id="tab6">
-        {% endif %}
-
+      <!-- Se todos os usuários podem ver a aba Divergentes, exibimos-a para todos -->
+      {% if user_role == 'supervisor' %}
+        <!-- Supervisor vê apenas duas abas: Liberados e Divergentes -->
+        <input type="radio" name="tab-control" id="tab3" checked>
+        <input type="radio" name="tab-control" id="tab7">
         <div class="tab-labels">
-          <label for="tab1">Pendentes {% if pendentes|length > 0 %}<span class="badge">{{ pendentes|length }}</span>{% endif %}</label>
-          <label for="tab2">Aprovados {% if aprovados|length > 0 %}<span class="badge">{{ aprovados|length }}</span>{% endif %}</label>
-          <label for="tab3">Liberados {% if liberados|length > 0 %}<span class="badge">{{ liberados|length }}</span>{% endif %}</label>
-          <label for="tab4">Fechamento Solicitado {% if fechamento_solicitado|length > 0 %}<span class="badge">{{ fechamento_solicitado|length }}</span>{% endif %}</label>
-          <label for="tab5">Fechamento Recusado {% if fechamento_recusado|length > 0 %}<span class="badge">{{ fechamento_recusado|length }}</span>{% endif %}</label>
-          <label for="tab6">Fechados {% if fechados|length > 0 %}<span class="badge">{{ fechados|length }}</span>{% endif %}</label>
-          {% if user_role == 'supervisor' %}
-            <label for="tab7">Divergências {% if divergentes and divergentes|length > 0 %}<span class="badge">{{ divergentes|length }}</span>{% endif %}</label>
-          {% endif %}
+          <label for="tab3">
+            Liberados {% if liberados|length > 0 %}<span class="badge">{{ liberados|length }}</span>{% endif %}
+          </label>
+          <label for="tab7">
+            Divergências {% if divergentes and divergentes|length > 0 %}<span class="badge">{{ divergentes|length }}</span>{% endif %}
+          </label>
         </div>
-
         <div class="content">
-          <!-- ABA PENDENTES -->
-          <div class="tab-content" id="content1">
-            <table id="tabela-pendentes" class="display">
+          <!-- Aba Liberados -->
+          <div class="tab-content" id="content3">
+            <table id="tabela-liberados" class="display">
               <thead>
                 <tr>
                   <th>ID</th>
@@ -408,7 +375,168 @@
                 </tr>
               </thead>
               <tbody>
-                {% for rd in pendentes %}
+                {% for rd in liberados %}
+                {% set rd_id = rd[0] %}
+                {% set status = rd[6] %}
+                <tr>
+                  <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
+                  <td data-label="Solicitante">{{ rd[1] }}</td>
+                  <td data-label="Funcionário">{{ rd[2] }}</td>
+                  <td data-label="Data">{{ rd[3] }}</td>
+                  <td data-label="Centro de Custo">{{ rd[4] }}<br><small>{{ rd[19] }}</small></td>
+                  <td data-label="Observação">
+                    {% if rd[16] %}
+                      {% set obs = rd[16] %}
+                      {% if obs|length > 50 %}
+                        <span class="observation-short">{{ obs[:50] }}...</span>
+                        <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
+                        <div class="observation-full">{{ obs }}</div>
+                      {% else %}
+                        {{ obs }}
+                      {% endif %}
+                    {% else %}
+                      -
+                    {% endif %}
+                  </td>
+                  <td data-label="Arquivos">
+                    {% if rd[12] %}
+                      <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd_id }}">
+                        <i class="fas fa-paperclip"></i> Anexos
+                      </button>
+                    {% else %}
+                      -
+                    {% endif %}
+                    <!-- Supervisor pode anexar arquivos extras -->
+                    <form action="/supervisor_arquivos/{{ rd_id }}" method="POST" enctype="multipart/form-data" style="margin-top:5px;">
+                      <input type="file" name="arquivo" multiple>
+                      <button type="submit" class="btn btn-primary" style="margin-top:5px;">
+                        <i class="fas fa-upload"></i> Anexar
+                      </button>
+                    </form>
+                  </td>
+                  <td data-label="Valores">
+                    {{ mostrar_valores(rd) }}
+                  </td>
+                  <td data-label="Ações">
+                    {% if can_delete_func(status, rd[1]) %}
+                      <form action="/delete/{{ rd_id }}" method="POST">
+                        <button type="submit" class="btn btn-delete-rd">
+                          <i class="fas fa-trash-alt"></i> Excluir
+                        </button>
+                      </form>
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <!-- Aba Divergências -->
+          <div class="tab-content" id="content7">
+            <table id="tabela-divergentes" class="display">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Solicitante</th>
+                  <th>Funcionário</th>
+                  <th>Data</th>
+                  <th>Centro de Custo</th>
+                  <th>Observação</th>
+                  <th>Arquivos</th>
+                  <th>Valores</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for rd in divergentes %}
+                {% set rd_id = rd[0] %}
+                <tr>
+                  <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
+                  <td data-label="Solicitante">{{ rd[1] }}</td>
+                  <td data-label="Funcionário">{{ rd[2] }}</td>
+                  <td data-label="Data">{{ rd[3] }}</td>
+                  <td data-label="Centro de Custo">{{ rd[4] }}</td>
+                  <td data-label="Observação">
+                    {% if rd[16] %}
+                      {% set obs = rd[16] %}
+                      {% if obs|length > 50 %}
+                        <span class="observation-short">{{ obs[:50] }}...</span>
+                        <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
+                        <div class="observation-full">{{ obs }}</div>
+                      {% else %}
+                        {{ obs }}
+                      {% endif %}
+                    {% else %}
+                      -
+                    {% endif %}
+                  </td>
+                  <td data-label="Arquivos">
+                    {% if rd[12] %}
+                      <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd_id }}">
+                        <i class="fas fa-paperclip"></i> Anexos
+                      </button>
+                    {% else %}
+                      -
+                    {% endif %}
+                    <!-- Supervisor pode também anexar arquivos extras nesta aba -->
+                    <form action="/supervisor_arquivos/{{ rd_id }}" method="POST" enctype="multipart/form-data" style="margin-top:5px;">
+                      <input type="file" name="arquivo" multiple>
+                      <button type="submit" class="btn btn-primary" style="margin-top:5px;">
+                        <i class="fas fa-upload"></i> Anexar
+                      </button>
+                    </form>
+                  </td>
+                  <td data-label="Valores">
+                    {{ mostrar_valores(rd) }}
+                  </td>
+                  <td data-label="Ações">
+                    <!-- Botão para o supervisor confirmar que os anexos foram corrigidos -->
+                    <form action="/corrigir_divergencia/{{ rd_id }}" method="POST">
+                      <button type="submit" class="btn btn-success">
+                        <i class="fas fa-check"></i> Corrigir (Remover Divergência)
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <!-- Se não é supervisor, exibe as 6 abas originais -->
+          <input type="radio" name="tab-control" id="tab1" checked>
+          <input type="radio" name="tab-control" id="tab2">
+          <input type="radio" name="tab-control" id="tab3">
+          <input type="radio" name="tab-control" id="tab4">
+          <input type="radio" name="tab-control" id="tab5">
+          <input type="radio" name="tab-control" id="tab6">
+          <div class="tab-labels">
+            <label for="tab1">Pendentes {% if pendentes|length > 0 %}<span class="badge">{{ pendentes|length }}</span>{% endif %}</label>
+            <label for="tab2">Aprovados {% if aprovados|length > 0 %}<span class="badge">{{ aprovados|length }}</span>{% endif %}</label>
+            <label for="tab3">Liberados {% if liberados|length > 0 %}<span class="badge">{{ liberados|length }}</span>{% endif %}</label>
+            <label for="tab4">Fechamento Solicitado {% if fechamento_solicitado|length > 0 %}<span class="badge">{{ fechamento_solicitado|length }}</span>{% endif %}</label>
+            <label for="tab5">Fechamento Recusado {% if fechamento_recusado|length > 0 %}<span class="badge">{{ fechamento_recusado|length }}</span>{% endif %}</label>
+            <label for="tab6">Fechados {% if fechados|length > 0 %}<span class="badge">{{ fechados|length }}</span>{% endif %}</label>
+          </div>
+          <div class="content">
+            <!-- Aba Pendentes -->
+            <div class="tab-content" id="content1">
+              <table id="tabela-pendentes" class="display">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Solicitante</th>
+                    <th>Funcionário</th>
+                    <th>Data</th>
+                    <th>Centro de Custo</th>
+                    <th>Observação</th>
+                    <th>Arquivos</th>
+                    <th>Valores</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for rd in pendentes %}
                   {% set rd_id = rd[0] %}
                   {% set status = rd[6] %}
                   <tr>
@@ -440,46 +568,53 @@
                         -
                       {% endif %}
                     </td>
-                    <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
+                    <td data-label="Valores">
+                      {{ mostrar_valores(rd) }}
+                    </td>
                     <td data-label="Ações">
                       {% if can_approve_func(status) %}
                         <form action="/approve/{{ rd_id }}" method="POST" class="action-form">
-                          <button type="submit" class="btn btn-approve"><i class="fas fa-check"></i> Aprovar</button>
+                          <button type="submit" class="btn btn-approve">
+                            <i class="fas fa-check"></i> Aprovar
+                          </button>
                         </form>
                       {% endif %}
                       {% if can_edit_func(status) %}
-                        <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit"><i class="fas fa-edit"></i> Editar</a>
+                        <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit">
+                          <i class="fas fa-edit"></i> Editar
+                        </a>
                       {% endif %}
                       {% if can_delete_func(status, rd[1]) %}
                         <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
-                          <button type="submit" class="btn btn-delete-rd"><i class="fas fa-trash-alt"></i> Excluir</button>
+                          <button type="submit" class="btn btn-delete-rd">
+                            <i class="fas fa-trash-alt"></i> Excluir
+                          </button>
                         </form>
                       {% endif %}
                     </td>
                   </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-
-          <!-- ABA APROVADOS -->
-          <div class="tab-content" id="content2">
-            <table id="tabela-aprovados" class="display">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Solicitante</th>
-                  <th>Funcionário</th>
-                  <th>Data</th>
-                  <th>Centro de Custo</th>
-                  <th>Observação</th>
-                  <th>Arquivos</th>
-                  <th>Valores</th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for rd in aprovados %}
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            <!-- Aba Aprovados -->
+            <div class="tab-content" id="content2">
+              <table id="tabela-aprovados" class="display">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Solicitante</th>
+                    <th>Funcionário</th>
+                    <th>Data</th>
+                    <th>Centro de Custo</th>
+                    <th>Observação</th>
+                    <th>Arquivos</th>
+                    <th>Valores</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for rd in aprovados %}
                   {% set rd_id = rd[0] %}
                   {% set status = rd[6] %}
                   <tr>
@@ -511,46 +646,53 @@
                         -
                       {% endif %}
                     </td>
-                    <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
+                    <td data-label="Valores">
+                      {{ mostrar_valores(rd) }}
+                    </td>
                     <td data-label="Ações">
                       {% if can_approve_func(status) %}
                         <form action="/approve/{{ rd_id }}" method="POST" class="action-form">
-                          <button type="submit" class="btn btn-approve"><i class="fas fa-check"></i> Liberar</button>
+                          <button type="submit" class="btn btn-approve">
+                            <i class="fas fa-check"></i> Liberar
+                          </button>
                         </form>
                       {% endif %}
                       {% if can_edit_func(status) %}
-                        <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit"><i class="fas fa-edit"></i> Editar</a>
+                        <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit">
+                          <i class="fas fa-edit"></i> Editar
+                        </a>
                       {% endif %}
                       {% if can_delete_func(status, rd[1]) %}
                         <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
-                          <button type="submit" class="btn btn-delete-rd"><i class="fas fa-trash-alt"></i> Excluir</button>
+                          <button type="submit" class="btn btn-delete-rd">
+                            <i class="fas fa-trash-alt"></i> Excluir
+                          </button>
                         </form>
                       {% endif %}
                     </td>
                   </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-
-          <!-- ABA LIBERADOS -->
-          <div class="tab-content" id="content3">
-            <table id="tabela-liberados" class="display">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Solicitante</th>
-                  <th>Funcionário</th>
-                  <th>Data</th>
-                  <th>Centro de Custo</th>
-                  <th>Observação</th>
-                  <th>Arquivos</th>
-                  <th>Valores</th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for rd in liberados %}
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            <!-- Aba Liberados -->
+            <div class="tab-content" id="content3">
+              <table id="tabela-liberados" class="display">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Solicitante</th>
+                    <th>Funcionário</th>
+                    <th>Data</th>
+                    <th>Centro de Custo</th>
+                    <th>Observação</th>
+                    <th>Arquivos</th>
+                    <th>Valores</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for rd in liberados %}
                   {% set rd_id = rd[0] %}
                   {% set status = rd[6] %}
                   <tr>
@@ -581,8 +723,16 @@
                       {% else %}
                         -
                       {% endif %}
+                      <!-- Botão para marcar anexos divergentes (aparece para gestor e solicitante) -->
+                      {% if user_role in ['gestor','solicitante'] %}
+                        <button class="btn btn-divergencia" data-rd-id="{{ rd_id }}" onclick="openDivergenciaModal(this)">
+                          <i class="fas fa-exclamation-triangle"></i> Anexos Divergentes
+                        </button>
+                      {% endif %}
                     </td>
-                    <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
+                    <td data-label="Valores">
+                      {{ mostrar_valores(rd) }}
+                    </td>
                     <td data-label="Ações">
                       {% if can_edit_func(status) %}
                         <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit">
@@ -612,36 +762,30 @@
                           </button>
                         </form>
                       {% endif %}
-                      {% if user_role in ['gestor', 'solicitante'] %}
-                        <button class="btn btn-divergencia" data-rd-id="{{ rd_id }}" onclick="openDivergenciaModal(this)">
-                          <i class="fas fa-exclamation-triangle"></i> Anexos Divergentes
-                        </button>
-                      {% endif %}
                     </td>
                   </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-
-          <!-- ABA FECHAMENTO SOLICITADO -->
-          <div class="tab-content" id="content4">
-            <table id="tabela-fechamento-solicitado" class="display">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Solicitante</th>
-                  <th>Funcionário</th>
-                  <th>Data</th>
-                  <th>Centro de Custo</th>
-                  <th>Observação</th>
-                  <th>Arquivos</th>
-                  <th>Valores</th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for rd in fechamento_solicitado %}
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            <!-- Aba Fechamento Solicitado -->
+            <div class="tab-content" id="content4">
+              <table id="tabela-fechamento-solicitado" class="display">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Solicitante</th>
+                    <th>Funcionário</th>
+                    <th>Data</th>
+                    <th>Centro de Custo</th>
+                    <th>Observação</th>
+                    <th>Arquivos</th>
+                    <th>Valores</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for rd in fechamento_solicitado %}
                   {% set rd_id = rd[0] %}
                   {% set status = rd[6] %}
                   <tr>
@@ -689,30 +833,29 @@
                       {% endif %}
                     </td>
                   </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-
-          <!-- ABA FECHAMENTO RECUSADO -->
-          <div class="tab-content" id="content5">
-            <table id="tabela-fechamento-recusado" class="display">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Solicitante</th>
-                  <th>Funcionário</th>
-                  <th>Data</th>
-                  <th>Centro de Custo</th>
-                  <th>Observação</th>
-                  <th>Motivo da Recusa</th>
-                  <th>Arquivos</th>
-                  <th>Valores</th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for rd in fechamento_recusado %}
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            <!-- Aba Fechamento Recusado -->
+            <div class="tab-content" id="content5">
+              <table id="tabela-fechamento-recusado" class="display">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Solicitante</th>
+                    <th>Funcionário</th>
+                    <th>Data</th>
+                    <th>Centro de Custo</th>
+                    <th>Observação</th>
+                    <th>Motivo da Recusa</th>
+                    <th>Arquivos</th>
+                    <th>Valores</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for rd in fechamento_recusado %}
                   {% set rd_id = rd[0] %}
                   <tr>
                     <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
@@ -753,29 +896,28 @@
                       {% endif %}
                     </td>
                   </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-
-          <!-- ABA FECHADOS -->
-          <div class="tab-content" id="content6">
-            <table id="tabela-fechados" class="display">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Solicitante</th>
-                  <th>Funcionário</th>
-                  <th>Data</th>
-                  <th>Centro de Custo</th>
-                  <th>Observação</th>
-                  <th>Arquivos</th>
-                  <th>Valores</th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for rd in fechados %}
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            <!-- Aba Fechados -->
+            <div class="tab-content" id="content6">
+              <table id="tabela-fechados" class="display">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Solicitante</th>
+                    <th>Funcionário</th>
+                    <th>Data</th>
+                    <th>Centro de Custo</th>
+                    <th>Observação</th>
+                    <th>Arquivos</th>
+                    <th>Valores</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for rd in fechados %}
                   {% set rd_id = rd[0] %}
                   <tr>
                     <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
@@ -816,83 +958,20 @@
                             </button>
                           </form>
                         {% else %}
-                          <span style="color: var(--success-color); font-weight:600;">Devolvido</span>
+                          <span style="color: var(--success-color); font-weight:600;">
+                            Devolvido em {{ rd[18] }}
+                          </span>
                         {% endif %}
                       {% endif %}
                     </td>
                   </tr>
-                {% endfor %}
-              </tbody>
-            </table>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
           </div>
-
-          <!-- ABA DIVERGÊNCIAS (apenas para supervisor) -->
-          {% if user_role == 'supervisor' %}
-          <div class="tab-content" id="content7">
-            <table id="tabela-divergentes" class="display">
-              <thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Solicitante</th>
-                  <th>Funcionário</th>
-                  <th>Data</th>
-                  <th>Centro de Custo</th>
-                  <th>Observação</th>
-                  <th>Arquivos</th>
-                  <th>Valores</th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for rd in divergentes %}
-                  {% set rd_id = rd[0] %}
-                  {% set status = rd[6] %}
-                  <tr>
-                    <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
-                    <td data-label="Solicitante">{{ rd[1] }}</td>
-                    <td data-label="Funcionário">{{ rd[2] }}</td>
-                    <td data-label="Data">{{ rd[3] }}</td>
-                    <td data-label="Centro de Custo">{{ rd[4] }}</td>
-                    <td data-label="Observação">
-                      {% if rd[16] %}
-                        {% set obs = rd[16] %}
-                        {% if obs|length > 50 %}
-                          <span class="observation-short">{{ obs[:50] }}...</span>
-                          <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
-                          <div class="observation-full">{{ obs }}</div>
-                        {% else %}
-                          {{ obs }}
-                        {% endif %}
-                      {% else %}
-                        -
-                      {% endif %}
-                    </td>
-                    <td data-label="Arquivos">
-                      {% if rd[12] %}
-                        <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd_id }}">
-                          <i class="fas fa-paperclip"></i> Anexos
-                        </button>
-                      {% else %}
-                        -
-                      {% endif %}
-                    </td>
-                    <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
-                    <td data-label="Ações">
-                      <form action="{{ url_for('corrigir_divergencia', id=rd_id) }}" method="POST">
-                        <button type="submit" class="btn btn-success">
-                          <i class="fas fa-check"></i> Corrigir (Remover Divergência)
-                        </button>
-                      </form>
-                    </td>
-                  </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </div>
-          {% endif %}
-        </div>
+        {% endif %}
       </div>
-      <!-- Fim das abas -->
     {% endif %}
   {% endif %}
 </div>
@@ -935,14 +1014,6 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script type="text/javascript" src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
 <script>
-  // Função para abrir o modal de divergência (usado pelo botão na aba Liberados)
-  function openDivergenciaModal(btn) {
-    var rdId = btn.getAttribute('data-rd-id');
-    document.getElementById('formDivergencia').action = '/divergencia/' + rdId;
-    document.getElementById('divergenciaModal').style.display = 'block';
-  }
-
-  // Inicializa DataTables
   $(document).ready(function() {
     $('#tabela-pendentes').DataTable();
     $('#tabela-aprovados').DataTable();
@@ -952,10 +1023,8 @@
     $('#tabela-fechados').DataTable();
     $('#tabela-divergentes').DataTable();
   });
-
-  // Função para alternar exibição de observação completa
   function toggleObservation(btn) {
-    var obsFull = btn.parentNode.querySelector('.observation-full');
+    const obsFull = btn.parentNode.querySelector('.observation-full');
     if(!obsFull) return;
     if(obsFull.style.display === 'none' || obsFull.style.display === '') {
       obsFull.style.display = 'block';
@@ -965,11 +1034,9 @@
       btn.textContent = '+';
     }
   }
-
-  // Alterna detalhes de valores
-  document.querySelectorAll('.toggle-details').forEach(function(button) {
-    button.addEventListener('click', function() {
-      var details = button.parentNode.nextElementSibling;
+  document.querySelectorAll('.toggle-details').forEach(button => {
+    button.addEventListener('click', () => {
+      const details = button.parentNode.nextElementSibling;
       if(details.style.display === 'none' || details.style.display === '') {
         details.style.display = 'block';
         button.textContent = '-';
@@ -979,41 +1046,38 @@
       }
     });
   });
-
-  // Modal para exibir anexos
-  var fileModal = document.getElementById('fileModal');
-  var closeFileModal = document.getElementById('closeFileModal');
-  var modalFilesContainer = document.getElementById('modalFilesContainer');
-
-  document.querySelectorAll('.btn-view-files').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      var files = btn.getAttribute('data-files');
-      var rdId = btn.getAttribute('data-rd-id');
+  // Modal de Anexos
+  const fileModal = document.getElementById('fileModal');
+  const closeFileModal = document.getElementById('closeFileModal');
+  const modalFilesContainer = document.getElementById('modalFilesContainer');
+  document.querySelectorAll('.btn-view-files').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const files = btn.getAttribute('data-files');
+      const rdId = btn.getAttribute('data-rd-id');
       modalFilesContainer.innerHTML = '';
-      if(!files) {
+      if(!files){
         modalFilesContainer.innerHTML = '<p>Nenhum arquivo anexo.</p>';
       } else {
-        var arrFiles = files.split(',');
-        arrFiles.forEach(function(f) {
-          var fileDiv = document.createElement('div');
+        const arrFiles = files.split(',');
+        arrFiles.forEach(f => {
+          const fileDiv = document.createElement('div');
           fileDiv.classList.add('file-item');
-          var link = document.createElement('a');
+          const link = document.createElement('a');
           link.href = "{{ get_r2_public_url('') }}" + f;
           link.target = '_blank';
           link.classList.add('arquivo-link');
           link.innerText = f;
           fileDiv.appendChild(link);
-
-          var formDelete = document.createElement('form');
+          const formDelete = document.createElement('form');
           formDelete.method = 'POST';
           formDelete.action = '/delete_file/' + rdId;
           formDelete.style.display = 'inline-block';
-          var inputHidden = document.createElement('input');
+          const inputHidden = document.createElement('input');
           inputHidden.type = 'hidden';
           inputHidden.name = 'filename';
           inputHidden.value = f;
           formDelete.appendChild(inputHidden);
-          var btnDelete = document.createElement('button');
+          const btnDelete = document.createElement('button');
           btnDelete.type = 'submit';
           btnDelete.classList.add('btn-delete-file');
           btnDelete.innerHTML = '<i class="fas fa-trash"></i>';
@@ -1025,46 +1089,49 @@
       fileModal.style.display = 'block';
     });
   });
-
-  closeFileModal.addEventListener('click', function() {
+  closeFileModal.addEventListener('click', () => {
     fileModal.style.display = 'none';
   });
-
-  // Modal para recusa do fechamento
-  var recusaModal = document.getElementById('recusaModal');
-  var closeRecusaModal = document.getElementById('closeRecusaModal');
-  var formRecusa = document.getElementById('formRecusa');
-
-  document.querySelectorAll('.btn-recusar').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      var rdId = btn.getAttribute('data-rd-id');
+  // Modal de Recusa
+  const recusaModal = document.getElementById('recusaModal');
+  const closeRecusaModal = document.getElementById('closeRecusaModal');
+  const formRecusa = document.getElementById('formRecusa');
+  document.querySelectorAll('.btn-recusar').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const rdId = btn.getAttribute('data-rd-id');
       formRecusa.action = '/reject_fechamento/' + rdId;
       recusaModal.style.display = 'block';
     });
   });
-
-  closeRecusaModal.addEventListener('click', function() {
+  closeRecusaModal.addEventListener('click', () => {
     recusaModal.style.display = 'none';
   });
-
-  // Modal para divergência de anexos
-  var divergenciaModal = document.getElementById('divergenciaModal');
-  var closeDivergenciaModal = document.getElementById('closeDivergenciaModal');
-  var formDivergencia = document.getElementById('formDivergencia');
-
-  document.querySelectorAll('.btn-divergencia').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      var rdId = btn.getAttribute('data-rd-id');
+  // Modal de Divergência
+  const divergenciaModal = document.getElementById('divergenciaModal');
+  const closeDivergenciaModal = document.getElementById('closeDivergenciaModal');
+  const formDivergencia = document.getElementById('formDivergencia');
+  document.querySelectorAll('.btn-divergencia').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const rdId = btn.getAttribute('data-rd-id');
       formDivergencia.action = '/divergencia/' + rdId;
       divergenciaModal.style.display = 'block';
     });
   });
-
-  closeDivergenciaModal.addEventListener('click', function() {
+  closeDivergenciaModal.addEventListener('click', () => {
     divergenciaModal.style.display = 'none';
   });
+  // Botões para RD Alelo/Reembolso
+  document.getElementById('btn-alelo')?.addEventListener('click', () => {
+    document.getElementById('form-solicitacao').style.display = 'block';
+    document.getElementById('rd-tipo').value = 'credito alelo';
+    document.getElementById('lbl-solicitante').textContent = 'Solicitante (Alelo):';
+  });
+  document.getElementById('btn-reembolso')?.addEventListener('click', () => {
+    document.getElementById('form-solicitacao').style.display = 'block';
+    document.getElementById('rd-tipo').value = 'reembolso';
+    document.getElementById('lbl-solicitante').textContent = 'Solicitante (Reembolso):';
+  });
 </script>
-
 <footer>
   Desenvolvido Por André Ferreira
 </footer>
