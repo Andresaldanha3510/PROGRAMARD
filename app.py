@@ -47,7 +47,7 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 app = Flask(__name__)
-# Injeção de funções para os templates
+# Disponibiliza funções úteis para os templates
 app.jinja_env.globals.update(
     get_r2_public_url=get_r2_public_url,
     is_gestor=lambda: session.get('user_role') == 'gestor',
@@ -83,6 +83,7 @@ def get_pg_connection():
 def init_db():
     conn = get_pg_connection()
     cursor = conn.cursor()
+
     # Cria tabela rd se não existir
     create_rd_table = """
     CREATE TABLE IF NOT EXISTS rd (
@@ -106,7 +107,8 @@ def init_db():
     );
     """
     cursor.execute(create_rd_table)
-    # Acrescenta colunas extras se não existirem (inclui motivo_divergencia para divergência dos anexos)
+
+    # Acrescenta colunas extras se não existirem
     for col_name, alter_cmd in [
         ("valor_liberado", "ALTER TABLE rd ADD COLUMN valor_liberado NUMERIC(15,2) DEFAULT 0;"),
         ("observacao", "ALTER TABLE rd ADD COLUMN observacao TEXT;"),
@@ -117,7 +119,10 @@ def init_db():
         ("adicionais_individuais", "ALTER TABLE rd ADD COLUMN adicionais_individuais TEXT;"),
         ("motivo_divergencia", "ALTER TABLE rd ADD COLUMN motivo_divergencia TEXT;")
     ]:
-        cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name='rd' AND column_name=%s;", (col_name,))
+        cursor.execute(
+            "SELECT column_name FROM information_schema.columns WHERE table_name='rd' AND column_name=%s;", 
+            (col_name,)
+        )
         if not cursor.fetchone():
             cursor.execute(alter_cmd)
 
@@ -132,6 +137,7 @@ def init_db():
     cursor.execute("SELECT COUNT(*) FROM saldo_global")
     if cursor.fetchone()[0] == 0:
         cursor.execute("INSERT INTO saldo_global (saldo) VALUES (30000)")
+
     # Tabela funcionarios
     create_funcionarios_table = """
     CREATE TABLE IF NOT EXISTS funcionarios (
@@ -266,8 +272,7 @@ def index():
 
     conn = get_pg_connection()
     cursor = conn.cursor()
-    # Para todos (gestor, solicitante, financeiro) usamos as abas originais
-    # Para supervisor, filtramos: ele vê Liberados sem divergência e também os que possuem divergência.
+
     if session['user_role'] == 'supervisor':
         cursor.execute("SELECT * FROM rd WHERE status='Liberado' AND (motivo_divergencia IS NULL OR motivo_divergencia='')")
         liberados = cursor.fetchall()
@@ -298,12 +303,11 @@ def index():
     fechamento_id = request.args.get('fechamento')
     conn.close()
 
-    return render_template(
-        'index.html',
+    return render_template('index.html',
         error=None,
         format_currency=format_currency,
         user_role=session['user_role'],
-        saldo_global=saldo_global if is_financeiro() else None,
+        saldo_global=saldo_global if session['user_role']=='financeiro' else None,
         pendentes=pendentes,
         aprovados=aprovados,
         liberados=liberados,
@@ -326,43 +330,41 @@ def add_rd():
     if not can_add():
         flash("Acesso negado.")
         return "Acesso negado", 403
-    solicitante     = request.form['solicitante'].strip()
-    funcionario     = request.form['funcionario'].strip()
-    data            = request.form['data'].strip()
-    centro_custo    = request.form['centro_custo'].strip()
-    observacao      = request.form.get('observacao', '').strip()
-    rd_tipo         = request.form.get('tipo', 'credito alelo').strip()
+    solicitante = request.form['solicitante'].strip()
+    funcionario = request.form['funcionario'].strip()
+    data = request.form['data'].strip()
+    centro_custo = request.form['centro_custo'].strip()
+    observacao = request.form.get('observacao', '').strip()
+    rd_tipo = request.form.get('tipo', 'credito alelo').strip()
     unidade_negocio = request.form.get('unidade_negocio', '').strip()
     try:
         valor = float(request.form['valor'].replace(',', '.'))
     except ValueError:
         flash("Valor inválido.")
         return redirect(url_for('index'))
-    custom_id = generate_custom_id()
+    rd_id = generate_custom_id()
     arquivos = []
     if 'arquivo' in request.files:
-        for file in request.files.getlist('arquivo'):
-            if file.filename:
-                filename = f"{custom_id}_{file.filename}"
-                upload_file_to_r2(file, filename)
+        for f in request.files.getlist('arquivo'):
+            if f.filename:
+                filename = f"{rd_id}_{f.filename}"
+                upload_file_to_r2(f, filename)
                 arquivos.append(filename)
-    arquivos_str = ','.join(arquivos) if arquivos else None
+    arq_str = ','.join(arquivos) if arquivos else None
     conn = get_pg_connection()
-    cursor = conn.cursor()
-    cursor.execute("""
-        INSERT INTO rd (
-            id, solicitante, funcionario, data, centro_custo,
-            valor, status, arquivos, valor_liberado, observacao,
-            tipo, unidade_negocio
-        )
-        VALUES (%s, %s, %s, %s, %s,
-                %s, %s, %s, 0, %s,
-                %s, %s)
-    """, (custom_id, solicitante, funcionario, data, centro_custo,
-          valor, 'Pendente', arquivos_str, observacao,
-          rd_tipo, unidade_negocio))
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO rd (id,solicitante,funcionario,data,centro_custo,
+                        valor,status,arquivos,valor_liberado,observacao,
+                        tipo,unidade_negocio)
+        VALUES (%s,%s,%s,%s,%s,
+                %s,%s,%s,0,%s,
+                %s,%s)
+    """, (rd_id, solicitante, funcionario, data, centro_custo,
+         valor, 'Pendente', arq_str, observacao,
+         rd_tipo, unidade_negocio))
     conn.commit()
-    cursor.close()
+    cur.close()
     conn.close()
     flash("RD adicionada com sucesso.")
     return redirect(url_for('index'))
@@ -397,11 +399,11 @@ def edit_submit(id):
     if not can_edit_status(id):
         flash("Acesso negado.")
         return "Acesso negado", 403
-    solicitante     = request.form['solicitante'].strip()
-    funcionario     = request.form['funcionario'].strip()
-    data            = request.form['data'].strip()
-    centro_custo    = request.form['centro_custo'].strip()
-    observacao      = request.form.get('observacao', '').strip()
+    solicitante = request.form['solicitante'].strip()
+    funcionario = request.form['funcionario'].strip()
+    data = request.form['data'].strip()
+    centro_custo = request.form['centro_custo'].strip()
+    observacao = request.form.get('observacao', '').strip()
     unidade_negocio = request.form.get('unidade_negocio', '').strip()
     try:
         valor = float(request.form['valor'].replace(',', '.'))
@@ -851,11 +853,10 @@ def excluir_funcionario(id):
     flash("Funcionário excluído com sucesso.")
     return redirect(url_for('consulta_funcionario'))
 
-# Novas rotas para divergência de anexos
+# Rotas para divergência de anexos
 
 @app.route('/divergencia/<id>', methods=['POST'])
 def set_divergencia(id):
-    """Gestor ou solicitante marcam divergência informando o motivo."""
     if user_role() not in ['gestor', 'solicitante']:
         flash("Acesso negado.")
         return redirect(url_for('index'))
@@ -865,7 +866,6 @@ def set_divergencia(id):
         return redirect(url_for('index'))
     conn = get_pg_connection()
     cursor = conn.cursor()
-    # Verifica se a RD está Liberada
     cursor.execute("SELECT status FROM rd WHERE id=%s", (id,))
     row = cursor.fetchone()
     if not row:
@@ -873,20 +873,18 @@ def set_divergencia(id):
         conn.close()
         return redirect(url_for('index'))
     if row[0] != 'Liberado':
-        flash("Só é possível marcar divergência em RDs liberadas.")
+        flash("Somente RDs liberadas podem ser marcadas como divergentes.")
         conn.close()
         return redirect(url_for('index'))
-    # Registra o motivo da divergência
     cursor.execute("UPDATE rd SET motivo_divergencia=%s WHERE id=%s", (motivo, id))
     conn.commit()
     cursor.close()
     conn.close()
-    flash("Divergência registrada com sucesso. A aba 'Divergências' será atualizada.")
+    flash("Divergência registrada com sucesso. O supervisor foi notificado.")
     return redirect(url_for('index'))
 
 @app.route('/corrigir_divergencia/<id>', methods=['POST'])
 def corrigir_divergencia(id):
-    """Supervisor corrige os anexos e remove a divergência."""
     if not is_supervisor():
         flash("Acesso negado.")
         return redirect(url_for('index'))
@@ -902,12 +900,41 @@ def corrigir_divergencia(id):
         flash("Não há divergência registrada para esta RD.")
         conn.close()
         return redirect(url_for('index'))
-    # Remove o motivo de divergência para retornar à aba Liberados
     cursor.execute("UPDATE rd SET motivo_divergencia=NULL WHERE id=%s", (id,))
     conn.commit()
     cursor.close()
     conn.close()
     flash("Divergência corrigida. A RD voltou ao fluxo normal.")
+    return redirect(url_for('index'))
+
+@app.route('/supervisor_arquivos/<id>', methods=['POST'])
+def supervisor_arquivos(id):
+    if not is_supervisor():
+        flash("Acesso negado.")
+        return redirect(url_for('index'))
+    if 'arquivo' not in request.files:
+        flash("Nenhum arquivo selecionado.")
+        return redirect(url_for('index'))
+    conn = get_pg_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT arquivos FROM rd WHERE id=%s", (id,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        flash("RD não encontrada.")
+        return redirect(url_for('index'))
+    arquivos_atuais = row[0].split(',') if row[0] else []
+    for f in request.files.getlist('arquivo'):
+        if f.filename:
+            filename = f"{id}_{f.filename}"
+            upload_file_to_r2(f, filename)
+            arquivos_atuais.append(filename)
+    arquivos_str = ','.join(arquivos_atuais) if arquivos_atuais else None
+    cursor.execute("UPDATE rd SET arquivos=%s WHERE id=%s", (arquivos_str, id))
+    conn.commit()
+    cursor.close()
+    conn.close()
+    flash("Arquivos anexados com sucesso.")
     return redirect(url_for('index'))
 
 if __name__ == '__main__':
