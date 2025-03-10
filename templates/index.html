@@ -26,7 +26,7 @@
     }
     body {
       font-family: 'Inter', sans-serif;
-      margin: 0; 
+      margin: 0;
       padding: 0;
       background-color: var(--background-color);
       color: var(--text-color);
@@ -35,72 +35,72 @@
     .top-bar {
       background: var(--header-color);
       padding: 10px 20px;
-      display: flex; 
-      justify-content: space-between; 
+      display: flex;
+      justify-content: space-between;
       align-items: center;
       color: #fff;
     }
     .top-bar .user-info { font-weight: 600; }
     .top-bar a {
-      color: #fff; 
-      margin-left: 10px; 
+      color: #fff;
+      margin-left: 10px;
       text-decoration: none;
-      display: inline-flex; 
+      display: inline-flex;
       align-items: center;
     }
     .top-bar a:hover { text-decoration: underline; }
     .container {
-      max-width: 1200px; 
-      margin: 20px auto; 
+      max-width: 1200px;
+      margin: 20px auto;
       padding: 20px;
-      background: #fff; 
+      background: #fff;
       border-radius: 10px;
       box-shadow: 0 4px 20px rgba(0,0,0,0.1);
     }
     h1, h2 { text-align: center; margin: 20px 0; font-weight: 700; }
     .main-form {
-      margin-bottom: 20px; 
+      margin-bottom: 20px;
       border: 1px solid var(--border-color);
-      border-radius: 10px; 
-      padding: 20px; 
+      border-radius: 10px;
+      padding: 20px;
       background: #fff;
       box-shadow: 0 2px 15px rgba(0,0,0,0.1);
     }
     .main-form label {
-      display: block; 
-      margin-bottom: 5px; 
+      display: block;
+      margin-bottom: 5px;
       font-weight: 600;
       color: var(--header-color);
     }
     .main-form input, .main-form textarea {
-      width: 100%; 
-      padding: 10px; 
+      width: 100%;
+      padding: 10px;
       margin-bottom: 15px;
       border: 1px solid var(--input-border);
-      border-radius: 5px; 
-      font-size: 0.9rem; 
+      border-radius: 5px;
+      font-size: 0.9rem;
       box-sizing: border-box;
     }
     .main-form button {
       background-color: var(--primary-color);
-      color: #fff; 
-      padding: 10px 20px; 
+      color: #fff;
+      padding: 10px 20px;
       border: none;
-      border-radius: 5px; 
-      font-weight: 600; 
+      border-radius: 5px;
+      font-weight: 600;
       cursor: pointer;
-      display: inline-flex; 
+      display: inline-flex;
       align-items: center;
     }
     .main-form button:hover { background-color: #2980b9; }
     button, .btn {
-      padding: 8px 15px; 
-      border: none; 
+      padding: 8px 15px;
+      border: none;
       border-radius: 5px;
-      font-size: 0.9rem; 
-      cursor: pointer; 
+      font-size: 0.9rem;
+      cursor: pointer;
       display: inline-flex;
-      align-items: center; 
+      align-items: center;
       justify-content: center;
       transition: background-color 0.3s ease, transform 0.2s ease;
     }
@@ -114,41 +114,41 @@
     .btn-fechamento { background-color: #8e44ad; color: #fff; }
     .btn-delete-rd {
       background-color: var(--danger-color);
-      padding: 8px 18px; 
-      font-size: 0.75rem; 
+      padding: 8px 18px;
+      font-size: 0.75rem;
       color: #fff;
     }
     .btn-delete-file {
       background-color: var(--danger-color);
-      padding: 2px 6px; 
-      font-size: 0.7rem; 
+      padding: 2px 6px;
+      font-size: 0.7rem;
       border-radius: 50%;
-      height: 20px; 
-      width: 20px; 
+      height: 20px;
+      width: 20px;
       margin-left: 5px;
     }
     .btn-edit {
-      background-color: #f1c40f; 
+      background-color: #f1c40f;
       color: #34495e;
     }
     table {
-      width: 100%; 
+      width: 100%;
       border-collapse: collapse;
-      margin-top: 20px; 
-      background: #fff; 
+      margin-top: 20px;
+      background: #fff;
       border-radius: 8px;
-      overflow: hidden; 
+      overflow: hidden;
       box-shadow: 0 2px 10px rgba(0,0,0,0.05);
     }
     th, td {
-      padding: 10px; 
+      padding: 10px;
       text-align: left;
       border: 1px solid var(--border-color);
       vertical-align: middle;
     }
     th {
       background-color: var(--primary-color);
-      color: #fff; 
+      color: #fff;
       font-weight: 600;
     }
     tr:hover { background-color: #f9f9f9; }
@@ -157,75 +157,75 @@
       th { position: absolute; top: -9999px; left: -9999px; }
       tr { margin-bottom: 15px; }
       td {
-        border: none; 
-        position: relative; 
+        border: none;
+        position: relative;
         padding-left: 50%;
-        white-space: pre-wrap; 
+        white-space: pre-wrap;
         border-bottom: 1px solid var(--border-color);
       }
       td::before {
         content: attr(data-label);
-        position: absolute; 
-        left: 15px; 
+        position: absolute;
+        left: 15px;
         font-weight: 600;
       }
       .btn, .btn-delete-rd { width: 100%; margin-bottom: 10px; }
     }
     .arquivo-link {
-      text-decoration: none; 
+      text-decoration: none;
       color: var(--primary-color);
-      font-size: 0.9rem; 
+      font-size: 0.9rem;
       margin-right: 10px;
-      max-width: 250px; 
-      overflow: hidden; 
-      text-overflow: ellipsis; 
+      max-width: 250px;
+      overflow: hidden;
+      text-overflow: ellipsis;
       white-space: nowrap;
     }
     .arquivo-link:hover { text-decoration: underline; }
     .error-message {
-      color: var(--danger-color); 
-      font-size: 0.85rem; 
+      color: var(--danger-color);
+      font-size: 0.85rem;
       margin-bottom: 15px;
       list-style: none;
     }
     footer {
-      text-align: center; 
+      text-align: center;
       color: var(--footer-text);
-      font-size: 0.85rem; 
+      font-size: 0.85rem;
       padding: 10px 0;
       background-color: var(--footer-background);
-      position: fixed; 
-      width: 100%; 
+      position: fixed;
+      width: 100%;
       bottom: 0;
     }
     .tabs { margin-top: 20px; }
     .tabs input[type="radio"] { display: none; }
     .tab-labels {
-      display: flex; 
-      justify-content: center; 
-      margin-bottom: 10px; 
-      flex-wrap: wrap; 
+      display: flex;
+      justify-content: center;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
       gap: 5px;
     }
     .tab-labels label {
-      background-color: #ecf0f1; 
-      padding: 8px 15px; 
+      background-color: #ecf0f1;
+      padding: 8px 15px;
       margin: 2px;
-      border-radius: 5px; 
-      cursor: pointer; 
+      border-radius: 5px;
+      cursor: pointer;
       transition: background-color 0.3s;
-      font-weight: 600; 
-      display: inline-flex; 
-      align-items: center; 
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
       gap: 5px;
     }
     .tab-labels label:hover { background-color: #ddd; }
     .tab-content { display: none; }
     input[type="radio"]:checked + label {
-      background-color: var(--primary-color); 
+      background-color: var(--primary-color);
       color: #fff;
     }
-    /* Exibição das abas – se o usuário for supervisor, por padrão a aba Liberados (tab3) será marcada */
+    /* Definindo as abas com base no papel do usuário */
     {% if user_role == 'supervisor' %}
       <input type="radio" name="tab-control" id="tab1">
       <input type="radio" name="tab-control" id="tab2">
@@ -251,7 +251,7 @@
       <label for="tab5">Fechamento Recusado {% if fechamento_recusado|length > 0 %}<span class="badge">{{ fechamento_recusado|length }}</span>{% endif %}</label>
       <label for="tab6">Fechados {% if fechados|length > 0 %}<span class="badge">{{ fechados|length }}</span>{% endif %}</label>
       {% if user_role == 'supervisor' %}
-      <label for="tab7">Divergências {% if divergentes and divergentes|length > 0 %}<span class="badge">{{ divergentes|length }}</span>{% endif %}</label>
+        <label for="tab7">Divergências {% if divergentes and divergentes|length > 0 %}<span class="badge">{{ divergentes|length }}</span>{% endif %}</label>
       {% endif %}
     </div>
 
@@ -274,54 +274,54 @@
           </thead>
           <tbody>
             {% for rd in pendentes %}
-            {% set rd_id = rd[0] %}
-            {% set status = rd[6] %}
-            <tr>
-              <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
-              <td data-label="Solicitante">{{ rd[1] }}</td>
-              <td data-label="Funcionário">{{ rd[2] }}</td>
-              <td data-label="Data">{{ rd[3] }}</td>
-              <td data-label="Centro de Custo">{{ rd[4] }}<br><small>{{ rd[19] }}</small></td>
-              <td data-label="Observação">
-                {% if rd[16] %}
-                  {% set obs = rd[16] %}
-                  {% if obs|length > 50 %}
-                    <span class="observation-short">{{ obs[:50] }}...</span>
-                    <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
-                    <div class="observation-full">{{ obs }}</div>
+              {% set rd_id = rd[0] %}
+              {% set status = rd[6] %}
+              <tr>
+                <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
+                <td data-label="Solicitante">{{ rd[1] }}</td>
+                <td data-label="Funcionário">{{ rd[2] }}</td>
+                <td data-label="Data">{{ rd[3] }}</td>
+                <td data-label="Centro de Custo">{{ rd[4] }}<br><small>{{ rd[19] }}</small></td>
+                <td data-label="Observação">
+                  {% if rd[16] %}
+                    {% set obs = rd[16] %}
+                    {% if obs|length > 50 %}
+                      <span class="observation-short">{{ obs[:50] }}...</span>
+                      <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
+                      <div class="observation-full">{{ obs }}</div>
+                    {% else %}
+                      {{ obs }}
+                    {% endif %}
                   {% else %}
-                    {{ obs }}
+                    -
                   {% endif %}
-                {% else %}
-                  -
-                {% endif %}
-              </td>
-              <td data-label="Arquivos">
-                {% if rd[12] %}
-                  <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}">
-                    <i class="fas fa-paperclip"></i> Anexos
-                  </button>
-                {% else %}
-                  -
-                {% endif %}
-              </td>
-              <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
-              <td data-label="Ações">
-                {% if can_approve_func(status) %}
-                  <form action="/approve/{{ rd_id }}" method="POST" class="action-form">
-                    <button type="submit" class="btn btn-approve"><i class="fas fa-check"></i> Aprovar</button>
-                  </form>
-                {% endif %}
-                {% if can_edit_func(status) %}
-                  <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit"><i class="fas fa-edit"></i> Editar</a>
-                {% endif %}
-                {% if can_delete_func(status, rd[1]) %}
-                  <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
-                    <button type="submit" class="btn btn-delete-rd"><i class="fas fa-trash-alt"></i> Excluir</button>
-                  </form>
-                {% endif %}
-              </td>
-            </tr>
+                </td>
+                <td data-label="Arquivos">
+                  {% if rd[12] %}
+                    <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}">
+                      <i class="fas fa-paperclip"></i> Anexos
+                    </button>
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
+                <td data-label="Ações">
+                  {% if can_approve_func(status) %}
+                    <form action="/approve/{{ rd_id }}" method="POST" class="action-form">
+                      <button type="submit" class="btn btn-approve"><i class="fas fa-check"></i> Aprovar</button>
+                    </form>
+                  {% endif %}
+                  {% if can_edit_func(status) %}
+                    <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit"><i class="fas fa-edit"></i> Editar</a>
+                  {% endif %}
+                  {% if can_delete_func(status, rd[1]) %}
+                    <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
+                      <button type="submit" class="btn btn-delete-rd"><i class="fas fa-trash-alt"></i> Excluir</button>
+                    </form>
+                  {% endif %}
+                </td>
+              </tr>
             {% endfor %}
           </tbody>
         </table>
@@ -345,54 +345,54 @@
           </thead>
           <tbody>
             {% for rd in aprovados %}
-            {% set rd_id = rd[0] %}
-            {% set status = rd[6] %}
-            <tr>
-              <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
-              <td data-label="Solicitante">{{ rd[1] }}</td>
-              <td data-label="Funcionário">{{ rd[2] }}</td>
-              <td data-label="Data">{{ rd[3] }}</td>
-              <td data-label="Centro de Custo">{{ rd[4] }}</td>
-              <td data-label="Observação">
-                {% if rd[16] %}
-                  {% set obs = rd[16] %}
-                  {% if obs|length > 50 %}
-                    <span class="observation-short">{{ obs[:50] }}...</span>
-                    <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
-                    <div class="observation-full">{{ obs }}</div>
+              {% set rd_id = rd[0] %}
+              {% set status = rd[6] %}
+              <tr>
+                <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
+                <td data-label="Solicitante">{{ rd[1] }}</td>
+                <td data-label="Funcionário">{{ rd[2] }}</td>
+                <td data-label="Data">{{ rd[3] }}</td>
+                <td data-label="Centro de Custo">{{ rd[4] }}</td>
+                <td data-label="Observação">
+                  {% if rd[16] %}
+                    {% set obs = rd[16] %}
+                    {% if obs|length > 50 %}
+                      <span class="observation-short">{{ obs[:50] }}...</span>
+                      <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
+                      <div class="observation-full">{{ obs }}</div>
+                    {% else %}
+                      {{ obs }}
+                    {% endif %}
                   {% else %}
-                    {{ obs }}
+                    -
                   {% endif %}
-                {% else %}
-                  -
-                {% endif %}
-              </td>
-              <td data-label="Arquivos">
-                {% if rd[12] %}
-                  <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}">
-                    <i class="fas fa-paperclip"></i> Anexos
-                  </button>
-                {% else %}
-                  -
-                {% endif %}
-              </td>
-              <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
-              <td data-label="Ações">
-                {% if can_approve_func(status) %}
-                  <form action="/approve/{{ rd_id }}" method="POST" class="action-form">
-                    <button type="submit" class="btn btn-approve"><i class="fas fa-check"></i> Liberar</button>
-                  </form>
-                {% endif %}
-                {% if can_edit_func(status) %}
-                  <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit"><i class="fas fa-edit"></i> Editar</a>
-                {% endif %}
-                {% if can_delete_func(status, rd[1]) %}
-                  <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
-                    <button type="submit" class="btn btn-delete-rd"><i class="fas fa-trash-alt"></i> Excluir</button>
-                  </form>
-                {% endif %}
-              </td>
-            </tr>
+                </td>
+                <td data-label="Arquivos">
+                  {% if rd[12] %}
+                    <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}">
+                      <i class="fas fa-paperclip"></i> Anexos
+                    </button>
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
+                <td data-label="Ações">
+                  {% if can_approve_func(status) %}
+                    <form action="/approve/{{ rd_id }}" method="POST" class="action-form">
+                      <button type="submit" class="btn btn-approve"><i class="fas fa-check"></i> Liberar</button>
+                    </form>
+                  {% endif %}
+                  {% if can_edit_func(status) %}
+                    <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit"><i class="fas fa-edit"></i> Editar</a>
+                  {% endif %}
+                  {% if can_delete_func(status, rd[1]) %}
+                    <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
+                      <button type="submit" class="btn btn-delete-rd"><i class="fas fa-trash-alt"></i> Excluir</button>
+                    </form>
+                  {% endif %}
+                </td>
+              </tr>
             {% endfor %}
           </tbody>
         </table>
@@ -416,61 +416,61 @@
           </thead>
           <tbody>
             {% for rd in liberados %}
-            {% set rd_id = rd[0] %}
-            {% set status = rd[6] %}
-            <tr>
-              <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
-              <td data-label="Solicitante">{{ rd[1] }}</td>
-              <td data-label="Funcionário">{{ rd[2] }}</td>
-              <td data-label="Data">{{ rd[3] }}</td>
-              <td data-label="Centro de Custo">{{ rd[4] }}</td>
-              <td data-label="Observação">
-                {% if rd[16] %}
-                  {% set obs = rd[16] %}
-                  {% if obs|length > 50 %}
-                    <span class="observation-short">{{ obs[:50] }}...</span>
-                    <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
-                    <div class="observation-full">{{ obs }}</div>
+              {% set rd_id = rd[0] %}
+              {% set status = rd[6] %}
+              <tr>
+                <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
+                <td data-label="Solicitante">{{ rd[1] }}</td>
+                <td data-label="Funcionário">{{ rd[2] }}</td>
+                <td data-label="Data">{{ rd[3] }}</td>
+                <td data-label="Centro de Custo">{{ rd[4] }}</td>
+                <td data-label="Observação">
+                  {% if rd[16] %}
+                    {% set obs = rd[16] %}
+                    {% if obs|length > 50 %}
+                      <span class="observation-short">{{ obs[:50] }}...</span>
+                      <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
+                      <div class="observation-full">{{ obs }}</div>
+                    {% else %}
+                      {{ obs }}
+                    {% endif %}
                   {% else %}
-                    {{ obs }}
+                    -
                   {% endif %}
-                {% else %}
-                  -
-                {% endif %}
-              </td>
-              <td data-label="Arquivos">
-                {% if rd[12] %}
-                  <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd_id }}">
-                    <i class="fas fa-paperclip"></i> Anexos
-                  </button>
-                {% else %}
-                  -
-                {% endif %}
-              </td>
-              <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
-              <td data-label="Ações">
-                {% if can_edit_func(status) %}
-                  <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit"><i class="fas fa-edit"></i> Editar</a>
-                {% endif %}
-                {% if can_delete_func(status, rd[1]) %}
-                  <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
-                    <button type="submit" class="btn btn-delete-rd"><i class="fas fa-trash-alt"></i> Excluir</button>
-                  </form>
-                {% endif %}
-                {% if can_request_additional(status) %}
-                  <form action="/" method="GET" class="action-form">
-                    <input type="hidden" name="adicional" value="{{ rd_id }}">
-                    <button type="submit" class="btn btn-additional"><i class="fas fa-plus"></i> Adicional</button>
-                  </form>
-                {% endif %}
-                {% if can_close(status) %}
-                  <form action="/" method="GET" class="action-form">
-                    <input type="hidden" name="fechamento" value="{{ rd_id }}">
-                    <button type="submit" class="btn btn-fechamento"><i class="fas fa-lock"></i> Fechamento</button>
-                  </form>
-                {% endif %}
-              </td>
-            </tr>
+                </td>
+                <td data-label="Arquivos">
+                  {% if rd[12] %}
+                    <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd_id }}">
+                      <i class="fas fa-paperclip"></i> Anexos
+                    </button>
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
+                <td data-label="Ações">
+                  {% if can_edit_func(status) %}
+                    <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit"><i class="fas fa-edit"></i> Editar</a>
+                  {% endif %}
+                  {% if can_delete_func(status, rd[1]) %}
+                    <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
+                      <button type="submit" class="btn btn-delete-rd"><i class="fas fa-trash-alt"></i> Excluir</button>
+                    </form>
+                  {% endif %}
+                  {% if can_request_additional(status) %}
+                    <form action="/" method="GET" class="action-form">
+                      <input type="hidden" name="adicional" value="{{ rd_id }}">
+                      <button type="submit" class="btn btn-additional"><i class="fas fa-plus"></i> Adicional</button>
+                    </form>
+                  {% endif %}
+                  {% if can_close(status) %}
+                    <form action="/" method="GET" class="action-form">
+                      <input type="hidden" name="fechamento" value="{{ rd_id }}">
+                      <button type="submit" class="btn btn-fechamento"><i class="fas fa-lock"></i> Fechamento</button>
+                    </form>
+                  {% endif %}
+                </td>
+              </tr>
             {% endfor %}
           </tbody>
         </table>
@@ -494,51 +494,51 @@
           </thead>
           <tbody>
             {% for rd in fechamento_solicitado %}
-            {% set rd_id = rd[0] %}
-            {% set status = rd[6] %}
-            <tr>
-              <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
-              <td data-label="Solicitante">{{ rd[1] }}</td>
-              <td data-label="Funcionário">{{ rd[2] }}</td>
-              <td data-label="Data">{{ rd[3] }}</td>
-              <td data-label="Centro de Custo">{{ rd[4] }}</td>
-              <td data-label="Observação">
-                {% if rd[16] %}
-                  {% set obs = rd[16] %}
-                  {% if obs|length > 50 %}
-                    <span class="observation-short">{{ obs[:50] }}...</span>
-                    <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
-                    <div class="observation-full">{{ obs }}</div>
+              {% set rd_id = rd[0] %}
+              {% set status = rd[6] %}
+              <tr>
+                <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
+                <td data-label="Solicitante">{{ rd[1] }}</td>
+                <td data-label="Funcionário">{{ rd[2] }}</td>
+                <td data-label="Data">{{ rd[3] }}</td>
+                <td data-label="Centro de Custo">{{ rd[4] }}</td>
+                <td data-label="Observação">
+                  {% if rd[16] %}
+                    {% set obs = rd[16] %}
+                    {% if obs|length > 50 %}
+                      <span class="observation-short">{{ obs[:50] }}...</span>
+                      <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
+                      <div class="observation-full">{{ obs }}</div>
+                    {% else %}
+                      {{ obs }}
+                    {% endif %}
                   {% else %}
-                    {{ obs }}
+                    -
                   {% endif %}
-                {% else %}
-                  -
-                {% endif %}
-              </td>
-              <td data-label="Arquivos">
-                {% if rd[12] %}
-                  <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}">
-                    <i class="fas fa-paperclip"></i> Anexos
-                  </button>
-                {% else %}
-                  -
-                {% endif %}
-              </td>
-              <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
-              <td data-label="Ações">
-                {% if can_approve_func(status) %}
-                  <form action="/approve/{{ rd_id }}" method="POST" class="action-form" style="display:inline-block;">
-                    <button type="submit" class="btn btn-approve"><i class="fas fa-check"></i> Fechar</button>
-                  </form>
-                {% endif %}
-                {% if is_gestor() and status == 'Fechamento Solicitado' %}
-                  <button type="button" class="btn btn-danger btn-recusar" data-rd-id="{{ rd_id }}">
-                    <i class="fas fa-times"></i> Recusar
-                  </button>
-                {% endif %}
-              </td>
-            </tr>
+                </td>
+                <td data-label="Arquivos">
+                  {% if rd[12] %}
+                    <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}">
+                      <i class="fas fa-paperclip"></i> Anexos
+                    </button>
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
+                <td data-label="Ações">
+                  {% if can_approve_func(status) %}
+                    <form action="/approve/{{ rd_id }}" method="POST" class="action-form" style="display:inline-block;">
+                      <button type="submit" class="btn btn-approve"><i class="fas fa-check"></i> Fechar</button>
+                    </form>
+                  {% endif %}
+                  {% if is_gestor() and status == 'Fechamento Solicitado' %}
+                    <button type="button" class="btn btn-danger btn-recusar" data-rd-id="{{ rd_id }}">
+                      <i class="fas fa-times"></i> Recusar
+                    </button>
+                  {% endif %}
+                </td>
+              </tr>
             {% endfor %}
           </tbody>
         </table>
@@ -563,46 +563,46 @@
           </thead>
           <tbody>
             {% for rd in fechamento_recusado %}
-            {% set rd_id = rd[0] %}
-            <tr>
-              <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
-              <td data-label="Solicitante">{{ rd[1] }}</td>
-              <td data-label="Funcionário">{{ rd[2] }}</td>
-              <td data-label="Data">{{ rd[3] }}</td>
-              <td data-label="Centro de Custo">{{ rd[4] }}</td>
-              <td data-label="Observação">
-                {% if rd[16] %}
-                  {% set obs = rd[16] %}
-                  {% if obs|length > 50 %}
-                    <span class="observation-short">{{ obs[:50] }}...</span>
-                    <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
-                    <div class="observation-full">{{ obs }}</div>
+              {% set rd_id = rd[0] %}
+              <tr>
+                <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
+                <td data-label="Solicitante">{{ rd[1] }}</td>
+                <td data-label="Funcionário">{{ rd[2] }}</td>
+                <td data-label="Data">{{ rd[3] }}</td>
+                <td data-label="Centro de Custo">{{ rd[4] }}</td>
+                <td data-label="Observação">
+                  {% if rd[16] %}
+                    {% set obs = rd[16] %}
+                    {% if obs|length > 50 %}
+                      <span class="observation-short">{{ obs[:50] }}...</span>
+                      <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
+                      <div class="observation-full">{{ obs }}</div>
+                    {% else %}
+                      {{ obs }}
+                    {% endif %}
                   {% else %}
-                    {{ obs }}
+                    -
                   {% endif %}
-                {% else %}
-                  -
-                {% endif %}
-              </td>
-              <td data-label="Motivo da Recusa">{{ rd[20] }}</td>
-              <td data-label="Arquivos">
-                {% if rd[12] %}
-                  <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}">
-                    <i class="fas fa-paperclip"></i> Anexos
-                  </button>
-                {% else %}
-                  -
-                {% endif %}
-              </td>
-              <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
-              <td data-label="Ações">
-                {% if is_solicitante() %}
-                  <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit">
-                    <i class="fas fa-edit"></i> Corrigir e reenviar
-                  </a>
-                {% endif %}
-              </td>
-            </tr>
+                </td>
+                <td data-label="Motivo da Recusa">{{ rd[20] }}</td>
+                <td data-label="Arquivos">
+                  {% if rd[12] %}
+                    <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}">
+                      <i class="fas fa-paperclip"></i> Anexos
+                    </button>
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
+                <td data-label="Ações">
+                  {% if is_solicitante() %}
+                    <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit">
+                      <i class="fas fa-edit"></i> Corrigir e reenviar
+                    </a>
+                  {% endif %}
+                </td>
+              </tr>
             {% endfor %}
           </tbody>
         </table>
@@ -626,51 +626,51 @@
           </thead>
           <tbody>
             {% for rd in fechados %}
-            {% set rd_id = rd[0] %}
-            <tr>
-              <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
-              <td data-label="Solicitante">{{ rd[1] }}</td>
-              <td data-label="Funcionário">{{ rd[2] }}</td>
-              <td data-label="Data">{{ rd[3] }}</td>
-              <td data-label="Centro de Custo">{{ rd[4] }}</td>
-              <td data-label="Observação">
-                {% if rd[16] %}
-                  {% set obs = rd[16] %}
-                  {% if obs|length > 50 %}
-                    <span class="observation-short">{{ obs[:50] }}...</span>
-                    <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
-                    <div class="observation-full">{{ obs }}</div>
+              {% set rd_id = rd[0] %}
+              <tr>
+                <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
+                <td data-label="Solicitante">{{ rd[1] }}</td>
+                <td data-label="Funcionário">{{ rd[2] }}</td>
+                <td data-label="Data">{{ rd[3] }}</td>
+                <td data-label="Centro de Custo">{{ rd[4] }}</td>
+                <td data-label="Observação">
+                  {% if rd[16] %}
+                    {% set obs = rd[16] %}
+                    {% if obs|length > 50 %}
+                      <span class="observation-short">{{ obs[:50] }}...</span>
+                      <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
+                      <div class="observation-full">{{ obs }}</div>
+                    {% else %}
+                      {{ obs }}
+                    {% endif %}
                   {% else %}
-                    {{ obs }}
+                    -
                   {% endif %}
-                {% else %}
-                  -
-                {% endif %}
-              </td>
-              <td data-label="Arquivos">
-                {% if rd[12] %}
-                  <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}">
-                    <i class="fas fa-paperclip"></i> Anexos
-                  </button>
-                {% else %}
-                  -
-                {% endif %}
-              </td>
-              <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
-              <td data-label="Ações">
-                {% if is_financeiro() %}
-                  {% if not rd[18] %}
-                    <form action="/registrar_saldo_devolvido/{{ rd_id }}" method="POST" class="action-form">
-                      <button type="submit" class="btn btn-warning">
-                        <i class="fas fa-money-bill-wave"></i> Saldo Devolvido
-                      </button>
-                    </form>
+                </td>
+                <td data-label="Arquivos">
+                  {% if rd[12] %}
+                    <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}">
+                      <i class="fas fa-paperclip"></i> Anexos
+                    </button>
                   {% else %}
-                    <span style="color: var(--success-color); font-weight:600;">Devolvido em {{ rd[18] }}</span>
+                    -
                   {% endif %}
-                {% endif %}
-              </td>
-            </tr>
+                </td>
+                <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
+                <td data-label="Ações">
+                  {% if is_financeiro() %}
+                    {% if not rd[18] %}
+                      <form action="/registrar_saldo_devolvido/{{ rd_id }}" method="POST" class="action-form">
+                        <button type="submit" class="btn btn-warning">
+                          <i class="fas fa-money-bill-wave"></i> Saldo Devolvido
+                        </button>
+                      </form>
+                    {% else %}
+                      <span style="color: var(--success-color); font-weight:600;">Devolvido</span>
+                    {% endif %}
+                  {% endif %}
+                </td>
+              </tr>
             {% endfor %}
           </tbody>
         </table>
@@ -695,47 +695,46 @@
           </thead>
           <tbody>
             {% for rd in divergentes %}
-            {% set rd_id = rd[0] %}
-            {% set status = rd[6] %}
-            <tr>
-              <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
-              <td data-label="Solicitante">{{ rd[1] }}</td>
-              <td data-label="Funcionário">{{ rd[2] }}</td>
-              <td data-label="Data">{{ rd[3] }}</td>
-              <td data-label="Centro de Custo">{{ rd[4] }}</td>
-              <td data-label="Observação">
-                {% if rd[16] %}
-                  {% set obs = rd[16] %}
-                  {% if obs|length > 50 %}
-                    <span class="observation-short">{{ obs[:50] }}...</span>
-                    <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
-                    <div class="observation-full">{{ obs }}</div>
+              {% set rd_id = rd[0] %}
+              {% set status = rd[6] %}
+              <tr>
+                <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
+                <td data-label="Solicitante">{{ rd[1] }}</td>
+                <td data-label="Funcionário">{{ rd[2] }}</td>
+                <td data-label="Data">{{ rd[3] }}</td>
+                <td data-label="Centro de Custo">{{ rd[4] }}</td>
+                <td data-label="Observação">
+                  {% if rd[16] %}
+                    {% set obs = rd[16] %}
+                    {% if obs|length > 50 %}
+                      <span class="observation-short">{{ obs[:50] }}...</span>
+                      <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
+                      <div class="observation-full">{{ obs }}</div>
+                    {% else %}
+                      {{ obs }}
+                    {% endif %}
                   {% else %}
-                    {{ obs }}
+                    -
                   {% endif %}
-                {% else %}
-                  -
-                {% endif %}
-              </td>
-              <td data-label="Arquivos">
-                {% if rd[12] %}
-                  <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd_id }}">
-                    <i class="fas fa-paperclip"></i> Anexos
-                  </button>
-                {% else %}
-                  -
-                {% endif %}
-              </td>
-              <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
-              <td data-label="Ações">
-                <!-- Botão para o supervisor corrigir divergência -->
-                <form action="{{ url_for('corrigir_divergencia', id=rd_id) }}" method="POST">
-                  <button type="submit" class="btn btn-success">
-                    <i class="fas fa-check"></i> Corrigir (Remover Divergência)
-                  </button>
-                </form>
-              </td>
-            </tr>
+                </td>
+                <td data-label="Arquivos">
+                  {% if rd[12] %}
+                    <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd_id }}">
+                      <i class="fas fa-paperclip"></i> Anexos
+                    </button>
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
+                <td data-label="Ações">
+                  <form action="{{ url_for('corrigir_divergencia', id=rd_id) }}" method="POST">
+                    <button type="submit" class="btn btn-success">
+                      <i class="fas fa-check"></i> Corrigir (Remover Divergência)
+                    </button>
+                  </form>
+                </td>
+              </tr>
             {% endfor %}
           </tbody>
         </table>
@@ -842,7 +841,7 @@
     });
   });
 
-  // Modal para exibir anexos
+  // Modal de anexos
   const fileModal = document.getElementById('fileModal');
   const closeFileModal = document.getElementById('closeFileModal');
   const modalFilesContainer = document.getElementById('modalFilesContainer');
@@ -866,7 +865,7 @@
           link.innerText = f;
           fileDiv.appendChild(link);
 
-          // Botão de exclusão
+          // Botão excluir
           const formDelete = document.createElement('form');
           formDelete.method = 'POST';
           formDelete.action = '/delete_file/' + rdId;
