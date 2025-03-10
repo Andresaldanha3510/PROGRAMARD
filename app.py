@@ -117,7 +117,6 @@ def init_db():
         ("unidade_negocio", "ALTER TABLE rd ADD COLUMN unidade_negocio TEXT;"),
         ("motivo_recusa", "ALTER TABLE rd ADD COLUMN motivo_recusa TEXT;"),
         ("adicionais_individuais", "ALTER TABLE rd ADD COLUMN adicionais_individuais TEXT;"),
-        # ### ADIÇÃO 1: nova coluna para divergência ###
         ("motivo_divergencia", "ALTER TABLE rd ADD COLUMN motivo_divergencia TEXT;")
     ]:
         cursor.execute(
@@ -184,7 +183,6 @@ def is_gestor():
 def is_financeiro():
     return user_role() == 'financeiro'
 
-# Permissões atuais
 def can_add():
     return user_role() in ['solicitante', 'gestor', 'financeiro']
 
@@ -261,25 +259,22 @@ def index():
         elif username == 'solicitante' and password == '102030':
             session['user_role'] = 'solicitante'
             flash("Login como solicitante bem-sucedido.")
-        # ### ADIÇÃO 2: novo login para supervisor ###
         elif username == 'supervisor' and password == '223344':
             session['user_role'] = 'supervisor'
             flash("Login como supervisor bem-sucedido.")
-        # -------------------------------------------
         else:
             flash("Credenciais inválidas.")
             return render_template('index.html', error="Credenciais inválidas", format_currency=format_currency)
 
         return redirect(url_for('index'))
 
-    # Se não estiver logado, mostra login
     if 'user_role' not in session:
         return render_template('index.html', error=None, format_currency=format_currency)
 
     conn = get_pg_connection()
     cursor = conn.cursor()
 
-    # ### ADIÇÃO 3: se for supervisor, só carrega 'Liberados'; caso contrário, carrega tudo ###
+    # Supervisor só enxerga Liberados
     if user_role() == 'supervisor':
         cursor.execute("SELECT * FROM rd WHERE status='Liberado'")
         liberados = cursor.fetchall()
@@ -338,11 +333,15 @@ def add_rd():
 
     solicitante     = request.form['solicitante'].strip()
     funcionario     = request.form['funcionario'].strip()
-    data            = request.form['data'].strip()
+    data            = request.form['data'].strip()  # Data fornecida pelo formulário
     centro_custo    = request.form['centro_custo'].strip()
     observacao      = request.form.get('observacao', '').strip()
     rd_tipo         = request.form.get('tipo', 'credito alelo').strip()
     unidade_negocio = request.form.get('unidade_negocio', '').strip()
+
+    # Caso queira forçar a data atual se o usuário não informar, pode fazer:
+    # if not data:
+    #     data = datetime.now().strftime('%Y-%m-%d')
 
     try:
         valor = float(request.form['valor'].replace(',', '.'))
@@ -446,7 +445,6 @@ def edit_submit(id):
     """, (solicitante, funcionario, data, centro_custo, valor,
           arquivos_str, observacao, unidade_negocio, id))
     
-    # Se for solicitante e estava em Fechamento Recusado, volta para Fechamento Solicitado
     if is_solicitante() and original_status == 'Fechamento Recusado':
         cursor.execute("UPDATE rd SET status='Fechamento Solicitado', motivo_recusa=NULL WHERE id=%s", (id,))
     
@@ -543,6 +541,7 @@ def delete_rd(id):
     flash("RD excluída com sucesso.")
     return redirect(url_for('index'))
 
+# [ALTERAÇÃO] Armazena data em 'adicional_data' e no texto de 'adicionais_individuais'
 @app.route('/adicional_submit/<id>', methods=['POST'])
 def adicional_submit(id):
     if 'arquivo' in request.files:
@@ -583,17 +582,27 @@ def adicional_submit(id):
         return redirect(url_for('index'))
 
     novo_total = (valor_adic_atual or 0) + novo_valor_adicional
+    add_data = datetime.now().strftime('%Y-%m-%d')  # registrar data do adicional
+
+    # Concatena " em <data>" no texto do adicional
     if adicionais_individuais:
-        additional_entries = [x.strip() for x in adicionais_individuais.split(',')]
-        next_index = len(additional_entries) + 1
-        novos_adicionais = adicionais_individuais + f", Adicional {next_index}:{novo_valor_adicional}"
+        existing_list = [x.strip() for x in adicionais_individuais.split(',')]
+        next_index = len(existing_list) + 1
+        # Ex: "Adicional 1:300.0 em 2023-10-09"
+        novos_adicionais = (
+            adicionais_individuais
+            + f", Adicional {next_index}:{novo_valor_adicional} em {add_data}"
+        )
     else:
-        novos_adicionais = f"Adicional 1:{novo_valor_adicional}"
+        novos_adicionais = f"Adicional 1:{novo_valor_adicional} em {add_data}"
     
-    add_data = datetime.now().strftime('%Y-%m-%d')
+    # Salva no BD
     cursor.execute("""
         UPDATE rd
-        SET valor_adicional=%s, adicional_data=%s, status='Pendente', adicionais_individuais=%s
+        SET valor_adicional=%s,
+            adicional_data=%s,
+            status='Pendente',
+            adicionais_individuais=%s
         WHERE id=%s
     """, (novo_total, add_data, novos_adicionais, id))
     conn.commit()
@@ -646,7 +655,7 @@ def fechamento_submit(id):
         flash("Valor da despesa maior que o total de créditos solicitados.")
         return redirect(url_for('index'))
     saldo_devolver = total_credit - valor_despesa
-    data_fech = datetime.now().strftime('%Y-%m-%d')
+    data_fech = datetime.now().strftime('%Y-%m-%d')  # data do fechamento
     cursor.execute("""
         UPDATE rd
         SET valor_despesa=%s, saldo_devolver=%s, data_fechamento=%s,
@@ -730,12 +739,10 @@ def delete_file(id):
         flash("Nenhum arquivo na RD.")
         return redirect(request.referrer or url_for('index'))
 
-    # ### ADIÇÃO 4: permitir supervisor excluir arquivos ###
     if not (can_edit(rd_status) or can_delete(rd_status, rd_solic) or user_role() == 'supervisor'):
         conn.close()
         flash("Você não pode excluir arquivos desta RD.")
         return redirect(request.referrer or url_for('index'))
-    # ------------------------------------------------------
 
     arqs = arquivos_str.split(',')
     if filename not in arqs:
@@ -840,7 +847,7 @@ def export_excel():
     rownum = 1
     for rd_row in rd_list:
         rd_id = rd_row[0]
-        rd_data = rd_row[3]
+        rd_data = rd_row[3]  # data de criação
         rd_solic = rd_row[1]
         rd_func = rd_row[2]
         rd_valor = rd_row[5]
@@ -926,8 +933,6 @@ def excluir_funcionario(id):
     flash("Funcionário excluído com sucesso.")
     return redirect(url_for('consulta_funcionario'))
 
-# -------------------------------------------------
-# ### ADIÇÃO 5: Rota para o supervisor anexar arquivos na RD (opcional) ###
 @app.route('/supervisor_arquivos/<id>', methods=['POST'])
 def supervisor_arquivos(id):
     if session.get('user_role') != 'supervisor':
@@ -962,11 +967,8 @@ def supervisor_arquivos(id):
     flash("Arquivos anexados com sucesso.")
     return redirect(url_for('index'))
 
-# -------------------------------------------------
-# ### ADIÇÃO 6: Rotas para lidar com divergências ###
 @app.route('/divergencia/<id>', methods=['POST'])
 def set_divergencia(id):
-    # Somente gestor ou solicitante podem marcar divergência
     if user_role() not in ['gestor', 'solicitante']:
         flash("Acesso negado.")
         return redirect(url_for('index'))
@@ -1004,7 +1006,6 @@ def set_divergencia(id):
 
 @app.route('/corrigir_divergencia/<id>', methods=['POST'])
 def corrigir_divergencia(id):
-    # Somente supervisor pode corrigir divergência
     if user_role() != 'supervisor':
         flash("Acesso negado.")
         return redirect(url_for('index'))
@@ -1018,7 +1019,6 @@ def corrigir_divergencia(id):
         conn.close()
         return redirect(url_for('index'))
 
-    # Limpa o campo de divergência
     cursor.execute("""
         UPDATE rd
         SET motivo_divergencia=NULL
