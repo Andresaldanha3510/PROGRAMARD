@@ -229,6 +229,12 @@
     }
     .file-item form { margin: 0; padding: 0; display: inline-block; }
 
+    /* Botão Anexos Divergentes em azul */
+    .btn-divergencia {
+      background-color: #3498db;
+      color: #fff;
+    }
+
     /* -- OCULTAR AS DEMAIS ABAS SE FOR SUPERVISOR -- */
     {% if user_role == 'supervisor' %}
     #tab1, #tab2, #tab4, #tab5, #tab6,
@@ -357,7 +363,7 @@
         </a>
       </div>
 
-      <!-- Macro para mostrar os valores -->
+      <!-- Macro para mostrar os valores (você pode editar aqui para exibir data, adicionais, etc.) -->
       {% macro mostrar_valores(rd) %}
         {% set valor = rd[5] %}
         {% set valor_adic = rd[7] if rd[7] else 0 %}
@@ -602,14 +608,14 @@
                       </form>
                     {% endif %}
 
-                    <!-- BOTÃO 'Anexos Divergentes' para gestor/solicitante -->
+                    <!-- BOTÃO 'Anexos Divergentes' AGORA EM AZUL (.btn-divergencia) -->
                     {% if user_role in ['gestor', 'solicitante'] %}
-                      <button type="button" class="btn btn-warning btn-divergencia" data-rd-id="{{ rd_id }}">
+                      <button type="button" class="btn btn-divergencia" data-rd-id="{{ rd_id }}">
                         <i class="fas fa-exclamation-triangle"></i> Anexos Divergentes
                       </button>
                     {% endif %}
 
-                    <!-- Se existir divergência (ex: rd[22] = motivo_divergencia), exibe -->
+                    <!-- Se existir divergência (por exemplo, rd[22]) -->
                     {% if rd[22] %}
                       <div style="color:red; margin-top:5px;">
                         Divergência em anexos: {{ rd[22] }}
@@ -625,7 +631,7 @@
                       </form>
                     {% endif %}
 
-                    <!-- Se for supervisor, mostrar form p/ anexar arquivos extras -->
+                    <!-- Supervisor também pode anexar arquivos extras -->
                     {% if user_role == 'supervisor' %}
                       <form action="/supervisor_arquivos/{{ rd_id }}" method="POST" enctype="multipart/form-data" style="margin-top:8px;">
                         <label style="display:block; font-size:0.85rem; margin-bottom:5px;">Anexar Arquivos Extras:</label>
@@ -865,7 +871,7 @@
     <form id="formDivergencia" method="POST">
       <textarea name="motivo_divergencia" id="motivo_divergencia" rows="4" style="width:100%;" placeholder="Explique a divergência..."></textarea>
       <br>
-      <button type="submit" class="btn btn-warning">Enviar Divergência</button>
+      <button type="submit" class="btn btn-divergencia">Enviar Divergência</button>
     </form>
   </div>
 </div>
@@ -946,7 +952,6 @@
       } else {
         const arrFiles = files.split(',');
         arrFiles.forEach(f => {
-          // Montar link de download
           const fileDiv = document.createElement('div');
           fileDiv.classList.add('file-item');
           const link = document.createElement('a');
@@ -974,7 +979,6 @@
           formDelete.appendChild(btnDelete);
 
           fileDiv.appendChild(formDelete);
-
           modalFilesContainer.appendChild(fileDiv);
         });
       }
