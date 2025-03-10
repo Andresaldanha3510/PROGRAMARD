@@ -7,8 +7,10 @@
   <!-- Fonte e FontAwesome -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" referrerpolicy="no-referrer" />
+
   <!-- Estilos do DataTables -->
   <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css" />
+
   <style>
     :root {
       --primary-color: #3498db;
@@ -26,12 +28,14 @@
     }
     body {
       font-family: 'Inter', sans-serif;
-      margin: 0;
+      margin: 0; 
       padding: 0;
       background-color: var(--background-color);
       color: var(--text-color);
     }
-    .btn i { margin-right: 5px; }
+    .btn i {
+      margin-right: 5px;
+    }
     .top-bar {
       background: var(--header-color);
       padding: 10px 20px;
@@ -40,7 +44,9 @@
       align-items: center;
       color: #fff;
     }
-    .top-bar .user-info { font-weight: 600; }
+    .top-bar .user-info {
+      font-weight: 600;
+    }
     .top-bar a {
       color: #fff;
       margin-left: 10px;
@@ -256,7 +262,7 @@
       background-color: var(--primary-color);
       color: #fff;
     }
-    /* Exibe a aba selecionada */
+    /* Exibe as abas */
     #tab1:checked ~ .content #content1,
     #tab2:checked ~ .content #content2,
     #tab3:checked ~ .content #content3,
@@ -300,8 +306,7 @@
       min-width: 20px;
       text-align: center;
     }
-    .observation-short {
-    }
+    .observation-short { }
     .toggle-observation {
       border: none;
       background: none;
@@ -365,6 +370,7 @@
     }
   </style>
 </head>
+
 <body>
 {% if user_role is defined %}
 <div class="top-bar">
@@ -403,10 +409,13 @@
       {% endif %}
       <label for="username">Usuário:</label>
       <input type="text" id="username" name="username" required>
+
       <label for="password">Senha:</label>
       <input type="password" id="password" name="password" required>
+
       <button type="submit"><i class="fas fa-sign-in-alt"></i> Entrar</button>
     </form>
+
   {% else %}
     {% if adicional_id %}
       <!-- Formulário para solicitar crédito adicional -->
@@ -415,11 +424,14 @@
         <form action="/adicional_submit/{{ adicional_id }}" method="POST" enctype="multipart/form-data" class="main-form">
           <label for="valor_adicional">Valor Adicional (R$):</label>
           <input type="number" id="valor_adicional" name="valor_adicional" step="0.01" required>
+
           <label for="arquivo">Anexar Arquivos (opcional):</label>
           <input type="file" id="arquivo" name="arquivo" multiple>
+
           <button type="submit"><i class="fas fa-paper-plane"></i> Solicitar Adicional</button>
         </form>
       </div>
+
     {% elif fechamento_id %}
       <!-- Formulário de Fechamento -->
       <div class="form-fechamento">
@@ -427,11 +439,14 @@
         <form action="/fechamento_submit/{{ fechamento_id }}" method="POST" enctype="multipart/form-data" class="main-form">
           <label for="valor_despesa">Valor da Despesa (R$):</label>
           <input type="number" id="valor_despesa" name="valor_despesa" step="0.01" required>
+
           <label for="arquivo">Anexar Arquivos Finais (opcional):</label>
           <input type="file" id="arquivo" name="arquivo" multiple>
+
           <button type="submit"><i class="fas fa-check-circle"></i> Fechar RD</button>
         </form>
       </div>
+
     {% else %}
       {% if can_add %}
       <div style="text-align:center; margin-bottom:20px;">
@@ -493,8 +508,10 @@
         </a>
       </div>
 
+      <!-- ---------- ABAS ---------- -->
       <div class="tabs">
         {% if user_role == 'supervisor' %}
+          <!-- Supervisor vê tab3 e tab7 por padrão -->
           <input type="radio" name="tab-control" id="tab1">
           <input type="radio" name="tab-control" id="tab2">
           <input type="radio" name="tab-control" id="tab3" checked>
@@ -512,19 +529,33 @@
         {% endif %}
 
         <div class="tab-labels">
-          <label for="tab1">Pendentes {% if pendentes|length > 0 %}<span class="badge">{{ pendentes|length }}</span>{% endif %}</label>
-          <label for="tab2">Aprovados {% if aprovados|length > 0 %}<span class="badge">{{ aprovados|length }}</span>{% endif %}</label>
-          <label for="tab3">Liberados {% if liberados|length > 0 %}<span class="badge">{{ liberados|length }}</span>{% endif %}</label>
-          <label for="tab4">Fechamento Solicitado {% if fechamento_solicitado|length > 0 %}<span class="badge">{{ fechamento_solicitado|length }}</span>{% endif %}</label>
-          <label for="tab5">Fechamento Recusado {% if fechamento_recusado|length > 0 %}<span class="badge">{{ fechamento_recusado|length }}</span>{% endif %}</label>
-          <label for="tab6">Fechados {% if fechados|length > 0 %}<span class="badge">{{ fechados|length }}</span>{% endif %}</label>
+          <label for="tab1">
+            Pendentes {% if pendentes|length > 0 %}<span class="badge">{{ pendentes|length }}</span>{% endif %}
+          </label>
+          <label for="tab2">
+            Aprovados {% if aprovados|length > 0 %}<span class="badge">{{ aprovados|length }}</span>{% endif %}
+          </label>
+          <label for="tab3">
+            Liberados {% if liberados|length > 0 %}<span class="badge">{{ liberados|length }}</span>{% endif %}
+          </label>
+          <label for="tab4">
+            Fechamento Solicitado {% if fechamento_solicitado|length > 0 %}<span class="badge">{{ fechamento_solicitado|length }}</span>{% endif %}
+          </label>
+          <label for="tab5">
+            Fechamento Recusado {% if fechamento_recusado|length > 0 %}<span class="badge">{{ fechamento_recusado|length }}</span>{% endif %}
+          </label>
+          <label for="tab6">
+            Fechados {% if fechados|length > 0 %}<span class="badge">{{ fechados|length }}</span>{% endif %}
+          </label>
           {% if user_role == 'supervisor' %}
-            <label for="tab7">Divergências {% if divergentes and divergentes|length > 0 %}<span class="badge">{{ divergentes|length }}</span>{% endif %}</label>
+          <label for="tab7">
+            Divergências {% if divergentes and divergentes|length > 0 %}<span class="badge">{{ divergentes|length }}</span>{% endif %}
+          </label>
           {% endif %}
         </div>
-        <div class="content">
 
-          <!-- ABA PENDENTES -->
+        <div class="content">
+          <!-- ABA PENDENTES (content1) -->
           <div class="tab-content" id="content1">
             <table id="tabela-pendentes" class="display">
               <thead>
@@ -545,14 +576,16 @@
                 {% set rd_id = rd[0] %}
                 {% set status = rd[6] %}
                 <tr>
-                  <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
+                  <td data-label="ID">
+                    {{ rd_id }}
+                    <br><small>({{ rd[17] }})</small>
+                  </td>
                   <td data-label="Solicitante">{{ rd[1] }}</td>
                   <td data-label="Funcionário">{{ rd[2] }}</td>
                   <td data-label="Data">{{ rd[3] }}</td>
                   <td data-label="Centro de Custo">
                     {{ rd[4] }}
-                    <br>
-                    <small>{{ rd[19] }}</small>
+                    <br><small>{{ rd[19] }}</small>
                   </td>
                   <td data-label="Observação">
                     {% if rd[16] %}
@@ -577,7 +610,9 @@
                       -
                     {% endif %}
                   </td>
-                  <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
+                  <td data-label="Valores">
+                    {{ mostrar_valores(rd) }}
+                  </td>
                   <td data-label="Ações">
                     {% if can_approve_func(status) %}
                       <form action="/approve/{{ rd_id }}" method="POST" class="action-form">
@@ -605,7 +640,7 @@
             </table>
           </div>
 
-          <!-- ABA APROVADOS -->
+          <!-- ABA APROVADOS (content2) -->
           <div class="tab-content" id="content2">
             <table id="tabela-aprovados" class="display">
               <thead>
@@ -626,7 +661,10 @@
                 {% set rd_id = rd[0] %}
                 {% set status = rd[6] %}
                 <tr>
-                  <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
+                  <td data-label="ID">
+                    {{ rd_id }}
+                    <br><small>({{ rd[17] }})</small>
+                  </td>
                   <td data-label="Solicitante">{{ rd[1] }}</td>
                   <td data-label="Funcionário">{{ rd[2] }}</td>
                   <td data-label="Data">{{ rd[3] }}</td>
@@ -654,7 +692,9 @@
                       -
                     {% endif %}
                   </td>
-                  <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
+                  <td data-label="Valores">
+                    {{ mostrar_valores(rd) }}
+                  </td>
                   <td data-label="Ações">
                     {% if can_approve_func(status) %}
                       <form action="/approve/{{ rd_id }}" method="POST" class="action-form">
@@ -682,7 +722,7 @@
             </table>
           </div>
 
-          <!-- ABA LIBERADOS -->
+          <!-- ABA LIBERADOS (content3) -->
           <div class="tab-content" id="content3">
             <table id="tabela-liberados" class="display">
               <thead>
@@ -703,7 +743,10 @@
                 {% set rd_id = rd[0] %}
                 {% set status = rd[6] %}
                 <tr>
-                  <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
+                  <td data-label="ID">
+                    {{ rd_id }}
+                    <br><small>({{ rd[17] }})</small>
+                  </td>
                   <td data-label="Solicitante">{{ rd[1] }}</td>
                   <td data-label="Funcionário">{{ rd[2] }}</td>
                   <td data-label="Data">{{ rd[3] }}</td>
@@ -731,7 +774,9 @@
                       -
                     {% endif %}
                   </td>
-                  <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
+                  <td data-label="Valores">
+                    {{ mostrar_valores(rd) }}
+                  </td>
                   <td data-label="Ações">
                     {% if can_edit_func(status) %}
                       <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit">
@@ -768,7 +813,7 @@
             </table>
           </div>
 
-          <!-- ABA FECHAMENTO SOLICITADO -->
+          <!-- ABA FECHAMENTO SOLICITADO (content4) -->
           <div class="tab-content" id="content4">
             <table id="tabela-fechamento-solicitado" class="display">
               <thead>
@@ -789,7 +834,10 @@
                 {% set rd_id = rd[0] %}
                 {% set status = rd[6] %}
                 <tr>
-                  <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
+                  <td data-label="ID">
+                    {{ rd_id }}
+                    <br><small>({{ rd[17] }})</small>
+                  </td>
                   <td data-label="Solicitante">{{ rd[1] }}</td>
                   <td data-label="Funcionário">{{ rd[2] }}</td>
                   <td data-label="Data">{{ rd[3] }}</td>
@@ -838,7 +886,7 @@
             </table>
           </div>
 
-          <!-- ABA FECHAMENTO RECUSADO -->
+          <!-- ABA FECHAMENTO RECUSADO (content5) -->
           <div class="tab-content" id="content5">
             <table id="tabela-fechamento-recusado" class="display">
               <thead>
@@ -859,7 +907,10 @@
                 {% for rd in fechamento_recusado %}
                 {% set rd_id = rd[0] %}
                 <tr>
-                  <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
+                  <td data-label="ID">
+                    {{ rd_id }}
+                    <br><small>({{ rd[17] }})</small>
+                  </td>
                   <td data-label="Solicitante">{{ rd[1] }}</td>
                   <td data-label="Funcionário">{{ rd[2] }}</td>
                   <td data-label="Data">{{ rd[3] }}</td>
@@ -878,7 +929,9 @@
                       -
                     {% endif %}
                   </td>
-                  <td data-label="Motivo da Recusa">{{ rd[20] }}</td>
+                  <td data-label="Motivo da Recusa">
+                    {{ rd[20] }}
+                  </td>
                   <td data-label="Arquivos">
                     {% if rd[12] %}
                       <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}">
@@ -902,7 +955,7 @@
             </table>
           </div>
 
-          <!-- ABA FECHADOS -->
+          <!-- ABA FECHADOS (content6) -->
           <div class="tab-content" id="content6">
             <table id="tabela-fechados" class="display">
               <thead>
@@ -922,7 +975,10 @@
                 {% for rd in fechados %}
                 {% set rd_id = rd[0] %}
                 <tr>
-                  <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
+                  <td data-label="ID">
+                    {{ rd_id }}
+                    <br><small>({{ rd[17] }})</small>
+                  </td>
                   <td data-label="Solicitante">{{ rd[1] }}</td>
                   <td data-label="Funcionário">{{ rd[2] }}</td>
                   <td data-label="Data">{{ rd[3] }}</td>
@@ -970,8 +1026,8 @@
             </table>
           </div>
 
+          <!-- ABA DIVERGÊNCIAS (content7) - apenas supervisor -->
           {% if user_role == 'supervisor' %}
-          <!-- ABA DIVERGÊNCIAS -->
           <div class="tab-content" id="content7">
             <table id="tabela-divergentes" class="display">
               <thead>
@@ -992,7 +1048,10 @@
                 {% set rd_id = rd[0] %}
                 {% set status = rd[6] %}
                 <tr>
-                  <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
+                  <td data-label="ID">
+                    {{ rd_id }}
+                    <br><small>({{ rd[17] }})</small>
+                  </td>
                   <td data-label="Solicitante">{{ rd[1] }}</td>
                   <td data-label="Funcionário">{{ rd[2] }}</td>
                   <td data-label="Data">{{ rd[3] }}</td>
@@ -1037,6 +1096,7 @@
 
         </div>
       </div>
+      <!-- ---------- FIM das abas ---------- -->
     {% endif %}
   {% endif %}
 </div>
@@ -1080,7 +1140,7 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script type="text/javascript" src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
 <script>
-  // Mostrar/esconder formulário de RD (Alelo/Reembolso)
+  // Mostra/esconde form RD Alelo/Reembolso
   const btnAlelo = document.getElementById('btn-alelo');
   const btnReembolso = document.getElementById('btn-reembolso');
   const formSolicitacao = document.getElementById('form-solicitacao');
@@ -1115,18 +1175,17 @@
   // Observação expandida
   function toggleObservation(btn) {
     const obsFull = btn.parentNode.querySelector('.observation-full');
-    if(obsFull) {
-      if(obsFull.style.display === 'none' || obsFull.style.display === '') {
-        obsFull.style.display = 'block';
-        btn.textContent = '-';
-      } else {
-        obsFull.style.display = 'none';
-        btn.textContent = '+';
-      }
+    if(!obsFull) return;
+    if(obsFull.style.display === 'none' || obsFull.style.display === '') {
+      obsFull.style.display = 'block';
+      btn.textContent = '-';
+    } else {
+      obsFull.style.display = 'none';
+      btn.textContent = '+';
     }
   }
 
-  // Toggle detalhes dos valores
+  // Mostrar/esconder detalhes
   document.querySelectorAll('.toggle-details').forEach(button => {
     button.addEventListener('click', () => {
       const details = button.parentNode.nextElementSibling;
@@ -1140,7 +1199,7 @@
     });
   });
 
-  // Modal de Anexos
+  // Modal de anexos
   const fileModal = document.getElementById('fileModal');
   const closeFileModal = document.getElementById('closeFileModal');
   const modalFilesContainer = document.getElementById('modalFilesContainer');
@@ -1165,7 +1224,7 @@
           link.innerText = f;
           fileDiv.appendChild(link);
 
-          // Botão de exclusão
+          // Botão excluir
           const formDelete = document.createElement('form');
           formDelete.method = 'POST';
           formDelete.action = '/delete_file/' + rdId;
@@ -1190,12 +1249,11 @@
       fileModal.style.display = 'block';
     });
   });
-
   closeFileModal.addEventListener('click', () => {
     fileModal.style.display = 'none';
   });
 
-  // Modal de recusa de fechamento
+  // Modal recusa fechamento
   const recusaModal = document.getElementById('recusaModal');
   const closeRecusaModal = document.getElementById('closeRecusaModal');
   const formRecusa = document.getElementById('formRecusa');
@@ -1211,7 +1269,7 @@
     recusaModal.style.display = 'none';
   });
 
-  // Modal de divergência
+  // Modal divergência
   const divergenciaModal = document.getElementById('divergenciaModal');
   const closeDivergenciaModal = document.getElementById('closeDivergenciaModal');
   const formDivergencia = document.getElementById('formDivergencia');
@@ -1223,7 +1281,6 @@
       divergenciaModal.style.display = 'block';
     });
   });
-
   closeDivergenciaModal.addEventListener('click', () => {
     divergenciaModal.style.display = 'none';
   });
