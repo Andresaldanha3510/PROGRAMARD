@@ -103,27 +103,15 @@ def init_db():
         aprovado_data DATE,
         liberado_data DATE,
         valor_liberado NUMERIC(15,2) DEFAULT 0,
-        observacao TEXT
+        observacao TEXT,
+        tipo TEXT DEFAULT 'credito alelo',
+        unidade_negocio TEXT,
+        motivo_recusa TEXT,
+        adicionais_individuais TEXT,
+        data_saldo_devolvido DATE
     );
     """
     cursor.execute(create_rd_table)
-
-    # Garante que as colunas extras existam
-    for col_name, alter_cmd in [
-        ("valor_liberado", "ALTER TABLE rd ADD COLUMN valor_liberado NUMERIC(15,2) DEFAULT 0;"),
-        ("observacao", "ALTER TABLE rd ADD COLUMN observacao TEXT;"),
-        ("tipo", "ALTER TABLE rd ADD COLUMN tipo TEXT DEFAULT 'credito alelo';"),
-        ("data_saldo_devolvido", "ALTER TABLE rd ADD COLUMN data_saldo_devolvido DATE;"),
-        ("unidade_negocio", "ALTER TABLE rd ADD COLUMN unidade_negocio TEXT;"),
-        ("motivo_recusa", "ALTER TABLE rd ADD COLUMN motivo_recusa TEXT;"),
-        ("adicionais_individuais", "ALTER TABLE rd ADD COLUMN adicionais_individuais TEXT;")
-    ]:
-        cursor.execute(
-            "SELECT column_name FROM information_schema.columns WHERE table_name='rd' AND column_name=%s;", 
-            (col_name,)
-        )
-        if not cursor.fetchone():
-            cursor.execute(alter_cmd)
 
     # Cria tabela para saldo global
     create_saldo_global_table = """
@@ -460,6 +448,7 @@ def approve(id):
             WHERE id=%s
         """, (new_status, current_date, id))
     elif status == 'Aprovado' and is_financeiro():
+        # Fluxo para reembolso não altera o saldo global
         if rd_tipo.lower() == 'reembolso':
             new_status = 'Fechado'
             cursor.execute("""
@@ -469,10 +458,15 @@ def approve(id):
         else:
             new_status = 'Liberado'
             total_credit = valor + (valor_adic or 0)
+            # Deduzir o total liberado do saldo global
+            saldo_atual = get_saldo_global()
+            novo_saldo = saldo_atual - total_credit
+            set_saldo_global(novo_saldo)
+            # Atualiza o campo valor_liberado para possibilitar reversão na exclusão
             cursor.execute("""
-                UPDATE rd SET status=%s, liberado_data=%s
+                UPDATE rd SET status=%s, liberado_data=%s, valor_liberado=%s
                 WHERE id=%s
-            """, (new_status, current_date, id))
+            """, (new_status, current_date, total_credit, id))
     elif status == 'Fechamento Solicitado' and is_gestor():
         new_status = 'Fechado'
         cursor.execute("UPDATE rd SET status=%s WHERE id=%s", (new_status, id))
@@ -504,6 +498,7 @@ def delete_rd(id):
         flash("Ação não permitida.")
         return redirect(url_for('index'))
 
+    # Se a RD estiver liberada e tiver valor_liberado definido, devolve esse valor ao saldo global
     if rd_status == 'Liberado' and rd_liberado and rd_liberado > 0:
         saldo = get_saldo_global()
         set_saldo_global(saldo + rd_liberado)
@@ -882,8 +877,7 @@ def cadastrar_funcionario():
     conn.commit()
     cursor.close()
     conn.close()
-
-    flash("Funcionário cadastrado com sucesso!")
+    flash("Funcionário cadastrado com sucesso.")
     return redirect(url_for('cadastro_funcionario'))
 
 # Tela de consulta de funcionários
@@ -891,69 +885,10 @@ def cadastrar_funcionario():
 def consulta_funcionario():
     conn = get_pg_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, nome, centro_custo, unidade_negocio FROM funcionarios")
+    cursor.execute("SELECT * FROM funcionarios ORDER BY nome ASC")
     funcionarios = cursor.fetchall()
-    cursor.close()
     conn.close()
     return render_template('consulta_funcionario.html', funcionarios=funcionarios)
-
-@app.route('/editar_funcionario/<int:id>', methods=['GET', 'POST'])
-def editar_funcionario(id):
-    if request.method == 'POST':
-        nome = request.form['nome'].strip()
-        centro_custo = request.form['centroCusto'].strip()
-        unidade_negocio = request.form['unidadeNegocio'].strip()
-        conn = get_pg_connection()
-        cursor = conn.cursor()
-        cursor.execute("""
-            UPDATE funcionarios
-            SET nome=%s, centro_custo=%s, unidade_negocio=%s
-            WHERE id=%s
-        """, (nome, centro_custo, unidade_negocio, id))
-        conn.commit()
-        cursor.close()
-        conn.close()
-        flash("Funcionário atualizado com sucesso!")
-        return redirect(url_for('consulta_funcionario'))
-    else:
-        conn = get_pg_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, nome, centro_custo, unidade_negocio FROM funcionarios WHERE id=%s", (id,))
-        funcionario = cursor.fetchone()
-        cursor.close()
-        conn.close()
-        return render_template('editar_funcionario.html', funcionario=funcionario)
-
-
-
-
-
-# -------------------------------------------------
-# Nova Rota: Consulta de RDs (não fechados) para um Funcionário
-@app.route('/consulta_rd/<int:id_func>', methods=['GET'])
-def consulta_rd(id_func):
-    conn = get_pg_connection()
-    cursor = conn.cursor()
-    # Busca o nome do funcionário para exibir no template
-    cursor.execute("SELECT nome FROM funcionarios WHERE id = %s", (id_func,))
-    row = cursor.fetchone()
-    funcionario_nome = row[0] if row else "Desconhecido"
-    
-    # Busca os RDs que não estão fechados para este funcionário
-    query = """
-        SELECT id, data, valor, status 
-        FROM rd
-        WHERE funcionario = (
-            SELECT nome FROM funcionarios WHERE id = %s
-        )
-        AND status != 'Fechado'
-        ORDER BY data DESC
-    """
-    cursor.execute(query, (id_func,))
-    rd_list = cursor.fetchall()
-    cursor.close()
-    conn.close()
-    return render_template('listagem_rds.html', rd_list=rd_list, funcionario_nome=funcionario_nome)
 
 if __name__ == '__main__':
     init_db()
