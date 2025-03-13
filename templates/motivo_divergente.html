@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Motivo do Anexo Divergente</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Fonte e FontAwesome -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" referrerpolicy="no-referrer" />
+  <style>
+    :root {
+      --primary-color: #3498db;
+      --secondary-color: #f39c12;
+      --success-color: #2ecc71;
+      --danger-color: #e74c3c;
+      --warning-color: #f1c40f;
+      --background-color: #f2f3f5;
+      --header-color: #34495e;
+      --text-color: #2c3e50;
+      --footer-background: #2c3e50;
+      --footer-text: #ecf0f1;
+      --border-color: #dddddd;
+      --input-border: #dcdde1;
+    }
+    body {
+      font-family: 'Inter', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: var(--background-color);
+      color: var(--text-color);
+    }
+    .container {
+      max-width: 600px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    h3 {
+      text-align: center;
+      color: var(--header-color);
+      margin-bottom: 20px;
+    }
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    form label {
+      font-weight: 600;
+      color: var(--header-color);
+    }
+    form textarea {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--input-border);
+      border-radius: 5px;
+      font-size: 1rem;
+      resize: vertical;
+    }
+    form button {
+      background-color: var(--primary-color);
+      color: #fff;
+      padding: 10px;
+      border: none;
+      border-radius: 5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    form button:hover {
+      background-color: #2980b9;
+    }
+    .back-link {
+      display: block;
+      text-align: center;
+      margin-top: 20px;
+      text-decoration: none;
+      color: var(--primary-color);
+      font-weight: 600;
+    }
+    .back-link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h3>Informe o Motivo da Divergência</h3>
+    <form action="{{ url_for('marcar_divergente', id=rd_id) }}" method="POST">
+      <label for="motivo_divergente">Motivo:</label>
+      <textarea id="motivo_divergente" name="motivo_divergente" rows="4" cols="50" placeholder="Digite aqui o motivo..."></textarea>
+      <button type="submit">Enviar</button>
+    </form>
+    <a href="{{ url_for('index') }}" class="back-link">← Voltar</a>
+  </div>
+</body>
+</html>

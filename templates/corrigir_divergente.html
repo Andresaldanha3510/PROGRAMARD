@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Corrigir RD Divergente</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Fonte e FontAwesome -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" referrerpolicy="no-referrer" />
+  <!-- Mesmo CSS do index.html -->
+  <style>
+    :root {
+      --primary-color: #3498db;
+      --secondary-color: #f39c12;
+      --success-color: #2ecc71;
+      --danger-color: #e74c3c;
+      --warning-color: #f1c40f;
+      --background-color: #f2f3f5;
+      --header-color: #34495e;
+      --text-color: #2c3e50;
+      --footer-background: #2c3e50;
+      --footer-text: #ecf0f1;
+      --border-color: #dddddd;
+      --input-border: #dcdde1;
+    }
+    body {
+      font-family: 'Inter', sans-serif;
+      margin: 0; padding: 0;
+      background-color: var(--background-color);
+      color: var(--text-color);
+    }
+    .top-bar {
+      background: var(--header-color);
+      padding: 10px 20px;
+      display: flex; justify-content: space-between; align-items: center;
+      color: #fff;
+    }
+    .top-bar .user-info { font-weight: 600; }
+    .top-bar a {
+      color: #fff; margin-left: 10px; text-decoration: none;
+      display: inline-flex; align-items: center;
+    }
+    .top-bar a:hover { text-decoration: underline; }
+    .container {
+      max-width: 1200px; margin: 20px auto; padding: 20px;
+      background: #fff; border-radius: 10px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    h1, h2 {
+      text-align: center; margin: 20px 0; font-weight: 700;
+    }
+    .main-form {
+      margin-bottom: 20px; border: 1px solid var(--border-color);
+      border-radius: 10px; padding: 20px; background: #fff;
+      box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+    }
+    label {
+      display: block; margin-bottom: 5px; font-weight: 600;
+      color: var(--header-color);
+    }
+    input, textarea {
+      width: 100%; padding: 10px; margin-bottom: 15px;
+      border: 1px solid var(--input-border);
+      border-radius: 5px; font-size: 0.9rem; box-sizing: border-box;
+    }
+    button {
+      background-color: var(--primary-color);
+      color: #fff; padding: 10px 20px; border: none;
+      border-radius: 5px; font-weight: 600; cursor: pointer;
+      display: inline-flex; align-items: center;
+    }
+    button:hover { background-color: #2980b9; }
+    footer {
+      text-align: center; color: var(--footer-text);
+      font-size: 0.85rem; padding: 10px 0;
+      background-color: var(--footer-background);
+      position: fixed; width: 100%; bottom: 0;
+    }
+    .error-message {
+      color: var(--danger-color); font-size: 0.85rem; margin-bottom: 15px;
+      list-style: none;
+    }
+    .info-box {
+      background-color: #fafafa; padding: 10px; margin-bottom: 20px;
+      border: 1px solid var(--border-color);
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+{% if user_role is defined %}
+<div class="top-bar">
+  <div class="user-info">
+    Bem-vindo, {{ user_role }} | <a href="{{ url_for('logout') }}">Sair</a>
+  </div>
+</div>
+{% endif %}
+
+<div class="container">
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      <ul>
+        {% for message in messages %}
+          <li class="error-message">{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  {% endwith %}
+
+  <h1>Corrigir RD Divergente</h1>
+
+  {% if not rd %}
+    <p style="text-align:center;">RD não encontrada.</p>
+    <div style="text-align:center; margin-top:10px;">
+      <a href="{{ url_for('anexos_divergentes') }}" style="background:#3498db; color:#fff; padding:10px; border-radius:5px; text-decoration:none;">
+        ← Voltar
+      </a>
+    </div>
+  {% else %}
+    <!-- Exibe algumas informações básicas do RD -->
+    <div class="info-box">
+      <p><strong>ID:</strong> {{ rd[0] }}</p>
+      <p><strong>Solicitante:</strong> {{ rd[1] }}</p>
+      <p><strong>Funcionário:</strong> {{ rd[2] }}</p>
+      <p><strong>Data:</strong> {{ rd[3] }}</p>
+      <p><strong>Centro de Custo:</strong> {{ rd[4] }}</p>
+      <p><strong>Valor:</strong> R${{ format_currency(rd[5]) }}</p>
+      <p><strong>Status Atual:</strong> {{ rd[6] }}</p>
+    </div>
+
+    <!-- Formulário para incluir novos anexos (corrigir) -->
+    <!-- A rota é a própria /corrigir_divergente/<id> no método POST -->
+    <form action="{{ url_for('corrigir_divergente', id=rd[0]) }}" method="POST" enctype="multipart/form-data" class="main-form">
+      <label for="arquivo">Incluir novos anexos (opcional):</label>
+      <input type="file" id="arquivo" name="arquivo" multiple>
+
+      <!-- Botão para salvar correções -->
+      <button type="submit">
+        <i class="fas fa-save"></i> Salvar Correções
+      </button>
+    </form>
+
+    <div style="text-align:center; margin-top:10px;">
+      <a href="{{ url_for('anexos_divergentes') }}" style="background:#3498db; color:#fff; padding:10px; border-radius:5px; text-decoration:none;">
+        ← Voltar
+      </a>
+    </div>
+  {% endif %}
+</div>
+
+<footer>
+  Desenvolvido por André Ferreira
+</footer>
+</body>
+</html>

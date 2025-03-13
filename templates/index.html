@@ -96,6 +96,21 @@
     .btn-edit {
       background-color: #f1c40f; color: #34495e;
     }
+
+    /* Classes para o botão azul animado */
+    .btn-blue {
+      background-color: #3498db;
+      color: #fff;
+    }
+    .btn-animated {
+      animation: pulse 1.4s infinite;
+    }
+    @keyframes pulse {
+      0%   { transform: scale(1); }
+      50%  { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+
     table {
       width: 100%; border-collapse: collapse;
       margin-top: 20px; background: #fff; border-radius: 8px;
@@ -331,15 +346,19 @@
       </form>
       {% endif %}
       <div style="text-align:center; margin:20px 0;">
-       <a href="{{ url_for('cadastro_funcionario') }}" class="btn btn-success" style="margin-right: 10px;">
-    <i class="fas fa-user-plus"></i> Cadastro Funcionários
-  </a>
-  <a href="{{ url_for('consulta_funcionario') }}" class="btn btn-success" style="margin-right: 10px;">
-    <i class="fas fa-search"></i> Consulta Funcionários
-  </a>
-  <a href="{{ url_for('export_excel') }}" class="btn btn-success">
-    <i class="fas fa-file-excel"></i> Exportar para Excel
-  </a>
+        <a href="{{ url_for('cadastro_funcionario') }}" class="btn btn-success" style="margin-right: 10px;">
+          <i class="fas fa-user-plus"></i> Cadastro Funcionários
+        </a>
+        <a href="{{ url_for('consulta_funcionario') }}" class="btn btn-success" style="margin-right: 10px;">
+          <i class="fas fa-search"></i> Consulta Funcionários
+        </a>
+        <!-- NOVO BOTÃO PARA LISTA DE RDs DIVERGENTES -->
+        <a href="{{ url_for('anexos_divergentes') }}" class="btn btn-blue btn-animated" style="margin-right: 10px;">
+          <i class="fas fa-paperclip"></i> Anexos Divergentes
+        </a>
+        <a href="{{ url_for('export_excel') }}" class="btn btn-success">
+          <i class="fas fa-file-excel"></i> Exportar para Excel
+        </a>
       </div>
 
       <!-- Macro para mostrar os valores -->
@@ -582,6 +601,14 @@
                       <form action="/" method="GET" class="action-form">
                         <input type="hidden" name="fechamento" value="{{ rd_id }}">
                         <button type="submit" class="btn btn-fechamento"><i class="fas fa-lock"></i> Fechamento</button>
+                      </form>
+                    {% endif %}
+                    <!-- BOTÃO PARA MARCAR COMO DIVERGENTE (APENAS GESTOR OU SOLICITANTE) -->
+                    {% if user_role in ['gestor', 'solicitante'] %}
+                      <form action="{{ url_for('marcar_divergente', id=rd_id) }}" method="GET" style="margin-top:5px;">
+                        <button type="submit" class="btn btn-blue btn-animated">
+                          <i class="fas fa-exclamation-circle"></i> Anexo Divergente
+                        </button>
                       </form>
                     {% endif %}
                   </td>
