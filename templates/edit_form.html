@@ -51,6 +51,11 @@
             font-size: 1rem;
             box-sizing: border-box;
         }
+        /* Campo desabilitado fica com fundo levemente cinza */
+        .main-form input[disabled], .main-form textarea[disabled] {
+            background-color: #f0f0f0;
+            color: #888;
+        }
         .main-form button {
             background-color: #3498db;
             color: #ffffff;
@@ -81,8 +86,41 @@
 <body>
 <div class="container">
     <h1>Editar RD #{{ rd[0] }}</h1>
+
     <form action="{{ url_for('edit_submit', id=rd[0]) }}" method="POST" class="main-form" enctype="multipart/form-data">
-        
+
+      <!-- Verificamos se user_role == 'supervisor'. Se for, escondemos/desabilitamos campos de valor/solicitante/etc. -->
+      {% if user_role == 'supervisor' %}
+      
+        <p style="color:#e67e22; font-weight:600;">Supervisor: você pode apenas gerenciar anexos.</p>
+
+        <!-- Supervisor não pode editar solicitante, funcionário, valor, etc. Desabilitamos ou omitimos -->
+        <label for="solicitante">Solicitante:</label>
+        <input type="text" id="solicitante" name="solicitante" value="{{ rd[1] }}" disabled>
+
+        <label for="funcionario">Funcionário:</label>
+        <input type="text" id="funcionario" name="funcionario" value="{{ rd[2] }}" disabled>
+
+        <label for="data">Data:</label>
+        <input type="date" id="data" name="data" value="{{ rd[3] }}" disabled>
+
+        <label for="centro_custo">Centro de Custo:</label>
+        <input type="text" id="centro_custo" name="centro_custo" value="{{ rd[4] }}" disabled>
+
+        <label for="valor">Valor (R$):</label>
+        <input type="number" id="valor" name="valor" value="{{ rd[5] }}" step="0.01" disabled>
+
+        <label for="observacao">Observação:</label>
+        <textarea id="observacao" name="observacao" rows="4" disabled>{{ rd[16] if rd|length > 16 else '' }}</textarea>
+
+        <label for="arquivo">Anexar Novos Arquivos (opcional):</label>
+        <input type="file" id="arquivo" name="arquivo" multiple>
+
+        <button type="submit">Salvar (Apenas Anexos)</button>
+
+      {% else %}
+      
+        <!-- Caso contrário, usuários comuns veem todos os campos editáveis -->
         <label for="solicitante">Solicitante:</label>
         <input type="text" id="solicitante" name="solicitante" value="{{ rd[1] }}" required>
 
@@ -98,16 +136,16 @@
         <label for="valor">Valor (R$):</label>
         <input type="number" id="valor" name="valor" value="{{ rd[5] }}" step="0.01" required>
 
-        <!-- Novo campo: Observação -->
         <label for="observacao">Observação:</label>
-        <textarea id="observacao" name="observacao" rows="4">
-            {{ rd[16] if rd|length > 16 else '' }}
-        </textarea>
+        <textarea id="observacao" name="observacao" rows="4">{{ rd[16] if rd|length > 16 else '' }}</textarea>
 
         <label for="arquivo">Anexar Novos Arquivos (opcional):</label>
         <input type="file" id="arquivo" name="arquivo" multiple>
 
         <button type="submit">Salvar Alterações</button>
+
+      {% endif %}
+
     </form>
     <a href="{{ url_for('index') }}" class="back-link">Voltar</a>
 </div>
