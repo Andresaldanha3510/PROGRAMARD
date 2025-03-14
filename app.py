@@ -40,7 +40,6 @@ def delete_file_from_r2(object_name):
     )
     s3.delete_object(Bucket=R2_BUCKET_NAME, Key=object_name)
 
-
 # ============ Config. Excel ============
 import io
 import xlsxwriter
@@ -53,7 +52,6 @@ secret_key = os.getenv("SECRET_KEY", "secret123")
 app.secret_key = secret_key
 logging.debug("SECRET_KEY carregado corretamente.")
 
-
 # ============ Config. BD ============
 PG_HOST = os.getenv("PG_HOST", "dpg-ctjqnsdds78s73erdqi0-a.oregon-postgres.render.com")
 PG_PORT = os.getenv("PG_PORT", "5432")
@@ -63,7 +61,6 @@ PG_PASSWORD = os.getenv("PG_PASSWORD", "hU9wJmIfgiyCg02KFQ3a4AropKSMopXr")
 
 def get_pg_connection():
     try:
-        import psycopg2
         conn = psycopg2.connect(
             host=PG_HOST,
             port=PG_PORT,
@@ -155,7 +152,6 @@ def init_db():
     cursor.close()
     conn.close()
 
-
 # ====== Funções de lógica ======
 def generate_custom_id():
     current_year = datetime.now().year % 100
@@ -190,7 +186,7 @@ def is_financeiro():
 def can_add():
     return user_role() in ["solicitante","gestor","financeiro"]
 
-# Supervisor pode editar apenas anexos - aqui permitimos que ele passe em can_edit
+# Supervisor pode editar apenas anexos; se o usuário for supervisor, o UPDATE só altera a coluna de arquivos.
 def can_edit(status):
     if status == "Fechado":
         return False
@@ -257,7 +253,6 @@ app.jinja_env.globals.update(
     format_currency=format_currency
 )
 
-
 # ============ ROTAS ============
 
 @app.route("/", methods=["GET","POST"])
@@ -290,32 +285,35 @@ def index():
     conn = get_pg_connection()
     cursor = conn.cursor()
 
-    # Se for supervisor, mostra só Liberados
     if user_role()=="supervisor":
         cursor.execute("SELECT * FROM rd WHERE status='Liberado'")
         liberados = cursor.fetchall()
         pendentes = []
         aprovados = []
-        fechamento_solicitado=[]
-        fechamento_recusado=[]
-        fechados=[]
+        fechamento_solicitado = []
+        fechamento_recusado = []
+        fechados = []
+        # Para supervisor, contar os RDs com anexos divergentes
+        cursor.execute("SELECT COUNT(*) FROM rd WHERE anexo_divergente=TRUE")
+        divergentes_count = cursor.fetchone()[0]
     else:
         cursor.execute("SELECT * FROM rd WHERE status='Pendente'")
-        pendentes=cursor.fetchall()
+        pendentes = cursor.fetchall()
         cursor.execute("SELECT * FROM rd WHERE status='Aprovado'")
-        aprovados=cursor.fetchall()
+        aprovados = cursor.fetchall()
         cursor.execute("SELECT * FROM rd WHERE status='Liberado'")
-        liberados=cursor.fetchall()
+        liberados = cursor.fetchall()
         cursor.execute("SELECT * FROM rd WHERE status='Fechamento Solicitado'")
-        fechamento_solicitado=cursor.fetchall()
+        fechamento_solicitado = cursor.fetchall()
         cursor.execute("SELECT * FROM rd WHERE status='Fechamento Recusado'")
-        fechamento_recusado=cursor.fetchall()
+        fechamento_recusado = cursor.fetchall()
         cursor.execute("SELECT * FROM rd WHERE status='Fechado'")
-        fechados=cursor.fetchall()
+        fechados = cursor.fetchall()
+        divergentes_count = 0
 
     saldo_global = get_saldo_global()
     adicional_id = request.args.get("adicional")
-    fechamento_id= request.args.get("fechamento")
+    fechamento_id = request.args.get("fechamento")
     conn.close()
 
     return render_template(
@@ -330,6 +328,7 @@ def index():
         fechamento_solicitado=fechamento_solicitado,
         fechamento_recusado=fechamento_recusado,
         fechados=fechados,
+        divergentes_count=divergentes_count,
         can_add=can_add(),
         can_delete_func=can_delete,
         can_edit_func=can_edit,
@@ -355,13 +354,13 @@ def add_rd():
     unidade_negocio = request.form.get("unidade_negocio","").strip()
 
     try:
-        valor = float(request.form["valor"].replace(",","."))
+        valor = float(request.form["valor"].replace(",",".")) 
     except:
         flash("Valor inválido.")
         return redirect(url_for("index"))
 
     custom_id = generate_custom_id()
-    arquivos=[]
+    arquivos = []
     if "arquivo" in request.files:
         for f in request.files.getlist("arquivo"):
             if f.filename:
@@ -371,7 +370,7 @@ def add_rd():
     arquivos_str = ",".join(arquivos) if arquivos else None
 
     conn = get_pg_connection()
-    cursor=conn.cursor()
+    cursor = conn.cursor()
     cursor.execute("""
     INSERT INTO rd (
       id, solicitante, funcionario, data, centro_custo,
@@ -381,31 +380,29 @@ def add_rd():
     VALUES (%s,%s,%s,%s,%s,
             %s,%s,%s,0,%s,
             %s,%s)
-    """,(custom_id, solicitante, funcionario, data_str, centro_custo,
-         valor,"Pendente",arquivos_str,observacao,rd_tipo,unidade_negocio))
+    """, (custom_id, solicitante, funcionario, data_str, centro_custo,
+          valor, "Pendente", arquivos_str, observacao, rd_tipo, unidade_negocio))
     conn.commit()
     cursor.close()
     conn.close()
     flash("RD adicionada com sucesso.")
     return redirect(url_for("index"))
 
-
 def can_edit_status(id):
     conn = get_pg_connection()
-    cursor=conn.cursor()
-    cursor.execute("SELECT status FROM rd WHERE id=%s",(id,))
-    row=cursor.fetchone()
+    cursor = conn.cursor()
+    cursor.execute("SELECT status FROM rd WHERE id=%s", (id,))
+    row = cursor.fetchone()
     conn.close()
     if not row:
         return False
     return can_edit(row[0])
 
-
 @app.route("/edit_form/<id>", methods=["GET"])
 def edit_form(id):
     conn = get_pg_connection()
-    cursor=conn.cursor()
-    cursor.execute("SELECT * FROM rd WHERE id=%s",(id,))
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM rd WHERE id=%s", (id,))
     rd = cursor.fetchone()
     conn.close()
 
@@ -417,9 +414,8 @@ def edit_form(id):
         flash("Acesso negado.")
         return "Acesso negado",403
 
-    # Passamos user_role ao template, p/ ocultar campos do supervisor
+    # Passamos user_role para o template para que o supervisor possa ter interface diferenciada
     return render_template("edit_form.html", rd=rd, user_role=session.get("user_role"))
-
 
 @app.route("/edit_submit/<id>", methods=["POST"])
 def edit_submit(id):
@@ -428,14 +424,14 @@ def edit_submit(id):
         return "Acesso negado",403
 
     conn = get_pg_connection()
-    cursor=conn.cursor()
+    cursor = conn.cursor()
 
-    cursor.execute("SELECT status, arquivos FROM rd WHERE id=%s",(id,))
+    cursor.execute("SELECT status, arquivos FROM rd WHERE id=%s", (id,))
     row = cursor.fetchone()
     original_status = row[0]
-    arquivos_str    = row[1]
+    arquivos_str = row[1]
 
-    # Sempre atualizamos anexos
+    # Atualização dos anexos sempre
     arqs_list = arquivos_str.split(",") if arquivos_str else []
     if "arquivo" in request.files:
         for f in request.files.getlist("arquivo"):
@@ -445,11 +441,10 @@ def edit_submit(id):
                 arqs_list.append(fname)
     new_arqs = ",".join(arqs_list) if arqs_list else None
 
-    # Se user_role == 'supervisor', só atualiza anexos
-    if user_role()=="supervisor":
-        cursor.execute("UPDATE rd SET arquivos=%s WHERE id=%s",(new_arqs,id))
+    # Se o usuário for supervisor, atualiza somente os anexos
+    if user_role() == "supervisor":
+        cursor.execute("UPDATE rd SET arquivos=%s WHERE id=%s", (new_arqs, id))
     else:
-        # Demais usuários -> edita todos os campos
         solicitante     = request.form["solicitante"].strip()
         funcionario     = request.form["funcionario"].strip()
         data_str        = request.form["data"].strip()
@@ -458,7 +453,7 @@ def edit_submit(id):
         unidade_negocio = request.form.get("unidade_negocio","").strip()
 
         try:
-            valor_novo = float(request.form["valor"].replace(",","."))
+            valor_novo = float(request.form["valor"].replace(",",".")) 
         except:
             flash("Valor inválido.")
             conn.close()
@@ -475,12 +470,11 @@ def edit_submit(id):
             observacao=%s,
             unidade_negocio=%s
         WHERE id=%s
-        """,(solicitante,funcionario,data_str,centro_custo,valor_novo,
-              new_arqs,observacao,unidade_negocio,id))
+        """, (solicitante, funcionario, data_str, centro_custo, valor_novo,
+              new_arqs, observacao, unidade_negocio, id))
 
-        # Se era solicitante e original_status=='Fechamento Recusado'
-        if is_solicitante() and original_status=="Fechamento Recusado":
-            cursor.execute("UPDATE rd SET status='Fechamento Solicitado', motivo_recusa=NULL WHERE id=%s",(id,))
+        if is_solicitante() and original_status == "Fechamento Recusado":
+            cursor.execute("UPDATE rd SET status='Fechamento Solicitado', motivo_recusa=NULL WHERE id=%s", (id,))
 
     conn.commit()
     cursor.close()
@@ -489,12 +483,11 @@ def edit_submit(id):
     flash("RD atualizada com sucesso.")
     return redirect(url_for("index"))
 
-
 @app.route("/approve/<id>", methods=["POST"])
 def approve(id):
     conn = get_pg_connection()
-    cursor=conn.cursor()
-    cursor.execute("SELECT status, valor, valor_adicional, tipo FROM rd WHERE id=%s",(id,))
+    cursor = conn.cursor()
+    cursor.execute("SELECT status, valor, valor_adicional, tipo FROM rd WHERE id=%s", (id,))
     row = cursor.fetchone()
     if not row:
         conn.close()
@@ -509,32 +502,32 @@ def approve(id):
 
     now = datetime.now().strftime("%Y-%m-%d")
 
-    if st_atual=="Pendente" and is_gestor():
-        new_st="Aprovado"
+    if st_atual == "Pendente" and is_gestor():
+        new_st = "Aprovado"
         cursor.execute("""
         UPDATE rd SET status=%s, aprovado_data=%s
         WHERE id=%s
-        """,(new_st, now, id))
-    elif st_atual=="Aprovado" and is_financeiro():
-        if rd_tipo.lower()=="reembolso":
-            new_st="Fechado"
+        """, (new_st, now, id))
+    elif st_atual == "Aprovado" and is_financeiro():
+        if rd_tipo.lower() == "reembolso":
+            new_st = "Fechado"
             cursor.execute("""
             UPDATE rd SET status=%s, data_fechamento=%s
             WHERE id=%s
-            """,(new_st, now, id))
+            """, (new_st, now, id))
         else:
-            new_st="Liberado"
+            new_st = "Liberado"
             total_credit = val + (val_adic or 0)
-            saldo_atual  = get_saldo_global()
-            novo_saldo   = saldo_atual - total_credit
+            saldo_atual = get_saldo_global()
+            novo_saldo = saldo_atual - total_credit
             set_saldo_global(novo_saldo)
             cursor.execute("""
             UPDATE rd SET status=%s, liberado_data=%s, valor_liberado=%s
             WHERE id=%s
-            """,(new_st, now, total_credit, id))
-    elif st_atual=="Fechamento Solicitado" and is_gestor():
-        new_st="Fechado"
-        cursor.execute("UPDATE rd SET status=%s WHERE id=%s",(new_st,id))
+            """, (new_st, now, total_credit, id))
+    elif st_atual == "Fechamento Solicitado" and is_gestor():
+        new_st = "Fechado"
+        cursor.execute("UPDATE rd SET status=%s WHERE id=%s", (new_st, id))
     else:
         conn.close()
         flash("Não é possível aprovar/liberar esta RD.")
@@ -546,13 +539,12 @@ def approve(id):
     flash("Operação realizada com sucesso.")
     return redirect(url_for("index"))
 
-
 @app.route("/delete/<id>", methods=["POST"])
 def delete_rd(id):
     conn = get_pg_connection()
-    cursor=conn.cursor()
-    cursor.execute("SELECT solicitante, status, valor_liberado FROM rd WHERE id=%s",(id,))
-    row=cursor.fetchone()
+    cursor = conn.cursor()
+    cursor.execute("SELECT solicitante, status, valor_liberado FROM rd WHERE id=%s", (id,))
+    row = cursor.fetchone()
     if not row:
         conn.close()
         flash("RD não encontrada.")
@@ -564,31 +556,30 @@ def delete_rd(id):
         flash("Ação não permitida.")
         return redirect(url_for("index"))
 
-    if rd_status=="Liberado" and rd_liber and rd_liber>0:
+    if rd_status == "Liberado" and rd_liber and rd_liber > 0:
         saldo = get_saldo_global()
-        set_saldo_global(saldo+rd_liber)
+        set_saldo_global(saldo + rd_liber)
 
-    cursor.execute("SELECT arquivos FROM rd WHERE id=%s",(id,))
+    cursor.execute("SELECT arquivos FROM rd WHERE id=%s", (id,))
     arq_str = cursor.fetchone()[0]
     if arq_str:
         for a in arq_str.split(","):
             delete_file_from_r2(a)
 
-    cursor.execute("DELETE FROM rd WHERE id=%s",(id,))
+    cursor.execute("DELETE FROM rd WHERE id=%s", (id,))
     conn.commit()
     cursor.close()
     conn.close()
     flash("RD excluída com sucesso.")
     return redirect(url_for("index"))
 
-
 @app.route("/adicional_submit/<id>", methods=["POST"])
 def adicional_submit(id):
     if "arquivo" in request.files:
         conn = get_pg_connection()
-        cursor=conn.cursor()
-        cursor.execute("SELECT arquivos FROM rd WHERE id=%s",(id,))
-        row=cursor.fetchone()
+        cursor = conn.cursor()
+        cursor.execute("SELECT arquivos FROM rd WHERE id=%s", (id,))
+        row = cursor.fetchone()
         arqs_atual = row[0].split(",") if row and row[0] else []
         for f in request.files.getlist("arquivo"):
             if f.filename:
@@ -596,21 +587,21 @@ def adicional_submit(id):
                 upload_file_to_r2(f, fname)
                 arqs_atual.append(fname)
         new_arqs_str = ",".join(arqs_atual) if arqs_atual else None
-        cursor.execute("UPDATE rd SET arquivos=%s WHERE id=%s",(new_arqs_str,id))
+        cursor.execute("UPDATE rd SET arquivos=%s WHERE id=%s", (new_arqs_str, id))
         conn.commit()
         cursor.close()
         conn.close()
 
     try:
-        val_adi = float(request.form["valor_adicional"].replace(",",".")) 
+        val_adi = float(request.form["valor_adicional"].replace(",", "."))
     except:
         flash("Valor adicional inválido.")
         return redirect(url_for("index"))
 
     conn = get_pg_connection()
-    cursor=conn.cursor()
-    cursor.execute("SELECT status, valor_adicional, adicionais_individuais, valor FROM rd WHERE id=%s",(id,))
-    row=cursor.fetchone()
+    cursor = conn.cursor()
+    cursor.execute("SELECT status, valor_adicional, adicionais_individuais, valor FROM rd WHERE id=%s", (id,))
+    row = cursor.fetchone()
     if not row:
         conn.close()
         flash("RD não encontrada.")
@@ -622,10 +613,10 @@ def adicional_submit(id):
         flash("Não é possível solicitar adicional agora.")
         return redirect(url_for("index"))
 
-    novo_total = (val_adic_atual or 0)+val_adi
+    novo_total = (val_adic_atual or 0) + val_adi
     if add_ind:
         partes = [x.strip() for x in add_ind.split(",")]
-        idx = len(partes)+1
+        idx = len(partes) + 1
         add_ind = add_ind + f", Adicional {idx}:{val_adi}"
     else:
         add_ind = f"Adicional 1:{val_adi}"
@@ -635,21 +626,20 @@ def adicional_submit(id):
     UPDATE rd
     SET valor_adicional=%s, adicional_data=%s, status='Pendente', adicionais_individuais=%s
     WHERE id=%s
-    """,(novo_total, data_add, add_ind, id))
+    """, (novo_total, data_add, add_ind, id))
     conn.commit()
     cursor.close()
     conn.close()
     flash("Crédito adicional solicitado. A RD voltou para 'Pendente'.")
     return redirect(url_for("index"))
 
-
 @app.route("/fechamento_submit/<id>", methods=["POST"])
 def fechamento_submit(id):
     if "arquivo" in request.files:
         conn = get_pg_connection()
-        cursor=conn.cursor()
-        cursor.execute("SELECT arquivos FROM rd WHERE id=%s",(id,))
-        row=cursor.fetchone()
+        cursor = conn.cursor()
+        cursor.execute("SELECT arquivos FROM rd WHERE id=%s", (id,))
+        row = cursor.fetchone()
         a_list = row[0].split(",") if row and row[0] else []
         for f in request.files.getlist("arquivo"):
             if f.filename:
@@ -657,21 +647,21 @@ def fechamento_submit(id):
                 upload_file_to_r2(f, fname)
                 a_list.append(fname)
         new_str = ",".join(a_list) if a_list else None
-        cursor.execute("UPDATE rd SET arquivos=%s WHERE id=%s",(new_str,id))
+        cursor.execute("UPDATE rd SET arquivos=%s WHERE id=%s", (new_str, id))
         conn.commit()
         cursor.close()
         conn.close()
 
     try:
-        val_desp = float(request.form["valor_despesa"].replace(",",".")) 
+        val_desp = float(request.form["valor_despesa"].replace(",", "."))
     except:
         flash("Valor da despesa inválido.")
         return redirect(url_for("index"))
 
     conn = get_pg_connection()
-    cursor=conn.cursor()
-    cursor.execute("SELECT valor, valor_adicional, status FROM rd WHERE id=%s",(id,))
-    row=cursor.fetchone()
+    cursor = conn.cursor()
+    cursor.execute("SELECT valor, valor_adicional, status FROM rd WHERE id=%s", (id,))
+    row = cursor.fetchone()
     if not row:
         conn.close()
         flash("RD não encontrada.")
@@ -684,7 +674,7 @@ def fechamento_submit(id):
         return redirect(url_for("index"))
 
     total_cred = val_sol + (val_adic or 0)
-    if total_cred<val_desp:
+    if total_cred < val_desp:
         conn.close()
         flash("Valor da despesa maior que o total de créditos solicitados.")
         return redirect(url_for("index"))
@@ -696,7 +686,7 @@ def fechamento_submit(id):
     SET valor_despesa=%s, saldo_devolver=%s, data_fechamento=%s,
         status='Fechamento Solicitado'
     WHERE id=%s
-    """,(val_desp,saldo_dev,data_fech,id))
+    """, (val_desp, saldo_dev, data_fech, id))
     conn.commit()
     cursor.close()
     conn.close()
@@ -709,24 +699,24 @@ def reject_fechamento(id):
         flash("Acesso negado.")
         return redirect(url_for("index"))
     conn = get_pg_connection()
-    cursor=conn.cursor()
-    cursor.execute("SELECT status FROM rd WHERE id=%s",(id,))
-    row=cursor.fetchone()
-    if not row or row[0]!="Fechamento Solicitado":
+    cursor = conn.cursor()
+    cursor.execute("SELECT status FROM rd WHERE id=%s", (id,))
+    row = cursor.fetchone()
+    if not row or row[0] != "Fechamento Solicitado":
         conn.close()
         flash("Ação não permitida.")
         return redirect(url_for("index"))
-
-    motivo = request.form.get("motivo","").strip()
+    
+    motivo = request.form.get("motivo", "").strip()
     if not motivo:
         flash("Informe um motivo para a recusa.")
         return redirect(url_for("index"))
-
+    
     cursor.execute("""
     UPDATE rd
     SET status='Fechamento Recusado', motivo_recusa=%s
     WHERE id=%s
-    """,(motivo,id))
+    """, (motivo, id))
     conn.commit()
     cursor.close()
     conn.close()
@@ -745,7 +735,7 @@ def edit_saldo():
         return redirect(url_for("index"))
 
     try:
-        novo_saldo = float(request.form["saldo_global"].replace(",",".")) 
+        novo_saldo = float(request.form["saldo_global"].replace(",", "."))
     except:
         flash("Saldo inválido.")
         return redirect(url_for("index"))
@@ -762,9 +752,9 @@ def delete_file(id):
         return redirect(request.referrer or url_for("index"))
 
     conn = get_pg_connection()
-    cursor=conn.cursor()
-    cursor.execute("SELECT arquivos, status, solicitante FROM rd WHERE id=%s",(id,))
-    row=cursor.fetchone()
+    cursor = conn.cursor()
+    cursor.execute("SELECT arquivos, status, solicitante FROM rd WHERE id=%s", (id,))
+    row = cursor.fetchone()
     if not row:
         conn.close()
         flash("RD não encontrada.")
@@ -790,7 +780,7 @@ def delete_file(id):
     delete_file_from_r2(filename)
     arq_list.remove(filename)
     new_str = ",".join(arq_list) if arq_list else None
-    cursor.execute("UPDATE rd SET arquivos=%s WHERE id=%s",(new_str,id))
+    cursor.execute("UPDATE rd SET arquivos=%s WHERE id=%s", (new_str, id))
     conn.commit()
     cursor.close()
     conn.close()
@@ -804,31 +794,28 @@ def registrar_saldo_devolvido(id):
         return redirect(url_for("index"))
 
     conn = get_pg_connection()
-    cursor=conn.cursor()
-    cursor.execute("SELECT valor, valor_adicional, valor_despesa, data_saldo_devolvido FROM rd WHERE id=%s",(id,))
-    row=cursor.fetchone()
+    cursor = conn.cursor()
+    cursor.execute("SELECT valor, valor_adicional, valor_despesa, data_saldo_devolvido FROM rd WHERE id=%s", (id,))
+    row = cursor.fetchone()
     if not row:
         conn.close()
         flash("RD não encontrada.")
         return redirect(url_for("index"))
-
     val_sol, val_adic, val_desp, data_sal_dev = row
     if data_sal_dev:
         conn.close()
         flash("Saldo já registrado antes.")
         return redirect(url_for("index"))
-
     total_cred = val_sol + (val_adic or 0)
-    if total_cred<(val_desp or 0):
+    if total_cred < (val_desp or 0):
         conn.close()
         flash("Despesa maior que o total de créditos.")
         return redirect(url_for("index"))
-
     saldo_dev = total_cred - (val_desp or 0)
     saldo = get_saldo_global()
-    set_saldo_global(saldo+saldo_dev)
+    set_saldo_global(saldo + saldo_dev)
     now = datetime.now().strftime("%Y-%m-%d")
-    cursor.execute("UPDATE rd SET data_saldo_devolvido=%s WHERE id=%s",(now,id))
+    cursor.execute("UPDATE rd SET data_saldo_devolvido=%s WHERE id=%s", (now, id))
     conn.commit()
     cursor.close()
     conn.close()
@@ -838,49 +825,49 @@ def registrar_saldo_devolvido(id):
 @app.route("/export_excel", methods=["GET"])
 def export_excel():
     conn = get_pg_connection()
-    cursor=conn.cursor()
+    cursor = conn.cursor()
     cursor.execute("SELECT * FROM rd ORDER BY id ASC")
     rd_list = cursor.fetchall()
     saldo_global = get_saldo_global()
     output = io.BytesIO()
-    wb = xlsxwriter.Workbook(output,{"in_memory":True})
+    wb = xlsxwriter.Workbook(output, {"in_memory": True})
     ws = wb.add_worksheet("Relatorio")
 
     header = [
-       "Número RD","Data Solicitação","Solicitante","Funcionário","Valor Solicitado",
-       "Valor Adicional","Data do Adicional","Centro de Custo","Valor Gasto","Saldo a Devolver",
-       "Data de Fechamento","Saldo Global"
+       "Número RD", "Data Solicitação", "Solicitante", "Funcionário", "Valor Solicitado",
+       "Valor Adicional", "Data do Adicional", "Centro de Custo", "Valor Gasto", "Saldo a Devolver",
+       "Data de Fechamento", "Saldo Global"
     ]
-    for col,h in enumerate(header):
-        ws.write(0,col,h)
+    for col, h in enumerate(header):
+        ws.write(0, col, h)
 
-    rowi=1
+    rowi = 1
     for rd_row in rd_list:
-        rd_id    = rd_row[0]
-        rd_data  = rd_row[3]
+        rd_id = rd_row[0]
+        rd_data = rd_row[3]
         rd_solic = rd_row[1]
-        rd_func  = rd_row[2]
+        rd_func = rd_row[2]
         rd_valor = rd_row[5]
-        rd_val_adic=rd_row[7]
-        rd_adic_data=rd_row[8]
-        rd_ccusto=rd_row[4]
+        rd_val_adic = rd_row[7]
+        rd_adic_data = rd_row[8]
+        rd_ccusto = rd_row[4]
         rd_desp = rd_row[9]
         rd_saldo_dev = rd_row[10]
-        rd_data_fech= rd_row[11]
+        rd_data_fech = rd_row[11]
 
-        ws.write(rowi,0,rd_id)
-        ws.write(rowi,1,str(rd_data))
-        ws.write(rowi,2,rd_solic)
-        ws.write(rowi,3,rd_func)
-        ws.write(rowi,4,float(rd_valor or 0))
-        ws.write(rowi,5,float(rd_val_adic or 0))
-        ws.write(rowi,6,str(rd_adic_data or ""))
-        ws.write(rowi,7,rd_ccusto)
-        ws.write(rowi,8,float(rd_desp or 0))
-        ws.write(rowi,9,float(rd_saldo_dev or 0))
-        ws.write(rowi,10,str(rd_data_fech or ""))
-        ws.write(rowi,11,float(saldo_global))
-        rowi+=1
+        ws.write(rowi, 0, rd_id)
+        ws.write(rowi, 1, str(rd_data))
+        ws.write(rowi, 2, rd_solic)
+        ws.write(rowi, 3, rd_func)
+        ws.write(rowi, 4, float(rd_valor or 0))
+        ws.write(rowi, 5, float(rd_val_adic or 0))
+        ws.write(rowi, 6, str(rd_adic_data or ""))
+        ws.write(rowi, 7, rd_ccusto)
+        ws.write(rowi, 8, float(rd_desp or 0))
+        ws.write(rowi, 9, float(rd_saldo_dev or 0))
+        ws.write(rowi, 10, str(rd_data_fech or ""))
+        ws.write(rowi, 11, float(saldo_global))
+        rowi += 1
 
     wb.close()
     output.seek(0)
@@ -908,14 +895,14 @@ def cadastro_funcionario():
 def cadastrar_funcionario():
     nome = request.form["nome"].strip()
     centro_custo = request.form["centroCusto"].strip()
-    unidade_negocio= request.form["unidadeNegocio"].strip()
+    unidade_negocio = request.form["unidadeNegocio"].strip()
 
     conn = get_pg_connection()
-    cursor=conn.cursor()
+    cursor = conn.cursor()
     cursor.execute("""
     INSERT INTO funcionarios (nome, centro_custo, unidade_negocio)
-    VALUES (%s,%s,%s)
-    """,(nome,centro_custo,unidade_negocio))
+    VALUES (%s, %s, %s)
+    """, (nome, centro_custo, unidade_negocio))
     conn.commit()
     cursor.close()
     conn.close()
@@ -925,44 +912,42 @@ def cadastrar_funcionario():
 @app.route("/consulta_funcionario", methods=["GET"])
 def consulta_funcionario():
     conn = get_pg_connection()
-    cursor=conn.cursor()
+    cursor = conn.cursor()
     cursor.execute("SELECT * FROM funcionarios ORDER BY nome ASC")
     funcionarios = cursor.fetchall()
     conn.close()
     return render_template("consulta_funcionario.html", funcionarios=funcionarios)
 
 # =========== Divergentes ===========
-
 @app.route("/marcar_divergente/<id>", methods=["GET","POST"])
 def marcar_divergente(id):
     """
     Ao clicar no botão "Anexo Divergente" na aba Liberados,
     gestor/solicitante insere o motivo antes de marcar divergente.
     """
-    if "user_role" not in session or session["user_role"] not in ["gestor","solicitante"]:
+    if "user_role" not in session or session["user_role"] not in ["gestor", "solicitante"]:
         flash("Ação não permitida.")
         return redirect(url_for("index"))
 
-    if request.method=="GET":
-        # Exibimos um form p/ digitar 'motivo_divergente'
+    if request.method == "GET":
+        # Exibe um formulário para digitar o motivo
         return render_template("motivo_divergente.html", rd_id=id)
     else:
-        # POST: grava no BD
-        motivo_div = request.form.get("motivo_divergente","").strip()
+        # POST: grava o motivo no BD e marca o RD como divergente
+        motivo_div = request.form.get("motivo_divergente", "").strip()
         conn = get_pg_connection()
-        cursor=conn.cursor()
+        cursor = conn.cursor()
         cursor.execute("""
         UPDATE rd
-        SET anexo_divergente=TRUE,
-            motivo_divergente=%s
-        WHERE id=%s
-        """,(motivo_div, id))
+        SET anexo_divergente = TRUE,
+            motivo_divergente = %s
+        WHERE id = %s
+        """, (motivo_div, id))
         conn.commit()
         cursor.close()
         conn.close()
         flash("RD marcado como divergente.")
         return redirect(url_for("index"))
-
 
 @app.route("/anexos_divergentes", methods=["GET"])
 def anexos_divergentes():
@@ -971,37 +956,37 @@ def anexos_divergentes():
         return redirect(url_for("index"))
 
     conn = get_pg_connection()
-    cursor=conn.cursor()
-    cursor.execute("SELECT * FROM rd WHERE anexo_divergente=TRUE ORDER BY id")
-    divergentes=cursor.fetchall()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM rd WHERE anexo_divergente = TRUE ORDER BY id")
+    divergentes = cursor.fetchall()
     cursor.close()
     conn.close()
 
     return render_template("divergentes.html", divergentes=divergentes, user_role=session.get("user_role"))
 
-@app.route("/corrigir_divergente/<id>", methods=["GET","POST"])
+@app.route("/corrigir_divergente/<id>", methods=["GET", "POST"])
 def corrigir_divergente(id):
-    if "user_role" not in session or session["user_role"]!="supervisor":
+    if "user_role" not in session or session["user_role"] != "supervisor":
         flash("Acesso negado.")
         return redirect(url_for("index"))
 
-    if request.method=="GET":
+    if request.method == "GET":
         conn = get_pg_connection()
-        cursor=conn.cursor()
-        cursor.execute("SELECT * FROM rd WHERE id=%s",(id,))
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM rd WHERE id = %s", (id,))
         rd = cursor.fetchone()
         cursor.close()
         conn.close()
         if not rd:
-            flash("RD não encontrado.")
+            flash("RD não encontrada.")
             return redirect(url_for("anexos_divergentes"))
         return render_template("corrigir_divergente.html", rd=rd)
     else:
-        # POST
+        # POST: atualiza os anexos e remove a marca de divergente, voltando o RD para Liberados
         conn = get_pg_connection()
-        cursor=conn.cursor()
+        cursor = conn.cursor()
 
-        cursor.execute("SELECT arquivos FROM rd WHERE id=%s",(id,))
+        cursor.execute("SELECT arquivos FROM rd WHERE id = %s", (id,))
         row = cursor.fetchone()
         a_list = row[0].split(",") if (row and row[0]) else []
 
@@ -1013,25 +998,23 @@ def corrigir_divergente(id):
                     a_list.append(fname)
         new_arq_str = ",".join(a_list) if a_list else None
 
-        # Atualiza anexos
-        cursor.execute("UPDATE rd SET arquivos=%s WHERE id=%s",(new_arq_str,id))
+        # Atualiza os anexos
+        cursor.execute("UPDATE rd SET arquivos = %s WHERE id = %s", (new_arq_str, id))
         conn.commit()
 
-        # Remove divergência, volta p/ Liberado
+        # Remove a marca de divergente e altera o status para Liberado
         cursor.execute("""
         UPDATE rd
-        SET anexo_divergente=FALSE,
-            status='Liberado'
-        WHERE id=%s
-        """,(id,))
+        SET anexo_divergente = FALSE,
+            status = 'Liberado'
+        WHERE id = %s
+        """, (id,))
         conn.commit()
 
         cursor.close()
         conn.close()
         flash("Correção realizada e RD retornou para Liberados.")
         return redirect(url_for("anexos_divergentes"))
-
-
 
 if __name__ == "__main__":
     init_db()
