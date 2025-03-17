@@ -444,7 +444,7 @@
             <i class="fas fa-search"></i> Consulta Funcionários
           </a>
           <!-- Botão para lista de RDs divergentes -->
-          <a href="{{ url_for('anexos_divergentes') }}" class="btn btn-blue btn-animated" style="margin-right: 10px;">
+          <a href="{{ url_for('anexos_divergentes') }}" class="btn btn-blue {% if divergentes_count > 0 %}btn-animated{% endif %}" style="margin-right: 10px;">
             <i class="fas fa-paperclip"></i> Anexos Divergentes
             {% if divergentes_count > 0 %}
               <span class="badge">{{ divergentes_count }}</span>
@@ -455,23 +455,23 @@
           </a>
         </div>
 
-        <!-- Macro para mostrar os valores -->
+        <!-- Macro para mostrar os valores com datas -->
         {% macro mostrar_valores(rd) %}
           {% set valor = rd[5] %}
           {% set valor_adic = rd[7] if rd[7] else 0 %}
           {% set valor_total = valor + valor_adic %}
           {% set valor_despesa = rd[9] if rd[9] else 0 %}
-          {% set saldo_devolver = rd[10] if rd[10] else (valor_total - valor_despesa) %}
+          {% set saldo_devolver = rd[10] if rd[10] is not none else (valor_total - valor_despesa) %}
           <div class="valor-resumo">
             <span>R${{ format_currency(valor) }}</span>
             <button class="toggle-details" title="Exibir detalhes">+</button>
           </div>
           <div class="rd-details">
-            <strong>Valor Solicitado:</strong> R${{ format_currency(valor) }}<br>
-            <strong>Valor Adicional:</strong> R${{ format_currency(valor_adic) }}<br>
+            <strong>Valor Solicitado:</strong> R${{ format_currency(valor) }} em {{ rd[22] if rd[22] else '-' }}<br>
+            <strong>Valor Adicional:</strong> R${{ format_currency(valor_adic) }} em {{ rd[8] if rd[8] else '-' }}<br>
             <strong>Total da RD:</strong> R${{ format_currency(valor_total) }}<br>
-            <strong>Valor Gasto (Despesa):</strong> R${{ format_currency(valor_despesa) }}<br>
-            <strong>Saldo a Devolver:</strong> R${{ format_currency(saldo_devolver) }}
+            <strong>Valor Gasto (Despesa):</strong> R${{ format_currency(valor_despesa) }} em {{ rd[24] if rd[24] else '-' }}<br>
+            <strong>Saldo a Devolver:</strong> R${{ format_currency(saldo_devolver) }}{% if rd[18] %} em {{ rd[18] }}{% endif %}
           </div>
         {% endmacro %}
 
@@ -503,6 +503,7 @@
                     <th>Funcionário</th>
                     <th>Data</th>
                     <th>Centro de Custo</th>
+                    <th>Unidade de Negócio</th> <!-- Nova coluna -->
                     <th>Observação</th>
                     <th>Arquivos</th>
                     <th>Valores</th>
@@ -519,6 +520,7 @@
                     <td data-label="Funcionário">{{ rd[2] }}</td>
                     <td data-label="Data">{{ rd[3] }}</td>
                     <td data-label="Centro de Custo">{{ rd[4] }}<br><small>{{ rd[19] }}</small></td>
+                    <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td> <!-- Unidade de Negócio (rd[18]) -->
                     <td data-label="Observação">
                       {% if rd[16] %}
                         {% set obs = rd[16] %}
@@ -579,6 +581,7 @@
                     <th>Funcionário</th>
                     <th>Data</th>
                     <th>Centro de Custo</th>
+                    <th>Unidade de Negócio</th> <!-- Nova coluna -->
                     <th>Observação</th>
                     <th>Arquivos</th>
                     <th>Valores</th>
@@ -595,6 +598,7 @@
                     <td data-label="Funcionário">{{ rd[2] }}</td>
                     <td data-label="Data">{{ rd[3] }}</td>
                     <td data-label="Centro de Custo">{{ rd[4] }}</td>
+                    <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td> <!-- Unidade de Negócio (rd[18]) -->
                     <td data-label="Observação">
                       {% if rd[16] %}
                         {% set obs = rd[16] %}
@@ -655,6 +659,7 @@
                     <th>Funcionário</th>
                     <th>Data</th>
                     <th>Centro de Custo</th>
+                    <th>Unidade de Negócio</th> <!-- Nova coluna -->
                     <th>Observação</th>
                     <th>Arquivos</th>
                     <th>Valores</th>
@@ -671,6 +676,7 @@
                     <td data-label="Funcionário">{{ rd[2] }}</td>
                     <td data-label="Data">{{ rd[3] }}</td>
                     <td data-label="Centro de Custo">{{ rd[4] }}</td>
+                    <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td> <!-- Unidade de Negócio (rd[18]) -->
                     <td data-label="Observação">
                       {% if rd[16] %}
                         {% set obs = rd[16] %}
@@ -748,6 +754,7 @@
                     <th>Funcionário</th>
                     <th>Data</th>
                     <th>Centro de Custo</th>
+                    <th>Unidade de Negócio</th> <!-- Nova coluna -->
                     <th>Observação</th>
                     <th>Arquivos</th>
                     <th>Valores</th>
@@ -764,6 +771,7 @@
                     <td data-label="Funcionário">{{ rd[2] }}</td>
                     <td data-label="Data">{{ rd[3] }}</td>
                     <td data-label="Centro de Custo">{{ rd[4] }}</td>
+                    <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td> <!-- Unidade de Negócio (rd[18]) -->
                     <td data-label="Observação">
                       {% if rd[16] %}
                         {% set obs = rd[16] %}
@@ -817,6 +825,7 @@
                     <th>Funcionário</th>
                     <th>Data</th>
                     <th>Centro de Custo</th>
+                    <th>Unidade de Negócio</th> <!-- Nova coluna -->
                     <th>Observação</th>
                     <th>Motivo da Recusa</th>
                     <th>Arquivos</th>
@@ -833,6 +842,7 @@
                     <td data-label="Funcionário">{{ rd[2] }}</td>
                     <td data-label="Data">{{ rd[3] }}</td>
                     <td data-label="Centro de Custo">{{ rd[4] }}</td>
+                    <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td> <!-- Unidade de Negócio (rd[18]) -->
                     <td data-label="Observação">
                       {% if rd[16] %}
                         {% set obs = rd[16] %}
@@ -880,6 +890,7 @@
                     <th>Funcionário</th>
                     <th>Data</th>
                     <th>Centro de Custo</th>
+                    <th>Unidade de Negócio</th> <!-- Nova coluna -->
                     <th>Observação</th>
                     <th>Arquivos</th>
                     <th>Valores</th>
@@ -895,6 +906,7 @@
                     <td data-label="Funcionário">{{ rd[2] }}</td>
                     <td data-label="Data">{{ rd[3] }}</td>
                     <td data-label="Centro de Custo">{{ rd[4] }}</td>
+                    <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td> <!-- Unidade de Negócio (rd[18]) -->
                     <td data-label="Observação">
                       {% if rd[16] %}
                         {% set obs = rd[16] %}
@@ -1074,5 +1086,5 @@
       </form>
     </div>
   </div>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'921d31832853bccc',t:'MTc0MjIyMTg4MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
