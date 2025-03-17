@@ -467,11 +467,11 @@
             <button class="toggle-details" title="Exibir detalhes">+</button>
           </div>
           <div class="rd-details">
-            <strong>Valor Solicitado:</strong> R${{ format_currency(valor) }} em {{ rd[22] if rd[22] else '-' }}<br>
+            <strong>Valor Solicitado:</strong> R${{ format_currency(valor) }} em {{ rd[28] if rd[28] else '-' }}<br>
             <strong>Valor Adicional:</strong> R${{ format_currency(valor_adic) }} em {{ rd[8] if rd[8] else '-' }}<br>
             <strong>Total da RD:</strong> R${{ format_currency(valor_total) }}<br>
-            <strong>Valor Gasto (Despesa):</strong> R${{ format_currency(valor_despesa) }} em {{ rd[24] if rd[24] else '-' }}<br>
-            <strong>Saldo a Devolver:</strong> R${{ format_currency(saldo_devolver) }}{% if rd[18] %} em {{ rd[18] }}{% endif %}
+            <strong>Valor Gasto (Despesa):</strong> R${{ format_currency(valor_despesa) }} em {{ rd[30] if rd[30] else '-' }}<br>
+            <strong>Saldo a Devolver:</strong> R${{ format_currency(saldo_devolver) }}{% if rd[21] %} em {{ rd[21] }}{% endif %}
           </div>
         {% endmacro %}
 
@@ -933,14 +933,14 @@
                     <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
                     <td data-label="Ações">
                       {% if is_financeiro() %}
-                        {% if not rd[18] %}
+                        {% if not rd[21] %}
                           <form action="/registrar_saldo_devolvido/{{ rd_id }}" method="POST" class="action-form">
                             <button type="submit" class="btn btn-warning">
                               <i class="fas fa-money-bill-wave"></i> Saldo Devolvido
                             </button>
                           </form>
                         {% else %}
-                          <span style="color: var(--success-color); font-weight:600;">Devolvido em {{ rd[18] }}</span>
+                          <span style="color: var(--success-color); font-weight:600;">Devolvido em {{ rd[21] }}</span>
                         {% endif %}
                       {% endif %}
                     </td>
@@ -1086,5 +1086,5 @@
       </form>
     </div>
   </div>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'921d31832853bccc',t:'MTc0MjIyMTg4MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'921d31832853bccc',t:'MTc0MjIyMTg4MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'921e3fe0bfef61b4',t:'MTc0MjIzMjk1NS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
