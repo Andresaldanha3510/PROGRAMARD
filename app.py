@@ -102,10 +102,23 @@ def init_db():
         unidade_negocio TEXT,
         motivo_recusa TEXT,
         adicionais_individuais TEXT,
-        data_saldo_devolvido DATE
+        data_saldo_devolvido DATE,
+        data_credito_solicitado DATE,  -- Nova coluna
+        data_credito_liberado DATE,    -- Nova coluna
+        data_debito_despesa DATE       -- Nova coluna
     );
     """
     cursor.execute(create_rd_table)
+
+    # Verificar e adicionar colunas novas, se necessário
+    for col in ['data_credito_solicitado', 'data_credito_liberado', 'data_debito_despesa']:
+        cursor.execute(f"""
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name='rd' AND column_name='{col}'
+        """)
+        if not cursor.fetchone():
+            cursor.execute(f"ALTER TABLE rd ADD COLUMN {col} DATE")
 
     # anexo_divergente
     cursor.execute("""
@@ -360,6 +373,7 @@ def add_rd():
         return redirect(url_for("index"))
 
     custom_id = generate_custom_id()
+    data_atual = datetime.now().strftime("%Y-%m-%d")  # Data atual para crédito solicitado
     arquivos = []
     if "arquivo" in request.files:
         for f in request.files.getlist("arquivo"):
@@ -375,13 +389,13 @@ def add_rd():
     INSERT INTO rd (
       id, solicitante, funcionario, data, centro_custo,
       valor, status, arquivos, valor_liberado, observacao,
-      tipo, unidade_negocio
+      tipo, unidade_negocio, data_credito_solicitado
     )
     VALUES (%s,%s,%s,%s,%s,
             %s,%s,%s,0,%s,
-            %s,%s)
+            %s,%s,%s)
     """, (custom_id, solicitante, funcionario, data_str, centro_custo,
-          valor, "Pendente", arquivos_str, observacao, rd_tipo, unidade_negocio))
+          valor, "Pendente", arquivos_str, observacao, rd_tipo, unidade_negocio, data_atual))
     conn.commit()
     cursor.close()
     conn.close()
@@ -522,9 +536,9 @@ def approve(id):
             novo_saldo = saldo_atual - total_credit
             set_saldo_global(novo_saldo)
             cursor.execute("""
-            UPDATE rd SET status=%s, liberado_data=%s, valor_liberado=%s
+            UPDATE rd SET status=%s, liberado_data=%s, valor_liberado=%s, data_credito_liberado=%s
             WHERE id=%s
-            """, (new_st, now, total_credit, id))
+            """, (new_st, now, total_credit, now, id))
     elif st_atual == "Fechamento Solicitado" and is_gestor():
         new_st = "Fechado"
         cursor.execute("UPDATE rd SET status=%s WHERE id=%s", (new_st, id))
@@ -684,9 +698,9 @@ def fechamento_submit(id):
     cursor.execute("""
     UPDATE rd
     SET valor_despesa=%s, saldo_devolver=%s, data_fechamento=%s,
-        status='Fechamento Solicitado'
+        status='Fechamento Solicitado', data_debito_despesa=%s
     WHERE id=%s
-    """, (val_desp, saldo_dev, data_fech, id))
+    """, (val_desp, saldo_dev, data_fech, data_fech, id))
     conn.commit()
     cursor.close()
     conn.close()
@@ -833,40 +847,53 @@ def export_excel():
     wb = xlsxwriter.Workbook(output, {"in_memory": True})
     ws = wb.add_worksheet("Relatorio")
 
+    # Cabeçalhos atualizados com "Unidade de Negócio" e as novas datas
     header = [
-       "Número RD", "Data Solicitação", "Solicitante", "Funcionário", "Valor Solicitado",
-       "Valor Adicional", "Data do Adicional", "Centro de Custo", "Valor Gasto", "Saldo a Devolver",
-       "Data de Fechamento", "Saldo Global"
+        "Número RD", "Data Solicitação", "Solicitante", "Funcionário", "Valor Solicitado",
+        "Valor Adicional", "Data do Adicional", "Centro de Custo", "Unidade de Negócio",
+        "Valor Gasto", "Saldo a Devolver", "Data de Fechamento", "Status", "Data Crédito Solicitado",
+        "Data Crédito Liberado", "Data Débito Despesa", "Saldo Global"
     ]
     for col, h in enumerate(header):
         ws.write(0, col, h)
 
+    # Preenchendo os dados
     rowi = 1
     for rd_row in rd_list:
-        rd_id = rd_row[0]
-        rd_data = rd_row[3]
-        rd_solic = rd_row[1]
-        rd_func = rd_row[2]
-        rd_valor = rd_row[5]
-        rd_val_adic = rd_row[7]
-        rd_adic_data = rd_row[8]
-        rd_ccusto = rd_row[4]
-        rd_desp = rd_row[9]
-        rd_saldo_dev = rd_row[10]
-        rd_data_fech = rd_row[11]
+        rd_id = rd_row[0]                    # id
+        rd_data = rd_row[3]                  # data
+        rd_solic = rd_row[1]                 # solicitante
+        rd_func = rd_row[2]                  # funcionario
+        rd_valor = rd_row[5]                 # valor
+        rd_val_adic = rd_row[7]              # valor_adicional
+        rd_adic_data = rd_row[8]             # adicional_data
+        rd_ccusto = rd_row[4]                # centro_custo
+        rd_unidade_negocio = rd_row[18]      # unidade_negocio
+        rd_desp = rd_row[9]                  # valor_despesa
+        rd_saldo_dev = rd_row[10]            # saldo_devolver
+        rd_data_fech = rd_row[11]            # data_fechamento
+        rd_status = rd_row[6]                # status
+        rd_data_cred_solic = rd_row[22]      # data_credito_solicitado
+        rd_data_cred_liber = rd_row[23]      # data_credito_liberado
+        rd_data_deb_desp = rd_row[24]        # data_debito_despesa
 
         ws.write(rowi, 0, rd_id)
-        ws.write(rowi, 1, str(rd_data))
+        ws.write(rowi, 1, str(rd_data) if rd_data else "")
         ws.write(rowi, 2, rd_solic)
         ws.write(rowi, 3, rd_func)
         ws.write(rowi, 4, float(rd_valor or 0))
         ws.write(rowi, 5, float(rd_val_adic or 0))
-        ws.write(rowi, 6, str(rd_adic_data or ""))
+        ws.write(rowi, 6, str(rd_adic_data) if rd_adic_data else "")
         ws.write(rowi, 7, rd_ccusto)
-        ws.write(rowi, 8, float(rd_desp or 0))
-        ws.write(rowi, 9, float(rd_saldo_dev or 0))
-        ws.write(rowi, 10, str(rd_data_fech or ""))
-        ws.write(rowi, 11, float(saldo_global))
+        ws.write(rowi, 8, rd_unidade_negocio if rd_unidade_negocio else "")
+        ws.write(rowi, 9, float(rd_desp or 0))
+        ws.write(rowi, 10, float(rd_saldo_dev or 0))
+        ws.write(rowi, 11, str(rd_data_fech) if rd_data_fech else "")
+        ws.write(rowi, 12, rd_status)
+        ws.write(rowi, 13, str(rd_data_cred_solic) if rd_data_cred_solic else "")
+        ws.write(rowi, 14, str(rd_data_cred_liber) if rd_data_cred_liber else "")
+        ws.write(rowi, 15, str(rd_data_deb_desp) if rd_data_deb_desp else "")
+        ws.write(rowi, 16, float(saldo_global))
         rowi += 1
 
     wb.close()
@@ -874,10 +901,10 @@ def export_excel():
     conn.close()
 
     return send_file(
-       output,
-       as_attachment=True,
-       download_name=f"Relatorio_RD_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-       mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        output,
+        as_attachment=True,
+        download_name=f"Relatorio_RD_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
 @app.route("/logout")
