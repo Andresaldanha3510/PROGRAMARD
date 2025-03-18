@@ -472,7 +472,7 @@
             <strong>Total da RD:</strong> R${{ format_currency(valor_total) }}<br>
             <strong>Valor Gasto (Despesa):</strong> R${{ format_currency(valor_despesa) }} em {{ rd[30] if rd[30] else '-' }}<br>
             <strong>Saldo a Devolver:</strong> R${{ format_currency(saldo_devolver) }}
-            {% if rd[21] and rd[21] matches '\\d{4}-\\d{2}-\\d{2}' %}
+            {% if rd[21] and rd[21]|is_date_format %}
               em {{ rd[21] }}
             {% endif %}
           </div>
@@ -961,7 +961,7 @@
   <!-- Modal de popup para Supervisor avisando divergentes -->
   <div id="popupDivergentes" class="modal">
     <div class="modal-content">
-      <span class="close-btn" id="closePopupDivergentes">&times;</span>
+      <span class="close-btn" id="closePopupDivergentes">×</span>
       <h3>Atenção, Supervisor!</h3>
       <p>Há {{ divergentes_count }} RD(s) com anexos divergentes que precisam ser corrigidos.</p>
       <p><a href="{{ url_for('anexos_divergentes') }}" class="btn btn-blue">Ir para Anexos Divergentes</a></p>
@@ -1072,7 +1072,7 @@
   <!-- Modal para exibir anexos -->
   <div id="fileModal" class="modal">
     <div class="modal-content">
-      <span class="close-btn" id="closeFileModal">&times;</span>
+      <span class="close-btn" id="closeFileModal">×</span>
       <h3>Arquivos Anexados</h3>
       <div id="modalFilesContainer"></div>
     </div>
@@ -1080,7 +1080,7 @@
   <!-- Modal para recusa do fechamento -->
   <div id="recusaModal" class="modal">
     <div class="modal-content">
-      <span class="close-btn" id="closeRecusaModal">&times;</span>
+      <span class="close-btn" id="closeRecusaModal">×</span>
       <h3>Informe o Motivo da Recusa</h3>
       <form id="formRecusa" method="POST">
         <textarea name="motivo" id="motivo" rows="4" style="width:100%;" placeholder="Digite o motivo..."></textarea>
