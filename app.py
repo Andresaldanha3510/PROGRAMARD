@@ -115,9 +115,9 @@ def init_db():
         motivo_recusa TEXT,
         adicionais_individuais TEXT,
         data_saldo_devolvido DATE,
-        data_credito_solicitado DATE,  -- Nova coluna
-        data_credito_liberado DATE,    -- Nova coluna
-        data_debito_despesa DATE       -- Nova coluna
+        data_credito_solicitado DATE,
+        data_credito_liberado DATE,
+        data_debito_despesa DATE
     );
     """
     cursor.execute(create_rd_table)
@@ -173,6 +173,19 @@ def init_db():
     """
     cursor.execute(create_funcionarios_table)
 
+    # Tabela historico_exclusao (Nova tabela para histórico de exclusões)
+    create_historico_table = """
+    CREATE TABLE IF NOT EXISTS historico_exclusao (
+        id SERIAL PRIMARY KEY,
+        rd_id TEXT NOT NULL,
+        solicitante TEXT NOT NULL,
+        valor NUMERIC(15,2) NOT NULL,
+        data_exclusao DATE NOT NULL,
+        usuario_excluiu TEXT NOT NULL
+    );
+    """
+    cursor.execute(create_historico_table)
+
     conn.commit()
     cursor.close()
     conn.close()
@@ -209,41 +222,40 @@ def is_financeiro():
     return user_role() == "financeiro"
 
 def can_add():
-    return user_role() in ["solicitante","gestor","financeiro"]
+    return user_role() in ["solicitante", "gestor", "financeiro"]
 
-# Supervisor pode editar apenas anexos; se o usuário for supervisor, o UPDATE só altera a coluna de arquivos.
 def can_edit(status):
     if status == "Fechado":
         return False
     if is_solicitante():
-        return status in ["Pendente","Fechamento Recusado"]
-    if is_gestor() or is_financeiro() or user_role()=="supervisor":
+        return status in ["Pendente", "Fechamento Recusado"]
+    if is_gestor() or is_financeiro() or user_role() == "supervisor":
         return True
     return False
 
 def can_delete(status, solicitante):
     if status == "Fechado":
         return False
-    if status=="Pendente" and is_solicitante():
+    if status == "Pendente" and is_solicitante():
         return True
-    if (is_gestor() or is_financeiro()) and status in ["Pendente","Aprovado","Liberado"]:
+    if (is_gestor() or is_financeiro()) and status in ["Pendente", "Aprovado", "Liberado"]:
         return True
     return False
 
 def can_approve(status):
-    if status=="Pendente" and is_gestor():
+    if status == "Pendente" and is_gestor():
         return True
-    if status=="Fechamento Solicitado" and is_gestor():
+    if status == "Fechamento Solicitado" and is_gestor():
         return True
-    if status=="Aprovado" and is_financeiro():
+    if status == "Aprovado" and is_financeiro():
         return True
     return False
 
 def can_request_additional(status):
-    return (is_solicitante() and status=="Liberado")
+    return (is_solicitante() and status == "Liberado")
 
 def can_close(status):
-    return (is_solicitante() and status=="Liberado")
+    return (is_solicitante() and status == "Liberado")
 
 def get_saldo_global():
     conn = get_pg_connection()
@@ -256,7 +268,7 @@ def get_saldo_global():
 def set_saldo_global(novo_saldo):
     conn = get_pg_connection()
     cursor = conn.cursor()
-    cursor.execute("UPDATE saldo_global SET saldo=%s WHERE id=1",(novo_saldo,))
+    cursor.execute("UPDATE saldo_global SET saldo=%s WHERE id=1", (novo_saldo,))
     conn.commit()
     conn.close()
 
@@ -265,8 +277,8 @@ def format_currency(value):
         return "0,00"
     s = f"{value:,.2f}"
     parts = s.split(".")
-    left = parts[0].replace(",",".")
-    right= parts[1]
+    left = parts[0].replace(",", ".")
+    right = parts[1]
     return f"{left},{right}"
 
 # Registrando no Jinja
@@ -280,23 +292,23 @@ app.jinja_env.globals.update(
 
 # ============ ROTAS ============
 
-@app.route("/", methods=["GET","POST"])
+@app.route("/", methods=["GET", "POST"])
 def index():
-    if request.method=="POST":
-        username = request.form.get("username","").strip()
-        password = request.form.get("password","").strip()
+    if request.method == "POST":
+        username = request.form.get("username", "").strip()
+        password = request.form.get("password", "").strip()
 
-        if username=="gestor" and password=="115289":
-            session["user_role"]="gestor"
+        if username == "gestor" and password == "115289":
+            session["user_role"] = "gestor"
             flash("Login como gestor bem-sucedido.")
-        elif username=="financeiro" and password=="351073":
-            session["user_role"]="financeiro"
+        elif username == "financeiro" and password == "351073":
+            session["user_role"] = "financeiro"
             flash("Login como financeiro bem-sucedido.")
-        elif username=="solicitante" and password=="102030":
-            session["user_role"]="solicitante"
+        elif username == "solicitante" and password == "102030":
+            session["user_role"] = "solicitante"
             flash("Login como solicitante bem-sucedido.")
-        elif username=="supervisor" and password=="223344":
-            session["user_role"]="supervisor"
+        elif username == "supervisor" and password == "223344":
+            session["user_role"] = "supervisor"
             flash("Login como supervisor bem-sucedido.")
         else:
             flash("Credenciais inválidas.")
@@ -310,7 +322,7 @@ def index():
     conn = get_pg_connection()
     cursor = conn.cursor()
 
-    if user_role()=="supervisor":
+    if user_role() == "supervisor":
         cursor.execute("SELECT * FROM rd WHERE status='Liberado'")
         liberados = cursor.fetchall()
         pendentes = []
@@ -318,7 +330,6 @@ def index():
         fechamento_solicitado = []
         fechamento_recusado = []
         fechados = []
-        # Para supervisor, contar os RDs com anexos divergentes
         cursor.execute("SELECT COUNT(*) FROM rd WHERE anexo_divergente=TRUE")
         divergentes_count = cursor.fetchone()[0]
     else:
@@ -368,24 +379,24 @@ def index():
 def add_rd():
     if not can_add():
         flash("Acesso negado.")
-        return "Acesso negado",403
+        return "Acesso negado", 403
 
     solicitante     = request.form["solicitante"].strip()
     funcionario     = request.form["funcionario"].strip()
     data_str        = request.form["data"].strip()
     centro_custo    = request.form["centro_custo"].strip()
-    observacao      = request.form.get("observacao","").strip()
-    rd_tipo         = request.form.get("tipo","credito alelo").strip()
-    unidade_negocio = request.form.get("unidade_negocio","").strip()
+    observacao      = request.form.get("observacao", "").strip()
+    rd_tipo         = request.form.get("tipo", "credito alelo").strip()
+    unidade_negocio = request.form.get("unidade_negocio", "").strip()
 
     try:
-        valor = float(request.form["valor"].replace(",",".")) 
+        valor = float(request.form["valor"].replace(",", "."))
     except:
         flash("Valor inválido.")
         return redirect(url_for("index"))
 
     custom_id = generate_custom_id()
-    data_atual = datetime.now().strftime("%Y-%m-%d")  # Data atual para crédito solicitado
+    data_atual = datetime.now().strftime("%Y-%m-%d")
     arquivos = []
     if "arquivo" in request.files:
         for f in request.files.getlist("arquivo"):
@@ -434,20 +445,19 @@ def edit_form(id):
 
     if not rd:
         flash("RD não encontrada.")
-        return "RD não encontrada",404
+        return "RD não encontrada", 404
 
     if not can_edit(rd[6]):
         flash("Acesso negado.")
-        return "Acesso negado",403
+        return "Acesso negado", 403
 
-    # Passamos user_role para o template para que o supervisor possa ter interface diferenciada
     return render_template("edit_form.html", rd=rd, user_role=session.get("user_role"))
 
 @app.route("/edit_submit/<id>", methods=["POST"])
 def edit_submit(id):
     if not can_edit_status(id):
         flash("Acesso negado.")
-        return "Acesso negado",403
+        return "Acesso negado", 403
 
     conn = get_pg_connection()
     cursor = conn.cursor()
@@ -457,7 +467,6 @@ def edit_submit(id):
     original_status = row[0]
     arquivos_str = row[1]
 
-    # Atualização dos anexos sempre
     arqs_list = arquivos_str.split(",") if arquivos_str else []
     if "arquivo" in request.files:
         for f in request.files.getlist("arquivo"):
@@ -467,7 +476,6 @@ def edit_submit(id):
                 arqs_list.append(fname)
     new_arqs = ",".join(arqs_list) if arqs_list else None
 
-    # Se o usuário for supervisor, atualiza somente os anexos
     if user_role() == "supervisor":
         cursor.execute("UPDATE rd SET arquivos=%s WHERE id=%s", (new_arqs, id))
     else:
@@ -475,11 +483,11 @@ def edit_submit(id):
         funcionario     = request.form["funcionario"].strip()
         data_str        = request.form["data"].strip()
         centro_custo    = request.form["centro_custo"].strip()
-        observacao      = request.form.get("observacao","").strip()
-        unidade_negocio = request.form.get("unidade_negocio","").strip()
+        observacao      = request.form.get("observacao", "").strip()
+        unidade_negocio = request.form.get("unidade_negocio", "").strip()
 
         try:
-            valor_novo = float(request.form["valor"].replace(",",".")) 
+            valor_novo = float(request.form["valor"].replace(",", "."))
         except:
             flash("Valor inválido.")
             conn.close()
@@ -569,17 +577,31 @@ def approve(id):
 def delete_rd(id):
     conn = get_pg_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT solicitante, status, valor_liberado FROM rd WHERE id=%s", (id,))
+    cursor.execute("SELECT solicitante, status, valor_liberado, valor FROM rd WHERE id=%s", (id,))
     row = cursor.fetchone()
     if not row:
         conn.close()
         flash("RD não encontrada.")
         return redirect(url_for("index"))
-    rd_solic, rd_status, rd_liber = row
+    rd_solic, rd_status, rd_liber, rd_valor = row
 
     if not can_delete(rd_status, rd_solic):
         conn.close()
         flash("Ação não permitida.")
+        return redirect(url_for("index"))
+
+    # Registrar no histórico antes de excluir
+    usuario_excluiu = session.get("user_role", "desconhecido")
+    data_exclusao = datetime.now().strftime("%Y-%m-%d")
+    try:
+        cursor.execute("""
+        INSERT INTO historico_exclusao (rd_id, solicitante, valor, data_exclusao, usuario_excluiu)
+        VALUES (%s, %s, %s, %s, %s)
+        """, (id, rd_solic, rd_valor, data_exclusao, usuario_excluiu))
+    except psycopg2.Error as e:
+        conn.close()
+        flash("Erro ao acessar banco de dados ao registrar histórico.")
+        logging.error(f"Erro ao registrar histórico: {e}")
         return redirect(url_for("index"))
 
     if rd_status == "Liberado" and rd_liber and rd_liber > 0:
@@ -859,7 +881,6 @@ def export_excel():
     wb = xlsxwriter.Workbook(output, {"in_memory": True})
     ws = wb.add_worksheet("Relatorio")
 
-    # Cabeçalhos atualizados com "Unidade de Negócio" e as novas datas
     header = [
         "Número RD", "Data Solicitação", "Solicitante", "Funcionário", "Valor Solicitado",
         "Valor Adicional", "Data do Adicional", "Centro de Custo", "Unidade de Negócio",
@@ -869,25 +890,24 @@ def export_excel():
     for col, h in enumerate(header):
         ws.write(0, col, h)
 
-    # Preenchendo os dados
     rowi = 1
     for rd_row in rd_list:
-        rd_id = rd_row[0]                    # id
-        rd_data = rd_row[3]                  # data
-        rd_solic = rd_row[1]                 # solicitante
-        rd_func = rd_row[2]                  # funcionario
-        rd_valor = rd_row[5]                 # valor
-        rd_val_adic = rd_row[7]              # valor_adicional
-        rd_adic_data = rd_row[8]             # adicional_data
-        rd_ccusto = rd_row[4]                # centro_custo
-        rd_unidade_negocio = rd_row[18]      # unidade_negocio
-        rd_desp = rd_row[9]                  # valor_despesa
-        rd_saldo_dev = rd_row[10]            # saldo_devolver
-        rd_data_fech = rd_row[11]            # data_fechamento
-        rd_status = rd_row[6]                # status
-        rd_data_cred_solic = rd_row[22]      # data_credito_solicitado
-        rd_data_cred_liber = rd_row[23]      # data_credito_liberado
-        rd_data_deb_desp = rd_row[24]        # data_debito_despesa
+        rd_id = rd_row[0]
+        rd_data = rd_row[3]
+        rd_solic = rd_row[1]
+        rd_func = rd_row[2]
+        rd_valor = rd_row[5]
+        rd_val_adic = rd_row[7]
+        rd_adic_data = rd_row[8]
+        rd_ccusto = rd_row[4]
+        rd_unidade_negocio = rd_row[18]
+        rd_desp = rd_row[9]
+        rd_saldo_dev = rd_row[10]
+        rd_data_fech = rd_row[11]
+        rd_status = rd_row[6]
+        rd_data_cred_solic = rd_row[22]
+        rd_data_cred_liber = rd_row[23]
+        rd_data_deb_desp = rd_row[24]
 
         ws.write(rowi, 0, rd_id)
         ws.write(rowi, 1, str(rd_data) if rd_data else "")
@@ -919,13 +939,55 @@ def export_excel():
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
+@app.route("/export_historico", methods=["GET"])
+def export_historico():
+    if not is_financeiro():
+        flash("Acesso negado.")
+        return redirect(url_for("index"))
+
+    conn = get_pg_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT rd_id, solicitante, valor, data_exclusao, usuario_excluiu FROM historico_exclusao ORDER BY data_exclusao DESC")
+        historico = cursor.fetchall()
+    except psycopg2.Error as e:
+        conn.close()
+        flash("Erro ao acessar banco de dados.")
+        logging.error(f"Erro ao consultar histórico: {e}")
+        return redirect(url_for("index"))
+
+    if not historico:
+        conn.close()
+        flash("Nenhum registro de exclusão encontrado.")
+        return redirect(url_for("index"))
+
+    output = io.StringIO()
+    output.write("Histórico de Exclusões de RDs\n")
+    output.write("=" * 50 + "\n")
+    for reg in historico:
+        rd_id, solic, valor, data_exc, usuario = reg
+        linha = f"Data: {data_exc} | RD: {rd_id} | Solicitante: {solic} | Valor: R${format_currency(valor)} | Excluído por: {usuario}\n"
+        output.write(linha)
+    output.write("=" * 50 + "\n")
+    output.write(f"Total de exclusões: {len(historico)}\n")
+
+    buffer = io.BytesIO(output.getvalue().encode('utf-8'))
+    buffer.seek(0)
+    conn.close()
+
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name=f"Historico_Exclusoes_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+        mimetype="text/plain"
+    )
+
 @app.route("/logout")
 def logout():
     session.clear()
     flash("Logout realizado com sucesso.")
     return redirect(url_for("index"))
 
-# =========== Rotas p/ Funcionários ===========
 @app.route("/cadastro_funcionario", methods=["GET"])
 def cadastro_funcionario():
     return render_template("cadastro_funcionario.html")
@@ -957,22 +1019,15 @@ def consulta_funcionario():
     conn.close()
     return render_template("consulta_funcionario.html", funcionarios=funcionarios)
 
-# =========== Divergentes ===========
-@app.route("/marcar_divergente/<id>", methods=["GET","POST"])
+@app.route("/marcar_divergente/<id>", methods=["GET", "POST"])
 def marcar_divergente(id):
-    """
-    Ao clicar no botão "Anexo Divergente" na aba Liberados,
-    gestor/solicitante insere o motivo antes de marcar divergente.
-    """
     if "user_role" not in session or session["user_role"] not in ["gestor", "solicitante"]:
         flash("Ação não permitida.")
         return redirect(url_for("index"))
 
     if request.method == "GET":
-        # Exibe um formulário para digitar o motivo
         return render_template("motivo_divergente.html", rd_id=id)
     else:
-        # POST: grava o motivo no BD e marca o RD como divergente
         motivo_div = request.form.get("motivo_divergente", "").strip()
         conn = get_pg_connection()
         cursor = conn.cursor()
@@ -1021,7 +1076,6 @@ def corrigir_divergente(id):
             return redirect(url_for("anexos_divergentes"))
         return render_template("corrigir_divergente.html", rd=rd)
     else:
-        # POST: atualiza os anexos e remove a marca de divergente, voltando o RD para Liberados
         conn = get_pg_connection()
         cursor = conn.cursor()
 
@@ -1037,11 +1091,9 @@ def corrigir_divergente(id):
                     a_list.append(fname)
         new_arq_str = ",".join(a_list) if a_list else None
 
-        # Atualiza os anexos
         cursor.execute("UPDATE rd SET arquivos = %s WHERE id = %s", (new_arq_str, id))
         conn.commit()
 
-        # Remove a marca de divergente e altera o status para Liberado
         cursor.execute("""
         UPDATE rd
         SET anexo_divergente = FALSE,
