@@ -246,7 +246,8 @@
     #tab3:checked ~ .content #content3,
     #tab4:checked ~ .content #content4,
     #tab5:checked ~ .content #content5,
-    #tab6:checked ~ .content #content6 {
+    #tab6:checked ~ .content #content6,
+    #tab7:checked ~ .content #content7 { /* Nova aba */
       display: block;
     }
     .valor-resumo {
@@ -480,6 +481,7 @@
           <input type="radio" name="tab-control" id="tab4">
           <input type="radio" name="tab-control" id="tab5">
           <input type="radio" name="tab-control" id="tab6">
+          <input type="radio" name="tab-control" id="tab7"> <!-- Nova aba -->
           <div class="tab-labels">
             <label for="tab1">Pendentes {% if pendentes|length > 0 %}<span class="badge">{{ pendentes|length }}</span>{% endif %}</label>
             <label for="tab2">Aprovados {% if aprovados|length > 0 %}<span class="badge">{{ aprovados|length }}</span>{% endif %}</label>
@@ -487,6 +489,9 @@
             <label for="tab4">Fechamento Solicitado {% if fechamento_solicitado|length > 0 %}<span class="badge">{{ fechamento_solicitado|length }}</span>{% endif %}</label>
             <label for="tab5">Fechamento Recusado {% if fechamento_recusado|length > 0 %}<span class="badge">{{ fechamento_recusado|length }}</span>{% endif %}</label>
             <label for="tab6">Fechados {% if fechados|length > 0 %}<span class="badge">{{ fechados|length }}</span>{% endif %}</label>
+            <label for="tab7" class="{% if saldos_a_devolver|length > 0 %}btn-animated{% endif %}">
+              Saldo a Devolver {% if saldos_a_devolver|length > 0 %}<span class="badge">{{ saldos_a_devolver|length }}</span>{% endif %}
+            </label>
           </div>
           <div class="content">
             <div class="tab-content" id="content1">
@@ -514,7 +519,7 @@
                     <td data-label="Solicitante">{{ rd[1] }}</td>
                     <td data-label="Funcionário">{{ rd[2] }}</td>
                     <td data-label="Data">{{ rd[3] }}</td>
-                    <td data-label="Centro de Custo">{{ rd[4] }}<br><small>{{ rd[19] }}</small></td>
+                    <td data-label="Centro de Custo">{{ rd[4] }}<br><small>{{ rd[18] }}</small></td>
                     <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td>
                     <td data-label="Observação">
                       {% if rd[16] %}
@@ -938,6 +943,72 @@
                 </tbody>
               </table>
             </div>
+            <!-- Nova aba "Saldo a Devolver" -->
+            <div class="tab-content" id="content7">
+              <table id="tabela-saldo-a-devolver" class="display">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Solicitante</th>
+                    <th>Funcionário</th>
+                    <th>Data</th>
+                    <th>Centro de Custo</th>
+                    <th>Unidade de Negócio</th>
+                    <th>Observação</th>
+                    <th>Arquivos</th>
+                    <th>Valores</th>
+                    <th>Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for rd in saldos_a_devolver %}
+                  {% set rd_id = rd[0] %}
+                  {% set status = rd[6] %}
+                  <tr>
+                    <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
+                    <td data-label="Solicitante">{{ rd[1] }}</td>
+                    <td data-label="Funcionário">{{ rd[2] }}</td>
+                    <td data-label="Data">{{ rd[3] }}</td>
+                    <td data-label="Centro de Custo">{{ rd[4] }}</td>
+                    <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td>
+                    <td data-label="Observação">
+                      {% if rd[16] %}
+                        {% set obs = rd[16] %}
+                        {% if obs|length > 50 %}
+                          <span class="observation-short">{{ obs[:50] }}...</span>
+                          <button class="toggle-observation">+</button>
+                          <div class="observation-full">{{ obs }}</div>
+                        {% else %}
+                          {{ obs }}
+                        {% endif %}
+                      {% else %}
+                        -
+                      {% endif %}
+                    </td>
+                    <td data-label="Arquivos">
+                      {% if rd[12] %}
+                        <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}">
+                          <i class="fas fa-paperclip"></i> Anexos
+                        </button>
+                      {% else %}
+                        -
+                      {% endif %}
+                    </td>
+                    <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
+                    <td data-label="Ações">
+                      {% if is_financeiro() %}
+                        <form action="/registrar_saldo_devolvido/{{ rd_id }}" method="POST" class="action-form">
+                          <button type="submit" class="btn btn-warning">
+                            <i class="fas fa-money-bill-wave"></i> Saldo Devolvido
+                          </button>
+                        </form>
+                      {% endif %}
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       {% endif %}
@@ -967,6 +1038,7 @@
       $('#tabela-fechamento-solicitado').DataTable();
       $('#tabela-fechamento-recusado').DataTable();
       $('#tabela-fechados').DataTable();
+      $('#tabela-saldo-a-devolver').DataTable(); // Nova tabela
 
       {% if user_role == 'supervisor' and divergentes_count > 0 %}
         $("#popupDivergentes").show();
@@ -1066,5 +1138,5 @@
       </form>
     </div>
   </div>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'92248b972e9144df',t:'MTc0MjI5ODk3MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'92248b972e9144df',t:'MTc0MjI5ODk3MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'92266d448a2e67c3',t:'MTc0MjMxODcwMC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
