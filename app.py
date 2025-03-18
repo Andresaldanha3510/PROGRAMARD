@@ -59,6 +59,18 @@ PG_DB   = os.getenv("PG_DB", "programard_db")
 PG_USER = os.getenv("PG_USER", "programard_db_user")
 PG_PASSWORD = os.getenv("PG_PASSWORD", "hU9wJmIfgiyCg02KFQ3a4AropKSMopXr")
 
+# Adição do filtro personalizado para validar formato de data
+import re
+
+@app.template_filter('is_date_format')
+def is_date_format(value):
+    if value is None:
+        return False
+    if isinstance(value, str):
+        pattern = r'^\d{4}-\d{2}-\d{2}$'
+        return bool(re.match(pattern, value))
+    return False
+
 def get_pg_connection():
     try:
         conn = psycopg2.connect(
