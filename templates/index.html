@@ -471,7 +471,10 @@
             <strong>Valor Adicional:</strong> R${{ format_currency(valor_adic) }} em {{ rd[8] if rd[8] else '-' }}<br>
             <strong>Total da RD:</strong> R${{ format_currency(valor_total) }}<br>
             <strong>Valor Gasto (Despesa):</strong> R${{ format_currency(valor_despesa) }} em {{ rd[30] if rd[30] else '-' }}<br>
-            <strong>Saldo a Devolver:</strong> R${{ format_currency(saldo_devolver) }}{% if rd[21] %} em {{ rd[21] }}{% endif %}
+            <strong>Saldo a Devolver:</strong> R${{ format_currency(saldo_devolver) }}
+            {% if rd[21] and rd[21] matches '\\d{4}-\\d{2}-\\d{2}' %}
+              em {{ rd[21] }}
+            {% endif %}
           </div>
         {% endmacro %}
 
@@ -526,7 +529,7 @@
                         {% set obs = rd[16] %}
                         {% if obs|length > 50 %}
                           <span class="observation-short">{{ obs[:50] }}...</span>
-                          <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
+                          <button class="toggle-observation">+</button>
                           <div class="observation-full">{{ obs }}</div>
                         {% else %}
                           {{ obs }}
@@ -604,7 +607,7 @@
                         {% set obs = rd[16] %}
                         {% if obs|length > 50 %}
                           <span class="observation-short">{{ obs[:50] }}...</span>
-                          <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
+                          <button class="toggle-observation">+</button>
                           <div class="observation-full">{{ obs }}</div>
                         {% else %}
                           {{ obs }}
@@ -682,7 +685,7 @@
                         {% set obs = rd[16] %}
                         {% if obs|length > 50 %}
                           <span class="observation-short">{{ obs[:50] }}...</span>
-                          <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
+                          <button class="toggle-observation">+</button>
                           <div class="observation-full">{{ obs }}</div>
                         {% else %}
                           {{ obs }}
@@ -777,7 +780,7 @@
                         {% set obs = rd[16] %}
                         {% if obs|length > 50 %}
                           <span class="observation-short">{{ obs[:50] }}...</span>
-                          <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
+                          <button class="toggle-observation">+</button>
                           <div class="observation-full">{{ obs }}</div>
                         {% else %}
                           {{ obs }}
@@ -848,7 +851,7 @@
                         {% set obs = rd[16] %}
                         {% if obs|length > 50 %}
                           <span class="observation-short">{{ obs[:50] }}...</span>
-                          <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
+                          <button class="toggle-observation">+</button>
                           <div class="observation-full">{{ obs }}</div>
                         {% else %}
                           {{ obs }}
@@ -912,7 +915,7 @@
                         {% set obs = rd[16] %}
                         {% if obs|length > 50 %}
                           <span class="observation-short">{{ obs[:50] }}...</span>
-                          <button class="toggle-observation" onclick="toggleObservation(this)">+</button>
+                          <button class="toggle-observation">+</button>
                           <div class="observation-full">{{ obs }}</div>
                         {% else %}
                           {{ obs }}
@@ -1002,17 +1005,17 @@
         }
       });
 
-      // Toggle para observação
-      function toggleObservation(btn) {
-        var full = $(btn).siblings('.observation-full');
+      // Toggle para observação (usando delegação de evento)
+      $(document).on('click', '.toggle-observation', function(){
+        var full = $(this).siblings('.observation-full');
         if(full.is(':visible')){
           full.slideUp();
-          $(btn).text('+');
+          $(this).text('+');
         } else {
           full.slideDown();
-          $(btn).text('-');
+          $(this).text('-');
         }
-      }
+      });
 
       // Abrir modal de arquivos
       $(document).on('click', '.btn-view-files', function(){
@@ -1086,5 +1089,5 @@
       </form>
     </div>
   </div>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'921d31832853bccc',t:'MTc0MjIyMTg4MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'921e3fe0bfef61b4',t:'MTc0MjIzMjk1NS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</body>
 </html>
