@@ -329,6 +329,7 @@ def index():
         aprovados = []
         fechamento_solicitado = []
         fechamento_recusado = []
+        saldos_a_devolver = []
         fechados = []
         cursor.execute("SELECT COUNT(*) FROM rd WHERE anexo_divergente=TRUE")
         divergentes_count = cursor.fetchone()[0]
@@ -343,6 +344,8 @@ def index():
         fechamento_solicitado = cursor.fetchall()
         cursor.execute("SELECT * FROM rd WHERE status='Fechamento Recusado'")
         fechamento_recusado = cursor.fetchall()
+        cursor.execute("SELECT * FROM rd WHERE status='Saldos a Devolver'")
+        saldos_a_devolver = cursor.fetchall()
         cursor.execute("SELECT * FROM rd WHERE status='Fechado'")
         fechados = cursor.fetchall()
         divergentes_count = 0
@@ -363,6 +366,7 @@ def index():
         liberados=liberados,
         fechamento_solicitado=fechamento_solicitado,
         fechamento_recusado=fechamento_recusado,
+        saldos_a_devolver=saldos_a_devolver,
         fechados=fechados,
         divergentes_count=divergentes_count,
         can_add=can_add(),
@@ -560,8 +564,11 @@ def approve(id):
             WHERE id=%s
             """, (new_st, now, total_credit, now, id))
     elif st_atual == "Fechamento Solicitado" and is_gestor():
-        new_st = "Fechado"
-        cursor.execute("UPDATE rd SET status=%s WHERE id=%s", (new_st, id))
+        new_st = "Saldos a Devolver"
+        cursor.execute("""
+        UPDATE rd SET status=%s, data_fechamento=%s
+        WHERE id=%s
+        """, (new_st, now, id))
     else:
         conn.close()
         flash("Não é possível aprovar/liberar esta RD.")
@@ -843,16 +850,20 @@ def registrar_saldo_devolvido(id):
 
     conn = get_pg_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT valor, valor_adicional, valor_despesa, data_saldo_devolvido FROM rd WHERE id=%s", (id,))
+    cursor.execute("SELECT valor, valor_adicional, valor_despesa, data_saldo_devolvido, status FROM rd WHERE id=%s", (id,))
     row = cursor.fetchone()
     if not row:
         conn.close()
         flash("RD não encontrada.")
         return redirect(url_for("index"))
-    val_sol, val_adic, val_desp, data_sal_dev = row
+    val_sol, val_adic, val_desp, data_sal_dev, status = row
     if data_sal_dev:
         conn.close()
         flash("Saldo já registrado antes.")
+        return redirect(url_for("index"))
+    if status != "Saldos a Devolver":
+        conn.close()
+        flash("Ação permitida apenas para RDs em 'Saldos a Devolver'.")
         return redirect(url_for("index"))
     total_cred = val_sol + (val_adic or 0)
     if total_cred < (val_desp or 0):
@@ -863,7 +874,10 @@ def registrar_saldo_devolvido(id):
     saldo = get_saldo_global()
     set_saldo_global(saldo + saldo_dev)
     now = datetime.now().strftime("%Y-%m-%d")
-    cursor.execute("UPDATE rd SET data_saldo_devolvido=%s WHERE id=%s", (now, id))
+    cursor.execute("""
+    UPDATE rd SET data_saldo_devolvido=%s, status='Fechado'
+    WHERE id=%s
+    """, (now, id))
     conn.commit()
     cursor.close()
     conn.close()
