@@ -135,12 +135,10 @@
       background-color: #f1c40f; 
       color: #34495e;
     }
-    /* Botão Anexos Divergentes: sempre azul */
     .btn-blue {
       background-color: #3498db;
       color: #fff;
     }
-    /* Animação somente quando houver divergentes */
     .btn-animated {
       animation: pulse 1.4s infinite;
     }
@@ -243,7 +241,6 @@
       background-color: var(--primary-color); 
       color: #fff;
     }
-    /* Exibe a aba selecionada */
     #tab1:checked ~ .content #content1,
     #tab2:checked ~ .content #content2,
     #tab3:checked ~ .content #content3,
@@ -284,7 +281,6 @@
       min-width: 20px;
       text-align: center;
     }
-    /* Estilos para observação com toggle */
     .observation-short { }
     .toggle-observation { 
       border: none; 
@@ -295,7 +291,6 @@
     }
     .observation-full { display: none; }
     
-    /* Estilos para o modal do popup */
     .modal {
       display: none;
       position: fixed;
@@ -367,7 +362,6 @@
     <h1>Gerenciamento de RDs</h1>
 
     {% if user_role is not defined %}
-      <!-- Formulário de Login -->
       <form action="/" method="POST" class="main-form">
         {% if error %}<p class="error-message">{{ error }}</p>{% endif %}
         <label for="username">Usuário:</label>
@@ -378,7 +372,6 @@
       </form>
     {% else %}
       {% if adicional_id %}
-        <!-- Formulário para solicitar crédito adicional -->
         <div class="form-adicional">
           <h2>Solicitar Crédito Adicional para RD #{{ adicional_id }}</h2>
           <form action="/adicional_submit/{{ adicional_id }}" method="POST" enctype="multipart/form-data" class="main-form">
@@ -390,7 +383,6 @@
           </form>
         </div>
       {% elif fechamento_id %}
-        <!-- Formulário de Fechamento -->
         <div class="form-fechamento">
           <h2>Fechamento da RD #{{ fechamento_id }}</h2>
           <form action="/fechamento_submit/{{ fechamento_id }}" method="POST" enctype="multipart/form-data" class="main-form">
@@ -443,19 +435,22 @@
           <a href="{{ url_for('consulta_funcionario') }}" class="btn btn-success" style="margin-right: 10px;">
             <i class="fas fa-search"></i> Consulta Funcionários
           </a>
-          <!-- Botão para lista de RDs divergentes -->
           <a href="{{ url_for('anexos_divergentes') }}" class="btn btn-blue {% if divergentes_count > 0 %}btn-animated{% endif %}" style="margin-right: 10px;">
             <i class="fas fa-paperclip"></i> Anexos Divergentes
             {% if divergentes_count > 0 %}
               <span class="badge">{{ divergentes_count }}</span>
             {% endif %}
           </a>
+          {% if user_role == 'financeiro' %}
+            <a href="{{ url_for('export_historico') }}" class="btn btn-success" style="margin-right: 10px;">
+              <i class="fas fa-history"></i> Histórico de Movimentação
+            </a>
+          {% endif %}
           <a href="{{ url_for('export_excel') }}" class="btn btn-success">
             <i class="fas fa-file-excel"></i> Exportar para Excel
           </a>
         </div>
 
-        <!-- Macro para mostrar os valores com datas -->
         {% macro mostrar_valores(rd) %}
           {% set valor = rd[5] %}
           {% set valor_adic = rd[7] if rd[7] else 0 %}
@@ -478,7 +473,6 @@
           </div>
         {% endmacro %}
 
-        <!-- Abas: Pendentes, Aprovados, Liberados, etc. -->
         <div class="tabs">
           <input type="radio" name="tab-control" id="tab1" checked>
           <input type="radio" name="tab-control" id="tab2">
@@ -495,8 +489,6 @@
             <label for="tab6">Fechados {% if fechados|length > 0 %}<span class="badge">{{ fechados|length }}</span>{% endif %}</label>
           </div>
           <div class="content">
-            <!-- Conteúdo das abas (Pendentes, Aprovados, Liberados, etc.) -->
-            <!-- Aba Pendentes -->
             <div class="tab-content" id="content1">
               <table id="tabela-pendentes" class="display">
                 <thead>
@@ -506,7 +498,7 @@
                     <th>Funcionário</th>
                     <th>Data</th>
                     <th>Centro de Custo</th>
-                    <th>Unidade de Negócio</th> <!-- Nova coluna -->
+                    <th>Unidade de Negócio</th>
                     <th>Observação</th>
                     <th>Arquivos</th>
                     <th>Valores</th>
@@ -523,7 +515,7 @@
                     <td data-label="Funcionário">{{ rd[2] }}</td>
                     <td data-label="Data">{{ rd[3] }}</td>
                     <td data-label="Centro de Custo">{{ rd[4] }}<br><small>{{ rd[19] }}</small></td>
-                    <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td> <!-- Unidade de Negócio (rd[18]) -->
+                    <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td>
                     <td data-label="Observação">
                       {% if rd[16] %}
                         {% set obs = rd[16] %}
@@ -574,7 +566,6 @@
                 </tbody>
               </table>
             </div>
-            <!-- Aba Aprovados -->
             <div class="tab-content" id="content2">
               <table id="tabela-aprovados" class="display">
                 <thead>
@@ -584,7 +575,7 @@
                     <th>Funcionário</th>
                     <th>Data</th>
                     <th>Centro de Custo</th>
-                    <th>Unidade de Negócio</th> <!-- Nova coluna -->
+                    <th>Unidade de Negócio</th>
                     <th>Observação</th>
                     <th>Arquivos</th>
                     <th>Valores</th>
@@ -601,7 +592,7 @@
                     <td data-label="Funcionário">{{ rd[2] }}</td>
                     <td data-label="Data">{{ rd[3] }}</td>
                     <td data-label="Centro de Custo">{{ rd[4] }}</td>
-                    <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td> <!-- Unidade de Negócio (rd[18]) -->
+                    <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td>
                     <td data-label="Observação">
                       {% if rd[16] %}
                         {% set obs = rd[16] %}
@@ -652,7 +643,6 @@
                 </tbody>
               </table>
             </div>
-            <!-- Aba Liberados -->
             <div class="tab-content" id="content3">
               <table id="tabela-liberados" class="display">
                 <thead>
@@ -662,7 +652,7 @@
                     <th>Funcionário</th>
                     <th>Data</th>
                     <th>Centro de Custo</th>
-                    <th>Unidade de Negócio</th> <!-- Nova coluna -->
+                    <th>Unidade de Negócio</th>
                     <th>Observação</th>
                     <th>Arquivos</th>
                     <th>Valores</th>
@@ -679,7 +669,7 @@
                     <td data-label="Funcionário">{{ rd[2] }}</td>
                     <td data-label="Data">{{ rd[3] }}</td>
                     <td data-label="Centro de Custo">{{ rd[4] }}</td>
-                    <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td> <!-- Unidade de Negócio (rd[18]) -->
+                    <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td>
                     <td data-label="Observação">
                       {% if rd[16] %}
                         {% set obs = rd[16] %}
@@ -733,7 +723,6 @@
                           </button>
                         </form>
                       {% endif %}
-                      <!-- Botão para marcar como divergente (apenas para gestor/solicitante) -->
                       {% if user_role in ['gestor', 'solicitante'] %}
                         <form action="{{ url_for('marcar_divergente', id=rd_id) }}" method="GET" style="margin-top:5px;">
                           <button type="submit" class="btn btn-blue btn-animated">
@@ -747,7 +736,6 @@
                 </tbody>
               </table>
             </div>
-            <!-- Aba Fechamento Solicitado -->
             <div class="tab-content" id="content4">
               <table id="tabela-fechamento-solicitado" class="display">
                 <thead>
@@ -757,7 +745,7 @@
                     <th>Funcionário</th>
                     <th>Data</th>
                     <th>Centro de Custo</th>
-                    <th>Unidade de Negócio</th> <!-- Nova coluna -->
+                    <th>Unidade de Negócio</th>
                     <th>Observação</th>
                     <th>Arquivos</th>
                     <th>Valores</th>
@@ -774,7 +762,7 @@
                     <td data-label="Funcionário">{{ rd[2] }}</td>
                     <td data-label="Data">{{ rd[3] }}</td>
                     <td data-label="Centro de Custo">{{ rd[4] }}</td>
-                    <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td> <!-- Unidade de Negócio (rd[18]) -->
+                    <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td>
                     <td data-label="Observação">
                       {% if rd[16] %}
                         {% set obs = rd[16] %}
@@ -818,7 +806,6 @@
                 </tbody>
               </table>
             </div>
-            <!-- Aba Fechamento Recusado -->
             <div class="tab-content" id="content5">
               <table id="tabela-fechamento-recusado" class="display">
                 <thead>
@@ -828,7 +815,7 @@
                     <th>Funcionário</th>
                     <th>Data</th>
                     <th>Centro de Custo</th>
-                    <th>Unidade de Negócio</th> <!-- Nova coluna -->
+                    <th>Unidade de Negócio</th>
                     <th>Observação</th>
                     <th>Motivo da Recusa</th>
                     <th>Arquivos</th>
@@ -845,7 +832,7 @@
                     <td data-label="Funcionário">{{ rd[2] }}</td>
                     <td data-label="Data">{{ rd[3] }}</td>
                     <td data-label="Centro de Custo">{{ rd[4] }}</td>
-                    <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td> <!-- Unidade de Negócio (rd[18]) -->
+                    <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td>
                     <td data-label="Observação">
                       {% if rd[16] %}
                         {% set obs = rd[16] %}
@@ -883,7 +870,6 @@
                 </tbody>
               </table>
             </div>
-            <!-- Aba Fechados -->
             <div class="tab-content" id="content6">
               <table id="tabela-fechados" class="display">
                 <thead>
@@ -893,7 +879,7 @@
                     <th>Funcionário</th>
                     <th>Data</th>
                     <th>Centro de Custo</th>
-                    <th>Unidade de Negócio</th> <!-- Nova coluna -->
+                    <th>Unidade de Negócio</th>
                     <th>Observação</th>
                     <th>Arquivos</th>
                     <th>Valores</th>
@@ -909,7 +895,7 @@
                     <td data-label="Funcionário">{{ rd[2] }}</td>
                     <td data-label="Data">{{ rd[3] }}</td>
                     <td data-label="Centro de Custo">{{ rd[4] }}</td>
-                    <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td> <!-- Unidade de Negócio (rd[18]) -->
+                    <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td>
                     <td data-label="Observação">
                       {% if rd[16] %}
                         {% set obs = rd[16] %}
@@ -958,7 +944,6 @@
     {% endif %}
   </div>
 
-  <!-- Modal de popup para Supervisor avisando divergentes -->
   <div id="popupDivergentes" class="modal">
     <div class="modal-content">
       <span class="close-btn" id="closePopupDivergentes">×</span>
@@ -972,7 +957,6 @@
     Desenvolvido por André Ferreira
   </footer>
 
-  <!-- jQuery e DataTables -->
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script type="text/javascript" src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
   <script>
@@ -984,7 +968,6 @@
       $('#tabela-fechamento-recusado').DataTable();
       $('#tabela-fechados').DataTable();
 
-      // Se o usuário for supervisor e houver divergentes, exibe o popup
       {% if user_role == 'supervisor' and divergentes_count > 0 %}
         $("#popupDivergentes").show();
       {% endif %}
@@ -993,7 +976,6 @@
         $("#popupDivergentes").hide();
       });
       
-      // Toggle para detalhes de valores
       $(document).on('click', '.toggle-details', function(){
         var details = $(this).closest('.valor-resumo').next('.rd-details');
         if(details.is(':visible')){
@@ -1005,7 +987,6 @@
         }
       });
 
-      // Toggle para observação (usando delegação de evento)
       $(document).on('click', '.toggle-observation', function(){
         var full = $(this).siblings('.observation-full');
         if(full.is(':visible')){
@@ -1017,7 +998,6 @@
         }
       });
 
-      // Abrir modal de arquivos
       $(document).on('click', '.btn-view-files', function(){
         let filesStr = $(this).data('files');    
         let rdId     = $(this).data('rdId');     
@@ -1057,7 +1037,6 @@
         document.getElementById('lbl-solicitante').innerText = 'Solicitante do RD Reembolso';
       });
       
-      // Handler para botão de recusa
       $(document).on('click', '.btn-recusar', function(){
         var rdId = $(this).data('rdId');
         $('#formRecusa').attr('action', '/reject_fechamento/' + rdId);
@@ -1069,7 +1048,6 @@
       });
     });
   </script>
-  <!-- Modal para exibir anexos -->
   <div id="fileModal" class="modal">
     <div class="modal-content">
       <span class="close-btn" id="closeFileModal">×</span>
@@ -1077,7 +1055,6 @@
       <div id="modalFilesContainer"></div>
     </div>
   </div>
-  <!-- Modal para recusa do fechamento -->
   <div id="recusaModal" class="modal">
     <div class="modal-content">
       <span class="close-btn" id="closeRecusaModal">×</span>
@@ -1089,5 +1066,5 @@
       </form>
     </div>
   </div>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'92248b972e9144df',t:'MTc0MjI5ODk3MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
