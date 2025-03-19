@@ -6,6 +6,7 @@
     <title>Editar RD</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
+        /* Mantendo o mesmo estilo que você enviou */
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f2f3f5;
@@ -51,7 +52,6 @@
             font-size: 1rem;
             box-sizing: border-box;
         }
-        /* Campo desabilitado fica com fundo levemente cinza */
         .main-form input[disabled], .main-form textarea[disabled] {
             background-color: #f0f0f0;
             color: #888;
@@ -94,7 +94,6 @@
       
         <p style="color:#e67e22; font-weight:600;">Supervisor: você pode apenas gerenciar anexos.</p>
 
-        <!-- Supervisor não pode editar solicitante, funcionário, valor, etc. Desabilitamos ou omitimos -->
         <label for="solicitante">Solicitante:</label>
         <input type="text" id="solicitante" name="solicitante" value="{{ rd[1] }}" disabled>
 
@@ -110,6 +109,9 @@
         <label for="valor">Valor (R$):</label>
         <input type="number" id="valor" name="valor" value="{{ rd[5] }}" step="0.01" disabled>
 
+        <label for="valor_adicional">Valor Adicional (R$):</label>
+        <input type="number" id="valor_adicional" name="valor_adicional" value="{{ rd[7] if rd[7] is not none else 0 }}" step="0.01" disabled>
+
         <label for="observacao">Observação:</label>
         <textarea id="observacao" name="observacao" rows="4" disabled>{{ rd[16] if rd|length > 16 else '' }}</textarea>
 
@@ -120,7 +122,7 @@
 
       {% else %}
       
-        <!-- Caso contrário, usuários comuns veem todos os campos editáveis -->
+        <!-- Usuários comuns (solicitante, gestor, financeiro) veem todos os campos editáveis -->
         <label for="solicitante">Solicitante:</label>
         <input type="text" id="solicitante" name="solicitante" value="{{ rd[1] }}" required>
 
@@ -135,6 +137,10 @@
 
         <label for="valor">Valor (R$):</label>
         <input type="number" id="valor" name="valor" value="{{ rd[5] }}" step="0.01" required>
+
+        <!-- Adicionando o campo valor_adicional aqui -->
+        <label for="valor_adicional">Valor Adicional (R$):</label>
+        <input type="number" id="valor_adicional" name="valor_adicional" value="{{ rd[7] if rd[7] is not none else 0 }}" step="0.01">
 
         <label for="observacao">Observação:</label>
         <textarea id="observacao" name="observacao" rows="4">{{ rd[16] if rd|length > 16 else '' }}</textarea>
