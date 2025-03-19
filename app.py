@@ -466,10 +466,13 @@ def edit_submit(id):
     conn = get_pg_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT status, arquivos FROM rd WHERE id=%s", (id,))
+    # Pegar status, arquivos e valor_adicional anterior
+    cursor.execute("SELECT status, arquivos, valor_adicional, valor_liberado FROM rd WHERE id=%s", (id,))
     row = cursor.fetchone()
     original_status = row[0]
     arquivos_str = row[1]
+    valor_adicional_antigo = row[2] if row[2] is not None else 0.0
+    valor_liberado = row[3] if row[3] is not None else 0.0
 
     arqs_list = arquivos_str.split(",") if arquivos_str else []
     if "arquivo" in request.files:
@@ -492,10 +495,22 @@ def edit_submit(id):
 
         try:
             valor_novo = float(request.form["valor"].replace(",", "."))
-        except:
-            flash("Valor inválido.")
+            valor_adicional_novo = float(request.form["valor_adicional"].replace(",", ".")) if request.form["valor_adicional"] else 0.0
+        except ValueError:
+            flash("Valor ou Valor Adicional inválido.")
             conn.close()
             return redirect(url_for("index"))
+
+        # Verificar se o valor_adicional foi reduzido e ajustar o saldo_global, se aplicável
+        if original_status in ["Liberado", "Saldos a Devolver", "Fechamento Solicitado", "Fechamento Recusado"]:
+            if valor_adicional_novo < valor_adicional_antigo:
+                diferenca = valor_adicional_antigo - valor_adicional_novo
+                # Só ajustar o saldo_global se o valor_adicional fazia parte do valor_liberado
+                if valor_liberado > 0:
+                    saldo_atual = get_saldo_global()
+                    novo_saldo = saldo_atual + diferenca
+                    set_saldo_global(novo_saldo)
+                    logging.debug(f"Saldo global ajustado: +{diferenca}. Novo saldo: {novo_saldo}")
 
         cursor.execute("""
         UPDATE rd
@@ -504,11 +519,12 @@ def edit_submit(id):
             data=%s,
             centro_custo=%s,
             valor=%s,
+            valor_adicional=%s,
             arquivos=%s,
             observacao=%s,
             unidade_negocio=%s
         WHERE id=%s
-        """, (solicitante, funcionario, data_str, centro_custo, valor_novo,
+        """, (solicitante, funcionario, data_str, centro_custo, valor_novo, valor_adicional_novo,
               new_arqs, observacao, unidade_negocio, id))
 
         if is_solicitante() and original_status == "Fechamento Recusado":
