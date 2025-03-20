@@ -459,20 +459,29 @@ def edit_form(id):
 
 @app.route("/edit_submit/<id>", methods=["POST"])
 def edit_submit(id):
+    logging.debug(f"Iniciando edição da RD {id}")
+    logging.debug(f"Dados do formulário: {request.form}")
+
     if not can_edit_status(id):
+        logging.warning(f"Acesso negado para RD {id}")
         flash("Acesso negado.")
         return "Acesso negado", 403
 
     conn = get_pg_connection()
     cursor = conn.cursor()
 
-    # Pegar status, arquivos e valor_adicional anterior
     cursor.execute("SELECT status, arquivos, valor_adicional, valor_liberado FROM rd WHERE id=%s", (id,))
     row = cursor.fetchone()
+    if not row:
+        logging.error(f"RD {id} não encontrada")
+        conn.close()
+        return redirect(url_for("index"))
+    
     original_status = row[0]
     arquivos_str = row[1]
     valor_adicional_antigo = row[2] if row[2] is not None else 0.0
     valor_liberado = row[3] if row[3] is not None else 0.0
+    logging.debug(f"Status original: {original_status}")
 
     arqs_list = arquivos_str.split(",") if arquivos_str else []
     if "arquivo" in request.files:
@@ -485,55 +494,65 @@ def edit_submit(id):
 
     if user_role() == "supervisor":
         cursor.execute("UPDATE rd SET arquivos=%s WHERE id=%s", (new_arqs, id))
+        logging.debug(f"Supervisor atualizou arquivos: {new_arqs}")
     else:
-        solicitante     = request.form["solicitante"].strip()
-        funcionario     = request.form["funcionario"].strip()
-        data_str        = request.form["data"].strip()
-        centro_custo    = request.form["centro_custo"].strip()
-        observacao      = request.form.get("observacao", "").strip()
+        solicitante = request.form.get("solicitante", "").strip()
+        funcionario = request.form.get("funcionario", "").strip()
+        data_str = request.form.get("data", "").strip()
+        centro_custo = request.form.get("centro_custo", "").strip()
+        observacao = request.form.get("observacao", "").strip()
         unidade_negocio = request.form.get("unidade_negocio", "").strip()
 
+        if not all([solicitante, funcionario, data_str, centro_custo]):
+            logging.error(f"Campos obrigatórios ausentes: solicitante={solicitante}, funcionario={funcionario}, data={data_str}, centro_custo={centro_custo}")
+            flash("Preencha todos os campos obrigatórios.")
+            conn.close()
+            return redirect(url_for("index"))
+
+        valor_raw = request.form.get("valor", "").strip()
+        valor_adicional_raw = request.form.get("valor_adicional", "").strip()
+        logging.debug(f"Valor bruto: {valor_raw}, Valor Adicional bruto: {valor_adicional_raw}")
+
         try:
-            valor_novo = float(request.form["valor"].replace(",", "."))
-            valor_adicional_novo = float(request.form["valor_adicional"].replace(",", ".")) if request.form["valor_adicional"] else 0.0
-        except ValueError:
+            valor_novo = float(valor_raw.replace(",", "."))
+            valor_adicional_novo = float(valor_adicional_raw.replace(",", ".")) if valor_adicional_raw else 0.0
+        except ValueError as e:
+            logging.error(f"Erro ao converter valores: {e}, valor={valor_raw}, valor_adicional={valor_adicional_raw}")
             flash("Valor ou Valor Adicional inválido.")
             conn.close()
             return redirect(url_for("index"))
 
-        # Verificar se o valor_adicional foi reduzido e ajustar o saldo_global, se aplicável
-        if original_status in ["Liberado", "Saldos a Devolver", "Fechamento Solicitado", "Fechamento Recusado"]:
-            if valor_adicional_novo < valor_adicional_antigo:
-                diferenca = valor_adicional_antigo - valor_adicional_novo
-                # Só ajustar o saldo_global se o valor_adicional fazia parte do valor_liberado
-                if valor_liberado > 0:
-                    saldo_atual = get_saldo_global()
-                    novo_saldo = saldo_atual + diferenca
-                    set_saldo_global(novo_saldo)
-                    logging.debug(f"Saldo global ajustado: +{diferenca}. Novo saldo: {novo_saldo}")
+        try:
+            cursor.execute("""
+            UPDATE rd
+            SET solicitante=%s,
+                funcionario=%s,
+                data=%s,
+                centro_custo=%s,
+                valor=%s,
+                valor_adicional=%s,
+                arquivos=%s,
+                observacao=%s,
+                unidade_negocio=%s
+            WHERE id=%s
+            """, (solicitante, funcionario, data_str, centro_custo, valor_novo, valor_adicional_novo,
+                  new_arqs, observacao, unidade_negocio, id))
+            logging.debug(f"Executou UPDATE principal para RD {id}")
 
-        cursor.execute("""
-        UPDATE rd
-        SET solicitante=%s,
-            funcionario=%s,
-            data=%s,
-            centro_custo=%s,
-            valor=%s,
-            valor_adicional=%s,
-            arquivos=%s,
-            observacao=%s,
-            unidade_negocio=%s
-        WHERE id=%s
-        """, (solicitante, funcionario, data_str, centro_custo, valor_novo, valor_adicional_novo,
-              new_arqs, observacao, unidade_negocio, id))
+            if is_solicitante() and original_status == "Fechamento Recusado":
+                cursor.execute("UPDATE rd SET status='Fechamento Solicitado', motivo_recusa=NULL WHERE id=%s", (id,))
+                logging.debug(f"Status alterado para 'Fechamento Solicitado'")
 
-        if is_solicitante() and original_status == "Fechamento Recusado":
-            cursor.execute("UPDATE rd SET status='Fechamento Solicitado', motivo_recusa=NULL WHERE id=%s", (id,))
+            conn.commit()
+            logging.debug(f"Commit realizado com sucesso para RD {id}")
+        except psycopg2.Error as e:
+            logging.error(f"Erro no banco de dados: {e}")
+            conn.rollback()
+            flash("Erro ao salvar no banco de dados.")
+            conn.close()
+            return redirect(url_for("index"))
 
-    conn.commit()
-    cursor.close()
     conn.close()
-
     flash("RD atualizada com sucesso.")
     return redirect(url_for("index"))
 
