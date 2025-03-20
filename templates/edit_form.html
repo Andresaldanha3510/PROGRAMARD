@@ -6,7 +6,6 @@
     <title>Editar RD</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
-        /* Mantendo o mesmo estilo que você enviou */
         body {
             font-family: 'Inter', sans-serif;
             background-color: #f2f3f5;
@@ -112,6 +111,9 @@
         <label for="valor_adicional">Valor Adicional (R$):</label>
         <input type="number" id="valor_adicional" name="valor_adicional" value="{{ rd[7] if rd[7] is not none else 0 }}" step="0.01" disabled>
 
+        <label for="valor_despesa">Valor Gasto (R$):</label>
+        <input type="number" id="valor_despesa" name="valor_despesa" value="{{ rd[9] if rd[9] is not none else 0 }}" step="0.01" disabled>
+
         <label for="observacao">Observação:</label>
         <textarea id="observacao" name="observacao" rows="4" disabled>{{ rd[16] if rd|length > 16 else '' }}</textarea>
 
@@ -138,9 +140,11 @@
         <label for="valor">Valor (R$):</label>
         <input type="number" id="valor" name="valor" value="{{ rd[5] }}" step="0.01" required>
 
-        <!-- Adicionando o campo valor_adicional aqui -->
         <label for="valor_adicional">Valor Adicional (R$):</label>
         <input type="number" id="valor_adicional" name="valor_adicional" value="{{ rd[7] if rd[7] is not none else 0 }}" step="0.01">
+
+        <label for="valor_despesa">Valor Gasto (R$):</label>
+        <input type="number" id="valor_despesa" name="valor_despesa" value="{{ rd[9] if rd[9] is not none else '' }}" step="0.01">
 
         <label for="observacao">Observação:</label>
         <textarea id="observacao" name="observacao" rows="4">{{ rd[16] if rd|length > 16 else '' }}</textarea>
@@ -155,5 +159,6 @@
     </form>
     <a href="{{ url_for('index') }}" class="back-link">Voltar</a>
 </div>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9235aafc486b4525',t:'MTc0MjQ3ODUxNC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
 </body>
 </html>
