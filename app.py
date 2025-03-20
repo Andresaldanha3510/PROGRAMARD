@@ -470,7 +470,7 @@ def edit_submit(id):
     conn = get_pg_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT status, arquivos, valor_adicional, valor_liberado FROM rd WHERE id=%s", (id,))
+    cursor.execute("SELECT status, arquivos, valor_adicional, valor_liberado, valor_despesa FROM rd WHERE id=%s", (id,))
     row = cursor.fetchone()
     if not row:
         logging.error(f"RD {id} não encontrada")
@@ -481,6 +481,7 @@ def edit_submit(id):
     arquivos_str = row[1]
     valor_adicional_antigo = row[2] if row[2] is not None else 0.0
     valor_liberado = row[3] if row[3] is not None else 0.0
+    valor_despesa_antigo = row[4] if row[4] is not None else 0.0
     logging.debug(f"Status original: {original_status}")
 
     arqs_list = arquivos_str.split(",") if arquivos_str else []
@@ -511,16 +512,22 @@ def edit_submit(id):
 
         valor_raw = request.form.get("valor", "").strip()
         valor_adicional_raw = request.form.get("valor_adicional", "").strip()
-        logging.debug(f"Valor bruto: {valor_raw}, Valor Adicional bruto: {valor_adicional_raw}")
+        valor_despesa_raw = request.form.get("valor_despesa", "").strip()
+        logging.debug(f"Valor bruto: {valor_raw}, Valor Adicional bruto: {valor_adicional_raw}, Valor Despesa bruto: {valor_despesa_raw}")
 
         try:
             valor_novo = float(valor_raw.replace(",", "."))
             valor_adicional_novo = float(valor_adicional_raw.replace(",", ".")) if valor_adicional_raw else 0.0
+            valor_despesa_novo = float(valor_despesa_raw.replace(",", ".")) if valor_despesa_raw else valor_despesa_antigo
         except ValueError as e:
-            logging.error(f"Erro ao converter valores: {e}, valor={valor_raw}, valor_adicional={valor_adicional_raw}")
-            flash("Valor ou Valor Adicional inválido.")
+            logging.error(f"Erro ao converter valores: {e}")
+            flash("Valor, Valor Adicional ou Valor Despesa inválido.")
             conn.close()
             return redirect(url_for("index"))
+
+        # Recalcular o saldo_devolver
+        total_cred = valor_novo + valor_adicional_novo
+        saldo_devolver_novo = total_cred - valor_despesa_novo if valor_despesa_novo else None
 
         try:
             cursor.execute("""
@@ -531,12 +538,14 @@ def edit_submit(id):
                 centro_custo=%s,
                 valor=%s,
                 valor_adicional=%s,
+                valor_despesa=%s,
+                saldo_devolver=%s,
                 arquivos=%s,
                 observacao=%s,
                 unidade_negocio=%s
             WHERE id=%s
             """, (solicitante, funcionario, data_str, centro_custo, valor_novo, valor_adicional_novo,
-                  new_arqs, observacao, unidade_negocio, id))
+                  valor_despesa_novo, saldo_devolver_novo, new_arqs, observacao, unidade_negocio, id))
             logging.debug(f"Executou UPDATE principal para RD {id}")
 
             if is_solicitante() and original_status == "Fechamento Recusado":
