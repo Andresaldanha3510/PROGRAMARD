@@ -470,33 +470,48 @@ def edit_submit(id):
     conn = get_pg_connection()
     cursor = conn.cursor()
 
-    cursor.execute("SELECT status, arquivos, valor_adicional, valor_liberado, valor_despesa FROM rd WHERE id=%s", (id,))
+    # Buscar dados atuais da RD
+    cursor.execute("SELECT status, arquivos, valor_adicional, valor_liberado, valor_despesa, observacao FROM rd WHERE id=%s", (id,))
     row = cursor.fetchone()
     if not row:
         logging.error(f"RD {id} não encontrada")
         conn.close()
         return redirect(url_for("index"))
     
-    original_status = row[0]
-    arquivos_str = row[1]
-    valor_adicional_antigo = row[2] if row[2] is not None else 0.0
-    valor_liberado = row[3] if row[3] is not None else 0.0
-    valor_despesa_antigo = row[4] if row[4] is not None else 0.0
+    original_status, arquivos_str, valor_adicional_antigo, valor_liberado, valor_despesa_antigo, observacao_antiga = row
     logging.debug(f"Status original: {original_status}")
 
+    # Processar anexos
     arqs_list = arquivos_str.split(",") if arquivos_str else []
     if "arquivo" in request.files:
-        for f in request.files.getlist("arquivo"):
-            if f.filename:
+        uploaded_files = request.files.getlist("arquivo")
+        for f in uploaded_files:
+            if f and f.filename:  # Verificar se o arquivo é válido
                 fname = f"{id}_{f.filename}"
                 upload_file_to_r2(f, fname)
                 arqs_list.append(fname)
+                logging.debug(f"Anexo adicionado: {fname}")
     new_arqs = ",".join(arqs_list) if arqs_list else None
 
     if user_role() == "supervisor":
-        cursor.execute("UPDATE rd SET arquivos=%s WHERE id=%s", (new_arqs, id))
-        logging.debug(f"Supervisor atualizou arquivos: {new_arqs}")
+        # Supervisor só pode alterar arquivos e observação
+        observacao = request.form.get("observacao", "").strip()
+        try:
+            cursor.execute("""
+            UPDATE rd
+            SET arquivos=%s, observacao=%s
+            WHERE id=%s
+            """, (new_arqs, observacao, id))
+            logging.debug(f"Supervisor atualizou arquivos: {new_arqs} e observação: {observacao}")
+            conn.commit()
+        except psycopg2.Error as e:
+            logging.error(f"Erro no banco de dados: {e}")
+            conn.rollback()
+            flash("Erro ao salvar no banco de dados.")
+            conn.close()
+            return redirect(url_for("index"))
     else:
+        # Lógica para outros papéis
         solicitante = request.form.get("solicitante", "").strip()
         funcionario = request.form.get("funcionario", "").strip()
         data_str = request.form.get("data", "").strip()
