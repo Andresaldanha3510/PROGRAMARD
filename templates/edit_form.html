@@ -2,163 +2,146 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Editar RD</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
     <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #f39c12;
+            --success-color: #2ecc71;
+            --danger-color: #e74c3c;
+            --warning-color: #f1c40f;
+            --background-color: #f2f3f5;
+            --header-color: #34495e;
+            --text-color: #2c3e50;
+            --footer-background: #2c3e50;
+            --footer-text: #ecf0f1;
+            --border-color: #dddddd;
+            --input-border: #dcdde1;
+        }
         body {
             font-family: 'Inter', sans-serif;
-            background-color: #f2f3f5;
-            color: #2c3e50;
             margin: 0;
             padding: 0;
+            background-color: var(--background-color);
+            color: var(--text-color);
         }
         .container {
-            max-width: 600px;
-            margin: 50px auto;
+            max-width: 1200px;
+            margin: 20px auto;
             padding: 20px;
-            background: #ffffff;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
         }
         h1 {
-            font-weight: 700;
-            color: #2c3e50;
             text-align: center;
-            margin-bottom: 20px;
-            margin-top: 20px;
+            margin: 20px 0;
+            font-weight: 700;
+            color: var(--header-color);
         }
         .main-form {
-            background-color: #ffffff;
-            padding: 25px;
-            border-radius: 8px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            border: 1px solid #e1e1e1;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 20px;
+            background: #fff;
+            box-shadow: 0 2px 15px rgba(0,0,0,0.1);
         }
         .main-form label {
             display: block;
             margin-bottom: 5px;
             font-weight: 600;
-            color: #34495e;
+            color: var(--header-color);
         }
         .main-form input,
         .main-form textarea {
             width: 100%;
             padding: 10px;
             margin-bottom: 15px;
-            border: 1px solid #dcdde1;
+            border: 1px solid var(--input-border);
             border-radius: 5px;
-            font-size: 1rem;
+            font-size: 0.9rem;
             box-sizing: border-box;
         }
-        .main-form input[disabled], .main-form textarea[disabled] {
-            background-color: #f0f0f0;
-            color: #888;
+        .main-form input[readonly] {
+            background-color: #f9f9f9;
+            cursor: not-allowed;
         }
         .main-form button {
-            background-color: #3498db;
-            color: #ffffff;
-            font-weight: 600;
-            border: none;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-            width: auto;
-            display: inline-block;
+            background-color: var(--primary-color);
+            color: #fff;
             padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
         }
         .main-form button:hover {
             background-color: #2980b9;
         }
-        .back-link {
-            display: block;
-            text-align: center;
-            margin-top: 20px;
-            text-decoration: none;
-            color: #3498db;
-            font-weight: 600;
+        .btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.3s ease;
         }
-        .back-link:hover {
-            text-decoration: underline;
+        .btn-secondary {
+            background-color: var(--secondary-color);
+            color: #fff;
+        }
+        .btn-secondary:hover {
+            background-color: #e08e0b;
+        }
+        .btn i {
+            margin-right: 5px;
         }
     </style>
 </head>
 <body>
-<div class="container">
-    <h1>Editar RD #{{ rd[0] }}</h1>
+    <div class="container">
+        <h1>Editar RD #{{ rd[0] }}</h1>
+        <form action="{{ url_for('edit_submit', id=rd[0]) }}" method="POST" enctype="multipart/form-data" class="main-form">
+            <label for="solicitante">Solicitante:</label>
+            <input type="text" id="solicitante" name="solicitante" value="{{ rd[1] }}" {% if user_role == 'supervisor' %}readonly{% endif %} required>
 
-    <form action="{{ url_for('edit_submit', id=rd[0]) }}" method="POST" class="main-form" enctype="multipart/form-data">
+            <label for="funcionario">Funcionário:</label>
+            <input type="text" id="funcionario" name="funcionario" value="{{ rd[2] }}" {% if user_role == 'supervisor' %}readonly{% endif %} required>
 
-      <!-- Verificamos se user_role == 'supervisor'. Se for, escondemos/desabilitamos campos de valor/solicitante/etc. -->
-      {% if user_role == 'supervisor' %}
-      
-        <p style="color:#e67e22; font-weight:600;">Supervisor: você pode apenas gerenciar anexos.</p>
+            <label for="data">Data:</label>
+            <input type="date" id="data" name="data" value="{{ rd[3] }}" {% if user_role == 'supervisor' %}readonly{% endif %} required>
 
-        <label for="solicitante">Solicitante:</label>
-        <input type="text" id="solicitante" name="solicitante" value="{{ rd[1] }}" disabled>
+            <label for="centro_custo">Centro de Custo:</label>
+            <input type="text" id="centro_custo" name="centro_custo" value="{{ rd[4] }}" {% if user_role == 'supervisor' %}readonly{% endif %} required>
 
-        <label for="funcionario">Funcionário:</label>
-        <input type="text" id="funcionario" name="funcionario" value="{{ rd[2] }}" disabled>
+            <label for="unidade_negocio">Unidade de Negócio:</label>
+            <input type="text" id="unidade_negocio" name="unidade_negocio" value="{{ rd[18] or '' }}" {% if user_role == 'supervisor' %}readonly{% endif %}>
 
-        <label for="data">Data:</label>
-        <input type="date" id="data" name="data" value="{{ rd[3] }}" disabled>
+            <label for="valor">Valor (R$):</label>
+            <input type="number" id="valor" name="valor" step="0.01" value="{{ rd[5] }}" {% if user_role == 'supervisor' %}readonly{% endif %} required>
 
-        <label for="centro_custo">Centro de Custo:</label>
-        <input type="text" id="centro_custo" name="centro_custo" value="{{ rd[4] }}" disabled>
+            <label for="valor_adicional">Valor Adicional (R$):</label>
+            <input type="number" id="valor_adicional" name="valor_adicional" step="0.01" value="{{ rd[7] or 0 }}" {% if user_role == 'supervisor' %}readonly{% endif %}>
 
-        <label for="valor">Valor (R$):</label>
-        <input type="number" id="valor" name="valor" value="{{ rd[5] }}" step="0.01" disabled>
+            <label for="valor_despesa">Valor da Despesa (R$):</label>
+            <input type="number" id="valor_despesa" name="valor_despesa" step="0.01" value="{{ rd[9] or '' }}" {% if user_role == 'supervisor' %}readonly{% endif %}>
 
-        <label for="valor_adicional">Valor Adicional (R$):</label>
-        <input type="number" id="valor_adicional" name="valor_adicional" value="{{ rd[7] if rd[7] is not none else 0 }}" step="0.01" disabled>
+            <label for="observacao">Observação:</label>
+            <textarea id="observacao" name="observacao" rows="3">{{ rd[16] or '' }}</textarea>
 
-        <label for="valor_despesa">Valor Gasto (R$):</label>
-        <input type="number" id="valor_despesa" name="valor_despesa" value="{{ rd[9] if rd[9] is not none else 0 }}" step="0.01" disabled>
+            <label for="arquivo">Anexar Arquivos (opcional):</label>
+            <input type="file" id="arquivo" name="arquivo" multiple>
 
-        <label for="observacao">Observação:</label>
-        <textarea id="observacao" name="observacao" rows="4" disabled>{{ rd[16] if rd|length > 16 else '' }}</textarea>
-
-        <label for="arquivo">Anexar Novos Arquivos (opcional):</label>
-        <input type="file" id="arquivo" name="arquivo" multiple>
-
-        <button type="submit">Salvar (Apenas Anexos)</button>
-
-      {% else %}
-      
-        <!-- Usuários comuns (solicitante, gestor, financeiro) veem todos os campos editáveis -->
-        <label for="solicitante">Solicitante:</label>
-        <input type="text" id="solicitante" name="solicitante" value="{{ rd[1] }}" required>
-
-        <label for="funcionario">Funcionário:</label>
-        <input type="text" id="funcionario" name="funcionario" value="{{ rd[2] }}" required>
-
-        <label for="data">Data:</label>
-        <input type="date" id="data" name="data" value="{{ rd[3] }}" required>
-
-        <label for="centro_custo">Centro de Custo:</label>
-        <input type="text" id="centro_custo" name="centro_custo" value="{{ rd[4] }}" required>
-
-        <label for="valor">Valor (R$):</label>
-        <input type="number" id="valor" name="valor" value="{{ rd[5] }}" step="0.01" required>
-
-        <label for="valor_adicional">Valor Adicional (R$):</label>
-        <input type="number" id="valor_adicional" name="valor_adicional" value="{{ rd[7] if rd[7] is not none else 0 }}" step="0.01">
-
-        <label for="valor_despesa">Valor Gasto (R$):</label>
-        <input type="number" id="valor_despesa" name="valor_despesa" value="{{ rd[9] if rd[9] is not none else '' }}" step="0.01">
-
-        <label for="observacao">Observação:</label>
-        <textarea id="observacao" name="observacao" rows="4">{{ rd[16] if rd|length > 16 else '' }}</textarea>
-
-        <label for="arquivo">Anexar Novos Arquivos (opcional):</label>
-        <input type="file" id="arquivo" name="arquivo" multiple>
-
-        <button type="submit">Salvar Alterações</button>
-
-      {% endif %}
-
-    </form>
-    <a href="{{ url_for('index') }}" class="back-link">Voltar</a>
-</div>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9235aafc486b4525',t:'MTc0MjQ3ODUxNC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script>
+            <button type="submit"><i class="fas fa-save"></i> Salvar Alterações</button>
+        </form>
+        <a href="{{ url_for('index') }}" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Voltar</a>
+    </div>
 </body>
 </html>
