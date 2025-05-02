@@ -405,14 +405,15 @@
             <input type="text" id="solicitante" name="solicitante" required>
             <label for="funcionario">Funcionário:</label>
             <input type="text" id="funcionario" name="funcionario" required>
-            <label for="data">Data:</label>
-            <input type="date" id="data" name="data" required>
+            <label for="data-display">Data (dd-mm-aaaa):</label>
+            <input type="text" id="data-display" name="data-display" placeholder="dd-mm-aaaa" maxlength="10" required>
+            <input type="hidden" id="data" name="data">
             <label for="centro_custo">Centro de Custo:</label>
             <input type="text" id="centro_custo" name="centro_custo" required>
             <label for="unidade_negocio">Unidade de Negócio:</label>
             <input type="text" id="unidade_negocio" name="unidade_negocio" placeholder="cod. Filial">
             <label for="valor">Valor (R$):</label>
-            <input type="number" id="valor" name="valor" step="0.01" required>
+            <input type="number" id="valor" name=" valor" step="0.01" required>
             <label for="observacao">Observação:</label>
             <textarea id="observacao" name="observacao" rows="3"></textarea>
             <label for="arquivo">Anexar Arquivos:</label>
@@ -1098,16 +1099,28 @@
         return "https://pub-1e6f8559bc2b413c889fbf4860462599.r2.dev/" + filename;
       }
 
-      document.getElementById('btn-alelo')?.addEventListener('click', function(){
-        document.getElementById('form-solicitacao').style.display = 'block';
-        document.getElementById('rd-tipo').value = 'credito alelo';
-        document.getElementById('lbl-solicitante').innerText = 'Solicitante do RD Alelo';
+      // Eventos dos botões para exibir o formulário
+      $('#btn-alelo').on('click', function(){
+        console.log('Botão Alelo clicado');
+        $('#form-solicitacao').css('display', 'block');
+        $('#rd-tipo').val('credito alelo');
+        $('#lbl-solicitante').text('Solicitante do RD Alelo');
       });
-      document.getElementById('btn-reembolso')?.addEventListener('click', function(){
-        document.getElementById('form-solicitacao').style.display = 'block';
-        document.getElementById('rd-tipo').value = 'reembolso';
-        document.getElementById('lbl-solicitante').innerText = 'Solicitante do RD Reembolso';
+
+      $('#btn-reembolso').on('click', function(){
+        console.log('Botão Reembolso clicado');
+        $('#form-solicitacao').css('display', 'block');
+        $('#rd-tipo').val('reembolso');
+        $('#lbl-solicitante').text('Solicitante do RD Reembolso');
       });
+
+      // Verificar se os botões existem
+      if (!$('#btn-alelo').length) {
+        console.warn('Botão #btn-alelo não encontrado no DOM');
+      }
+      if (!$('#btn-reembolso').length) {
+        console.warn('Botão #btn-reembolso não encontrado no DOM');
+      }
       
       $(document).on('click', '.btn-recusar', function(){
         var rdId = $(this).data('rdId');
@@ -1118,6 +1131,62 @@
       $(window).click(function(e){
         if(e.target == document.getElementById('recusaModal')){ $('#recusaModal').hide(); }
       });
+
+      // Máscara e validação de data (dd-mm-aaaa)
+      const dateInput = document.getElementById('data-display');
+      const hiddenDateInput = document.getElementById('data');
+      if (dateInput) {
+        dateInput.addEventListener('input', function(e) {
+          let value = e.target.value.replace(/[^0-9-]/g, '');
+          if (value.length > 10) {
+            value = value.slice(0, 10);
+          }
+          // Aplica máscara: dd-mm-aaaa
+          if (value.length >= 2 && value.charAt(2) !== '-') {
+            value = value.slice(0, 2) + '-' + value.slice(2);
+          }
+          if (value.length >= 5 && value.charAt(5) !== '-') {
+            value = value.slice(0, 5) + '-' + value.slice(5);
+          }
+          e.target.value = value;
+
+          // Validação da data
+          if (value.length === 10) {
+            const [day, month, year] = value.split('-').map(Number);
+            const isValidDate = (day >= 1 && day <= 31) &&
+                               (month >= 1 && month <= 12) &&
+                               (year >= 2000 && year <= 2099) &&
+                               (new Date(year, month - 1, day).getDate() === day);
+            if (isValidDate) {
+              // Converte para aaaa-mm-dd para o backend
+              hiddenDateInput.value = `${year}-${month.toString().padStart(2, '0')}-${day.toString().padStart(2, '0')}`;
+              dateInput.setCustomValidity('');
+            } else {
+              hiddenDateInput.value = '';
+              dateInput.setCustomValidity('Data inválida. Use o formato dd-mm-aaaa (ex.: 31-12-2025).');
+            }
+          } else {
+            hiddenDateInput.value = '';
+            dateInput.setCustomValidity('Data incompleta. Use o formato dd-mm-aaaa.');
+          }
+        });
+
+        // Impede colar texto inválido
+        dateInput.addEventListener('paste', function(e) {
+          e.preventDefault();
+          const pasted = e.clipboardData.getData('text').replace(/[^0-9-]/g, '').slice(0, 10);
+          dateInput.value = pasted;
+          dateInput.dispatchEvent(new Event('input'));
+        });
+
+        // Validação ao enviar o formulário
+        document.getElementById('form-solicitacao').addEventListener('submit', function(e) {
+          if (!hiddenDateInput.value) {
+            e.preventDefault();
+            dateInput.reportValidity();
+          }
+        });
+      }
     });
   </script>
   <div id="fileModal" class="modal">
@@ -1138,5 +1207,5 @@
       </form>
     </div>
   </div>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'92248b972e9144df',t:'MTc0MjI5ODk3MC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script><script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'92266d448a2e67c3',t:'MTc0MjMxODcwMC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</body>
 </html>
