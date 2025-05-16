@@ -9,7 +9,9 @@ load_dotenv()
 import boto3
 from botocore.client import Config
 
+
 # Ajuste se necessário
+# keys exposed publically -- huge risk. I see you got .env but this is hardcoded here.
 R2_ACCESS_KEY = "97060093e2382cb9b485900551b6e470"
 R2_SECRET_KEY = "f82c29e70532b18b1705ffc94aea2f62fe4c2a85a8c99ad30b6894f068582970"
 R2_ENDPOINT   = "https://e5dfe58dd78702917f5bb5852970c6c2.r2.cloudflarestorage.com"
@@ -48,11 +50,13 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 
 app = Flask(__name__)
+# You fallback options are very weak and exposed. Easy to exploit
 secret_key = os.getenv("SECRET_KEY", "secret123")
 app.secret_key = secret_key
 logging.debug("SECRET_KEY carregado corretamente.")
 
 # ============ Config. BD ============
+# You fallback options are very weak and exposed. Easy to exploit
 PG_HOST = os.getenv("PG_HOST", "dpg-ctjqnsdds78s73erdqi0-a.oregon-postgres.render.com")
 PG_PORT = os.getenv("PG_PORT", "5432")
 PG_DB   = os.getenv("PG_DB", "programard_db")
