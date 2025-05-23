@@ -392,6 +392,10 @@ def add_rd():
     observacao      = request.form.get("observacao", "").strip()
     rd_tipo         = request.form.get("tipo", "credito alelo").strip()
     unidade_negocio = request.form.get("unidade_negocio", "").strip()
+if not unidade_negocio:
+    flash("O campo Unidade de Negócio é obrigatório.")
+    return redirect(url_for("index"))
+
 
     try:
         valor = float(request.form["valor"].replace(",", "."))
