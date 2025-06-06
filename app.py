@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file
 import psycopg2
+from psycopg2.extras import DictCursor
 import os
 from datetime import datetime
 from dotenv import load_dotenv
@@ -78,7 +79,8 @@ def get_pg_connection():
             port=PG_PORT,
             dbname=PG_DB,
             user=PG_USER,
-            password=PG_PASSWORD
+            password=PG_PASSWORD,
+            cursor_factory=DictCursor
         )
         return conn
     except psycopg2.Error as e:
@@ -88,7 +90,7 @@ def get_pg_connection():
 
 def init_db():
     conn = get_pg_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=DictCursor)
 
     # Tabela RD
     create_rd_table = """
@@ -131,6 +133,14 @@ def init_db():
         """)
         if not cursor.fetchone():
             cursor.execute(f"ALTER TABLE rd ADD COLUMN {col} DATE")
+
+    cursor.execute("""
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_name='rd' AND column_name='pronto_fechamento'
+    """)
+    if not cursor.fetchone():
+        cursor.execute("ALTER TABLE rd ADD COLUMN pronto_fechamento BOOLEAN DEFAULT FALSE")
 
     # anexo_divergente
     cursor.execute("""
@@ -194,7 +204,7 @@ def init_db():
 def generate_custom_id():
     current_year = datetime.now().year % 100
     conn = get_pg_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=DictCursor)
     cursor.execute("""
         SELECT id FROM rd
         WHERE split_part(id, '.', 2)::INTEGER=%s
@@ -259,7 +269,7 @@ def can_close(status):
 
 def get_saldo_global():
     conn = get_pg_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=DictCursor)
     cursor.execute("SELECT saldo FROM saldo_global LIMIT 1")
     saldo = cursor.fetchone()[0]
     conn.close()
@@ -267,7 +277,7 @@ def get_saldo_global():
 
 def set_saldo_global(novo_saldo):
     conn = get_pg_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=DictCursor)
     cursor.execute("UPDATE saldo_global SET saldo=%s WHERE id=1", (novo_saldo,))
     conn.commit()
     conn.close()
@@ -320,7 +330,7 @@ def index():
         return render_template("index.html", error=None, format_currency=format_currency)
 
     conn = get_pg_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=DictCursor)
 
     if user_role() == "supervisor":
         cursor.execute("SELECT * FROM rd WHERE status='Liberado'")
@@ -379,6 +389,9 @@ def index():
         fechamento_id=fechamento_id
     )
 
+def can_mark_pronto_fechamento(status):
+    return user_role() == "supervisor" and status == "Liberado"
+
 @app.route("/add", methods=["POST"])
 def add_rd():
     if not can_add():
@@ -411,7 +424,7 @@ def add_rd():
     arquivos_str = ",".join(arquivos) if arquivos else None
 
     conn = get_pg_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=DictCursor)
     cursor.execute("""
     INSERT INTO rd (
       id, solicitante, funcionario, data, centro_custo,
@@ -431,7 +444,7 @@ def add_rd():
 
 def can_edit_status(id):
     conn = get_pg_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=DictCursor)
     cursor.execute("SELECT status FROM rd WHERE id=%s", (id,))
     row = cursor.fetchone()
     conn.close()
@@ -442,7 +455,7 @@ def can_edit_status(id):
 @app.route("/edit_form/<id>", methods=["GET"])
 def edit_form(id):
     conn = get_pg_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=DictCursor)
     cursor.execute("SELECT * FROM rd WHERE id=%s", (id,))
     rd = cursor.fetchone()
     conn.close()
@@ -468,7 +481,7 @@ def edit_submit(id):
         return "Acesso negado", 403
 
     conn = get_pg_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=DictCursor)
 
     # Buscar dados atuais da RD
     cursor.execute("SELECT status, arquivos, valor_adicional, valor_liberado, valor_despesa, observacao FROM rd WHERE id=%s", (id,))
@@ -583,7 +596,7 @@ def edit_submit(id):
 @app.route("/approve/<id>", methods=["POST"])
 def approve(id):
     conn = get_pg_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=DictCursor)
     cursor.execute("SELECT status, valor, valor_adicional, tipo FROM rd WHERE id=%s", (id,))
     row = cursor.fetchone()
     if not row:
@@ -642,7 +655,7 @@ def approve(id):
 @app.route("/delete/<id>", methods=["POST"])
 def delete_rd(id):
     conn = get_pg_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=DictCursor)
     cursor.execute("SELECT solicitante, status, valor_liberado, valor FROM rd WHERE id=%s", (id,))
     row = cursor.fetchone()
     if not row:
@@ -691,7 +704,7 @@ def delete_rd(id):
 def adicional_submit(id):
     if "arquivo" in request.files:
         conn = get_pg_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=DictCursor)
         cursor.execute("SELECT arquivos FROM rd WHERE id=%s", (id,))
         row = cursor.fetchone()
         arqs_atual = row[0].split(",") if row and row[0] else []
@@ -713,7 +726,7 @@ def adicional_submit(id):
         return redirect(url_for("index"))
 
     conn = get_pg_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=DictCursor)
     cursor.execute("SELECT status, valor_adicional, adicionais_individuais, valor FROM rd WHERE id=%s", (id,))
     row = cursor.fetchone()
     if not row:
@@ -751,7 +764,7 @@ def adicional_submit(id):
 def fechamento_submit(id):
     if "arquivo" in request.files:
         conn = get_pg_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=DictCursor)
         cursor.execute("SELECT arquivos FROM rd WHERE id=%s", (id,))
         row = cursor.fetchone()
         a_list = row[0].split(",") if row and row[0] else []
@@ -773,7 +786,7 @@ def fechamento_submit(id):
         return redirect(url_for("index"))
 
     conn = get_pg_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=DictCursor)
     cursor.execute("SELECT valor, valor_adicional, status FROM rd WHERE id=%s", (id,))
     row = cursor.fetchone()
     if not row:
@@ -813,7 +826,7 @@ def reject_fechamento(id):
         flash("Acesso negado.")
         return redirect(url_for("index"))
     conn = get_pg_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=DictCursor)
     cursor.execute("SELECT status FROM rd WHERE id=%s", (id,))
     row = cursor.fetchone()
     if not row or row[0] != "Fechamento Solicitado":
@@ -866,7 +879,7 @@ def delete_file(id):
         return redirect(request.referrer or url_for("index"))
 
     conn = get_pg_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=DictCursor)
     cursor.execute("SELECT arquivos, status, solicitante FROM rd WHERE id=%s", (id,))
     row = cursor.fetchone()
     if not row:
@@ -908,7 +921,7 @@ def registrar_saldo_devolvido(id):
         return redirect(url_for("index"))
 
     conn = get_pg_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=DictCursor)
     cursor.execute("SELECT valor, valor_adicional, valor_despesa, data_saldo_devolvido, status FROM rd WHERE id=%s", (id,))
     row = cursor.fetchone()
     if not row:
@@ -946,7 +959,7 @@ def registrar_saldo_devolvido(id):
 @app.route("/export_excel", methods=["GET"])
 def export_excel():
     conn = get_pg_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=DictCursor)
     cursor.execute("SELECT * FROM rd ORDER BY id ASC")
     rd_list = cursor.fetchall()
     saldo_global = get_saldo_global()
@@ -958,7 +971,7 @@ def export_excel():
         "Número RD", "Data Solicitação", "Solicitante", "Funcionário", "Valor Solicitado",
         "Valor Adicional", "Data do Adicional", "Centro de Custo", "Unidade de Negócio",
         "Valor Gasto", "Saldo a Devolver", "Data de Fechamento", "Status", "Data Crédito Solicitado",
-        "Data Crédito Liberado", "Data Débito Despesa", "Saldo Global"
+        "Data Crédito Liberado", "Data Débito Despesa", "Pronto Para Fechamento", "Saldo Global"
     ]
     for col, h in enumerate(header):
         ws.write(0, col, h)
@@ -981,6 +994,7 @@ def export_excel():
         rd_data_cred_solic = rd_row[22]
         rd_data_cred_liber = rd_row[23]
         rd_data_deb_desp = rd_row[24]
+        rd_pronto_fechamento = rd_row[35] if len(rd_row) > 35 else False
 
         ws.write(rowi, 0, rd_id)
         ws.write(rowi, 1, str(rd_data) if rd_data else "")
@@ -998,7 +1012,8 @@ def export_excel():
         ws.write(rowi, 13, str(rd_data_cred_solic) if rd_data_cred_solic else "")
         ws.write(rowi, 14, str(rd_data_cred_liber) if rd_data_cred_liber else "")
         ws.write(rowi, 15, str(rd_data_deb_desp) if rd_data_deb_desp else "")
-        ws.write(rowi, 16, float(saldo_global))
+        ws.write(rowi, 16, "Sim" if rd_pronto_fechamento else "Não")
+        ws.write(rowi, 17, float(saldo_global))
         rowi += 1
 
     wb.close()
@@ -1019,7 +1034,7 @@ def export_historico():
         return redirect(url_for("index"))
 
     conn = get_pg_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=DictCursor)
     try:
         cursor.execute("SELECT rd_id, solicitante, valor, data_exclusao, usuario_excluiu FROM historico_exclusao ORDER BY data_exclusao DESC")
         historico = cursor.fetchall()
@@ -1072,7 +1087,7 @@ def cadastrar_funcionario():
     unidade_negocio = request.form["unidadeNegocio"].strip()
 
     conn = get_pg_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=DictCursor)
     cursor.execute("""
     INSERT INTO funcionarios (nome, centro_custo, unidade_negocio)
     VALUES (%s, %s, %s)
@@ -1086,7 +1101,7 @@ def cadastrar_funcionario():
 @app.route("/consulta_funcionario", methods=["GET"])
 def consulta_funcionario():
     conn = get_pg_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=DictCursor)
     cursor.execute("SELECT * FROM funcionarios ORDER BY nome ASC")
     funcionarios = cursor.fetchall()
     conn.close()
@@ -1103,7 +1118,7 @@ def marcar_divergente(id):
     else:
         motivo_div = request.form.get("motivo_divergente", "").strip()
         conn = get_pg_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=DictCursor)
         cursor.execute("""
         UPDATE rd
         SET anexo_divergente = TRUE,
@@ -1123,7 +1138,7 @@ def anexos_divergentes():
         return redirect(url_for("index"))
 
     conn = get_pg_connection()
-    cursor = conn.cursor()
+    cursor = conn.cursor(cursor_factory=DictCursor)
     cursor.execute("SELECT * FROM rd WHERE anexo_divergente = TRUE ORDER BY id")
     divergentes = cursor.fetchall()
     cursor.close()
@@ -1139,7 +1154,7 @@ def corrigir_divergente(id):
 
     if request.method == "GET":
         conn = get_pg_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=DictCursor)
         cursor.execute("SELECT * FROM rd WHERE id = %s", (id,))
         rd = cursor.fetchone()
         cursor.close()
@@ -1150,7 +1165,7 @@ def corrigir_divergente(id):
         return render_template("corrigir_divergente.html", rd=rd)
     else:
         conn = get_pg_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(cursor_factory=DictCursor)
 
         cursor.execute("SELECT arquivos FROM rd WHERE id = %s", (id,))
         row = cursor.fetchone()
@@ -1179,6 +1194,34 @@ def corrigir_divergente(id):
         conn.close()
         flash("Correção realizada e RD retornou para Liberados.")
         return redirect(url_for("anexos_divergentes"))
+
+@app.route("/marcar_pronto_fechamento/<id>", methods=["POST"])
+def marcar_pronto_fechamento(id):
+    if user_role() != "supervisor":
+        flash("Acesso negado.")
+        return redirect(url_for("index"))
+
+    conn = get_pg_connection()
+    cursor = conn.cursor(cursor_factory=DictCursor)
+    cursor.execute("SELECT pronto_fechamento FROM rd WHERE id=%s", (id,))
+    row = cursor.fetchone()
+    if not row:
+        flash("RD não encontrada.")
+        conn.close()
+        return redirect(url_for("index"))
+
+    novo_valor = not row["pronto_fechamento"]
+    cursor.execute("UPDATE rd SET pronto_fechamento=%s WHERE id=%s", (novo_valor, id))
+    conn.commit()
+    cursor.close()
+    conn.close()
+
+    if novo_valor:
+        flash("RD marcada como pronta para fechamento.")
+    else:
+        flash("RD desmarcada como pronta para fechamento.")
+    return redirect(url_for("index"))
+
 
 if __name__ == "__main__":
     init_db()
