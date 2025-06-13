@@ -730,13 +730,13 @@ def adicional_submit(id):
 
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
-    cursor.execute("SELECT status, valor_adicional, adicionais_individuais, valor FROM rd WHERE id=%s", (id,))
+    cursor.execute("SELECT status, valor_adicional, adicionais_individuais, valor, valor_despesa FROM rd WHERE id=%s", (id,))
     row = cursor.fetchone()
     if not row:
         conn.close()
         flash("RD não encontrada.")
         return redirect(url_for("index"))
-    st_atual, val_adic_atual, add_ind, val_sol = row
+    st_atual, val_adic_atual, add_ind, val_sol, val_desp = row
 
     if not can_request_additional(st_atual):
         conn.close()
@@ -747,16 +747,20 @@ def adicional_submit(id):
     if add_ind:
         partes = [x.strip() for x in add_ind.split(",")]
         idx = len(partes) + 1
-        add_ind = add_ind + f", Adicional {idx}:{val_adi}"
+        add_ind = add_ind + f", Adicional {idx}:{val_adi:.2f}"
     else:
-        add_ind = f"Adicional 1:{val_adi}"
+        add_ind = f"Adicional 1:{val_adi:.2f}"
+
+    # Calcular saldo_devolver
+    total_cred = val_sol + novo_total
+    saldo_dev = total_cred - (val_desp or 0)
 
     data_add = datetime.now().strftime("%Y-%m-%d")
     cursor.execute("""
     UPDATE rd
-    SET valor_adicional=%s, adicional_data=%s, status='Pendente', adicionais_individuais=%s
+    SET valor_adicional=%s, adicional_data=%s, status='Pendente', adicionais_individuais=%s, saldo_devolver=%s
     WHERE id=%s
-    """, (novo_total, data_add, add_ind, id))
+    """, (novo_total, data_add, add_ind, saldo_dev, id))
     conn.commit()
     cursor.close()
     conn.close()
