@@ -23,6 +23,94 @@
       --input-border: #dcdde1;
     }
 
+/* Estilo para o wrapper do valor e tooltip */
+    .valor-tooltip-wrapper {
+      position: relative;
+      display: inline-block;
+    }
+
+    /* Estilo para o valor total exibido */
+    .valor-total {
+      cursor: pointer;
+      color: #333;
+    }
+
+    /* Estilo para o tooltip */
+    .valor-tooltip {
+      visibility: hidden;
+      width: 300px;
+      max-height: 250px; /* Altura máxima antes de exibir rolagem */
+      overflow-y: auto; /* Barra de rolagem vertical se necessário */
+      background-color: #ffcc99;
+      color: #333;
+      text-align: left;
+      border: 1px solid #ccc;
+      padding: 10px;
+      border-radius: 4px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      position: fixed; /* Sobrepor todos os containers */
+      z-index: 1000; /* Alto z-index para garantir sobreposição */
+      opacity: 0;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+
+    /* Exibir o tooltip ao passar o mouse */
+    .valor-tooltip-wrapper:hover .valor-tooltip {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    /* Estilo para a linha divisória no tooltip */
+    .valor-tooltip hr {
+      border: 0;
+      border-top: 1px solid #ddd;
+      margin: 8px 0;
+    }
+
+    /* Estilo para listas no tooltip */
+    .valor-tooltip ul {
+      margin: 5px 0;
+      padding-left: 20px;
+    }
+
+    /* Estilo para parágrafos no tooltip */
+    .valor-tooltip p {
+      margin: 5px 0;
+      font-size: 14px;
+    }
+
+    /* Estilo para o título da RD no tooltip */
+    .valor-tooltip h3 {
+      margin: 0 0 8px 0;
+      font-size: 16px;
+      font-weight: bold;
+      color: #000;
+    }
+
+    /* Estilo para texto em negrito no tooltip */
+    .valor-tooltip p strong {
+      font-weight: bold;
+      color: #000;
+    }
+
+    /* Estilo para a barra de rolagem no tooltip */
+    .valor-tooltip::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .valor-tooltip::-webkit-scrollbar-track {
+      background: #f1f1f1;
+    }
+
+    .valor-tooltip::-webkit-scrollbar-thumb {
+      background: #888;
+      border-radius: 3px;
+    }
+
+    .valor-tooltip::-webkit-scrollbar-thumb:hover {
+      background: #555;
+    }
+
     .pronto-fechamento {
       background-color: #90EE90 !important; /* Verde claro */
     }
@@ -498,62 +586,35 @@
           {% set valor_total = valor_inicial + total_adicionais %}
           {% set saldo_devolver = valor_total - valor_despesa %}
           {% set adicionais_para_exibir = rd[19].split(',') if rd[19] else [] %}
-        
-          {# --- 2. NOVA ESTRUTURA DE EXIBIÇÃO --- #}
-          <div class="valores-container">
-        
-            {# Resumo visível: mostra os totais e o botão de expandir #}
-            <div class="valor-resumo">
-              <button class="toggle-details">+</button>
-              <span>
-                <strong>Total:</strong> R${{ format_currency(valor_total) }} | 
-                <strong>A Devolver:</strong> R${{ format_currency(saldo_devolver) }}
-              </span>
-            </div>
-        
-            {# Detalhes ocultos: contém o relatório completo #}
-            <div class="rd-details">
-              <div class="valor-solicitado">
-                <strong>Valor Solicitado:</strong> R${{ format_currency(valor_inicial) }} 
-                <small>em {{ rd[28] if rd[28] else '-' }}</small>
-              </div>
-              <div class="valores-adicionais" style="margin-top: 5px;">
-                <strong>Valores Adicionais:</strong>
-                {% if adicionais_para_exibir %} 
-                  <ul style="margin: 0; padding-left: 20px;">
+
+          {# --- 2. ESTRUTURA COM TOOLTIP --- #}
+          <div class="valor-tooltip-wrapper" data-rd-id="{{ rd[0] }}">
+            <span class="valor-total">R${{ format_currency(valor_total) }}</span>
+            <div class="valor-tooltip" data-tooltip>
+              <h3>RD #{{ rd[0] }}</h3>
+              <p><strong>Valor Solicitado:</strong> R${{ format_currency(valor_inicial) }} em {{ rd[28] if rd[28] else '-' }}</p>
+              <p><strong>Valores Adicionais:</strong>
+                {% if adicionais_para_exibir %}
+                  <ul>
                     {% for adicional in adicionais_para_exibir %}
                       {% set partes = adicional.split(':') %}
                       {% set numero_adicional = partes[0].split(' ')[1] if partes|length > 0 and ' ' in partes[0] else 'N/A' %}
                       {% set valor_adicional_display = (partes[1]|float) if partes|length > 1 else 0 %}
-                      <li>
-                        {{ numero_adicional }} = R${{ format_currency(valor_adicional_display) }} 
-                        <small>em {{ rd[8] if rd[8] else '-' }}</small>
-                      </li>
+                      <li>Adicional {{ numero_adicional }}: R${{ format_currency(valor_adicional_display) }} em {{ rd[8] if rd[8] else '-' }}</li>
                     {% endfor %}
                   </ul>
                 {% else %}
-                  <span>Nenhum</span>
-                {% endif %}  
-              </div>
-              <div class="valor-despesa" style="margin-top: 5px;">
-                <strong>Valor Gasto (Despesa):</strong> R${{ format_currency(valor_despesa) }} 
-                <small>em {{ rd[30] if rd[30] else '-' }}</small>
-              </div>
-
-              {# Linha divisória para clareza visual #}
-              <hr style="margin: 8px 0; border-top: 1px solid #ccc;">
-
-              {# Totais repetidos dentro da área de detalhes #}
-              <div class="valor-total">
-                  <strong>Total da RD:</strong> R${{ format_currency(valor_total) }}
-              </div>
-              <div class="saldo-devolver" style="margin-top: 5px;">
-                  <strong>Saldo a Devolver:</strong> R${{ format_currency(saldo_devolver) }}
-              </div>
+                  Nenhum
+                {% endif %}
+              </p>
+              <p><strong>Valor Gasto (Despesa):</strong> R${{ format_currency(valor_despesa) }} em {{ rd[30] if rd[30] else '-' }}</p>
+              <hr>
+              <p><strong>Total da RD:</strong> R${{ format_currency(valor_total) }}</p>
+              <p><strong>Saldo a Devolver:</strong> R${{ format_currency(saldo_devolver) }}</p>
             </div>
-        
           </div>
         {% endmacro %}
+
 
         <div class="tabs">
           <input type="radio" name="tab-control" id="tab1" checked>
@@ -1252,3 +1313,33 @@
     }
   });
 </script>
+
+  <script>
+    // JavaScript para posicionar o tooltip dinamicamente
+    document.addEventListener('DOMContentLoaded', function() {
+      const tooltips = document.querySelectorAll('.valor-tooltip-wrapper');
+      tooltips.forEach(wrapper => {
+        const tooltip = wrapper.querySelector('.valor-tooltip');
+        const total = wrapper.querySelector('.valor-total');
+
+        wrapper.addEventListener('mouseenter', function(e) {
+          const rect = total.getBoundingClientRect();
+          const tooltipRect = tooltip.getBoundingClientRect();
+          const viewportHeight = window.innerHeight;
+
+          // Posicionar à esquerda do valor total
+          tooltip.style.left = `${rect.left - tooltipRect.width - 10}px`; // 10px de margem
+          tooltip.style.top = `${rect.top}px`;
+
+          // Se o tooltip ultrapassar o topo da janela, reposicionar abaixo
+          if (rect.top < 0) {
+            tooltip.style.top = `${rect.bottom}px`;
+          }
+          // Se o tooltip ultrapassar o fundo da janela, reposicionar acima
+          else if (rect.bottom + tooltipRect.height > viewportHeight) {
+            tooltip.style.top = `${rect.top - tooltipRect.height}px`;
+          }
+        });
+      });
+    });
+  </script>
