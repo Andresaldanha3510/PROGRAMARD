@@ -494,25 +494,46 @@
 
         {% macro mostrar_valores(rd) %}
           {% set valor = rd[5] %}
-          {% set valor_adic = rd[7] if rd[7] else 0 %}
-          {% set valor_total = valor + valor_adic %}
           {% set valor_despesa = rd[9] if rd[9] else 0 %}
+          {% set adicionais_individuais = rd[19].split(',') if rd[19] else [] %}
+          {% set valor_total = valor %}
+          {% for adicional in adicionais_individuais %}
+            {% set valor_adicional = (adicional.split(':')[1]|float) if ':' in adicional else 0 %}
+            {% set valor_total = valor_total + valor_adicional %}
+          {% endfor %}
           {% set saldo_devolver = rd[10] if rd[10] is not none else (valor_total - valor_despesa) %}
-          <div class="valor-resumo">
-            <span>R${{ format_currency(valor) }}</span>
-            <button class="toggle-details" title="Exibir detalhes">+</button>
+          <div class="valores-rd">
+            <div class="valor-solicitado">
+              Valor Solicitado: R${{ format_currency(valor) }} em {{ rd[28] if rd[28] else '-' }}
+            </div>
+          <div class="valores-adicionais">
+            Valores Adicionais:
+            {% if adicionais_individuais %} 
+              <ul>
+                {% for adicional in adicionais_individuais %}
+                 <li>{{ adicional.strip() }} em {{ rd[8] if rd[8] else '-' }}</li>
+                {% endfor %}
+              </ul>
+            {% else %}
+             Nenhum
+            {% endif %}  
+
           </div>
-          <div class="rd-details">
-            <strong>Valor Solicitado:</strong> R${{ format_currency(valor) }} em {{ rd[28] if rd[28] else '-' }}<br>
-            <strong>Valor Adicional:</strong> R${{ format_currency(valor_adic) }} em {{ rd[8] if rd[8] else '-' }}<br>
-            <strong>Total da RD:</strong> R${{ format_currency(valor_total) }}<br>
-            <strong>Valor Gasto (Despesa):</strong> R${{ format_currency(valor_despesa) }} em {{ rd[30] if rd[30] else '-' }}<br>
-            <strong>Saldo a Devolver:</strong> R${{ format_currency(saldo_devolver) }}
+           <div class="valor-total">
+             Total da RD: R${{ format_currency(valor_total) }}
+          </div> 
+
+          <div class="valor-despesa">
+           Valor Gasto (Despesa): R${{ format_currency(valor_despesa) }} em {{ rd[30] if rd[30] else '-' }}
+          </div>
+          <div class="saldo-devolver">
+            Saldo a Devolver: R${{ format_currency(saldo_devolver) }}
             {% if rd[21] and rd[21]|is_date_format %}
               em {{ rd[21] }}
             {% endif %}
           </div>
-        {% endmacro %}
+         </div>
+        {% endmacro %} 
 
         <div class="tabs">
           <input type="radio" name="tab-control" id="tab1" checked>
