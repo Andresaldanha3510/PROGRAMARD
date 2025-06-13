@@ -521,6 +521,10 @@
              Nenhum
             {% endif %}  
 
+            <div class="debug-adicionais" style="font-size: 0.8em; color: #666;">
+             (Debug: adicionais_individuais = {{ rd[19] if rd[19] else 'vazio' }})
+            </div>
+
           </div>
            <div class="valor-total">
              Total da RD: R${{ format_currency(valor_total) }}
