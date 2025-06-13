@@ -597,13 +597,13 @@ def edit_submit(id):
 def approve(id):
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
-    cursor.execute("SELECT status, valor, valor_adicional, tipo FROM rd WHERE id=%s", (id,))
+    cursor.execute("SELECT status, valor, valor_adicional, tipo, valor_liberado FROM rd WHERE id=%s", (id,))
     row = cursor.fetchone()
     if not row:
         conn.close()
         flash("RD não encontrada.")
         return redirect(url_for("index"))
-    st_atual, val, val_adic, rd_tipo = row
+    st_atual, val, val_adic, rd_tipo, valor_liberado_anterior = row
 
     if not can_approve(st_atual):
         conn.close()
@@ -627,9 +627,12 @@ def approve(id):
             """, (new_st, now, id))
         else:
             new_st = "Liberado"
+            # Calcular o total de crédito (valor inicial + valor adicional)
             total_credit = val + (val_adic or 0)
+            # Deduzir apenas o novo crédito (total menos o que já foi liberado)
+            novo_credito = total_credit - (valor_liberado_anterior or 0)
             saldo_atual = get_saldo_global()
-            novo_saldo = saldo_atual - total_credit
+            novo_saldo = saldo_atual - novo_credito
             set_saldo_global(novo_saldo)
             cursor.execute("""
             UPDATE rd SET status=%s, liberado_data=%s, valor_liberado=%s, data_credito_liberado=%s
