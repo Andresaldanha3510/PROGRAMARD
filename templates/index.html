@@ -511,9 +511,12 @@
             {% if adicionais_individuais %} 
               <ul>
                 {% for adicional in adicionais_individuais %}
-                 <li>{{ adicional.strip() }} em {{ rd[8] if rd[8] else '-' }}</li>
+                  {% set partes = adicional.split(':') %}
+                  {% set numero_adicional = partes[0].split(' ')[1] if partes|length > 0 and ' ' in partes[0] else 'N/A' %}
+                  {% set valor_adicional = (partes[1]|float) if partes|length > 1 else 0 %}
+                  <li>{{ numero_adicional }} = R${{ format_currency(valor_adicional) }} em {{ rd[8] if rd[8] else '-' }}</li>
                 {% endfor %}
-              </ul>
+             </ul>
             {% else %}
              Nenhum
             {% endif %}  
