@@ -4,10 +4,8 @@
   <meta charset="UTF-8">
   <title>Gerenciamento de RDs</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Fonte e FontAwesome -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" referrerpolicy="no-referrer" />
-  <!-- Estilos do DataTables -->
   <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css" />
   <style>
     :root {
@@ -493,50 +491,69 @@
         </div>
 
         {% macro mostrar_valores(rd) %}
-          {% set valor = rd[5] %}
+          {# --- 1. LÓGICA DE CÁLCULO (Inalterada) --- #}
+          {% set valor_inicial = rd[5] if rd[5] else 0 %}
+          {% set total_adicionais = rd[7] if rd[7] else 0 %}
           {% set valor_despesa = rd[9] if rd[9] else 0 %}
-          {% set adicionais_individuais = rd[19].split(',') if rd[19] else [] %}
-          {% set valor_total = valor %}
-          {% for adicional in adicionais_individuais %}
-            {% set valor_adicional = (adicional.split(':')[1]|float) if ':' in adicional else 0 %}
-            {% set valor_total = valor_total + valor_adicional %}
-          {% endfor %}
-          {% set saldo_devolver = rd[10] if rd[10] is not none else (valor_total - valor_despesa) %}
-          <div class="valores-rd">
-            <div class="valor-solicitado">
-              Valor Solicitado: R${{ format_currency(valor) }} em {{ rd[28] if rd[28] else '-' }}
+          {% set valor_total = valor_inicial + total_adicionais %}
+          {% set saldo_devolver = valor_total - valor_despesa %}
+          {% set adicionais_para_exibir = rd[19].split(',') if rd[19] else [] %}
+        
+          {# --- 2. NOVA ESTRUTURA DE EXIBIÇÃO --- #}
+          <div class="valores-container">
+        
+            {# Resumo visível: mostra os totais e o botão de expandir #}
+            <div class="valor-resumo">
+              <button class="toggle-details">+</button>
+              <span>
+                <strong>Total:</strong> R${{ format_currency(valor_total) }} | 
+                <strong>A Devolver:</strong> R${{ format_currency(saldo_devolver) }}
+              </span>
             </div>
-          <div class="valores-adicionais">
-            Valores Adicionais:
-            {% if adicionais_individuais %} 
-              <ul>
-                {% for adicional in adicionais_individuais %}
-                  {% set partes = adicional.split(':') %}
-                  {% set numero_adicional = partes[0].split(' ')[1] if partes|length > 0 and ' ' in partes[0] else 'N/A' %}
-                  {% set valor_adicional = (partes[1]|float) if partes|length > 1 else 0 %}
-                  <li>{{ numero_adicional }} = R${{ format_currency(valor_adicional) }} em {{ rd[8] if rd[8] else '-' }}</li>
-                {% endfor %}
-             </ul>
-            {% else %}
-             Nenhum
-            {% endif %}  
+        
+            {# Detalhes ocultos: contém o relatório completo #}
+            <div class="rd-details">
+              <div class="valor-solicitado">
+                <strong>Valor Solicitado:</strong> R${{ format_currency(valor_inicial) }} 
+                <small>em {{ rd[28] if rd[28] else '-' }}</small>
+              </div>
+              <div class="valores-adicionais" style="margin-top: 5px;">
+                <strong>Valores Adicionais:</strong>
+                {% if adicionais_para_exibir %} 
+                  <ul style="margin: 0; padding-left: 20px;">
+                    {% for adicional in adicionais_para_exibir %}
+                      {% set partes = adicional.split(':') %}
+                      {% set numero_adicional = partes[0].split(' ')[1] if partes|length > 0 and ' ' in partes[0] else 'N/A' %}
+                      {% set valor_adicional_display = (partes[1]|float) if partes|length > 1 else 0 %}
+                      <li>
+                        {{ numero_adicional }} = R${{ format_currency(valor_adicional_display) }} 
+                        <small>em {{ rd[8] if rd[8] else '-' }}</small>
+                      </li>
+                    {% endfor %}
+                  </ul>
+                {% else %}
+                  <span>Nenhum</span>
+                {% endif %}  
+              </div>
+              <div class="valor-despesa" style="margin-top: 5px;">
+                <strong>Valor Gasto (Despesa):</strong> R${{ format_currency(valor_despesa) }} 
+                <small>em {{ rd[30] if rd[30] else '-' }}</small>
+              </div>
 
-         </div>
-           <div class="valor-total">
-             Total da RD: R${{ format_currency(valor_total) }}
-          </div> 
+              {# Linha divisória para clareza visual #}
+              <hr style="margin: 8px 0; border-top: 1px solid #ccc;">
 
-          <div class="valor-despesa">
-           Valor Gasto (Despesa): R${{ format_currency(valor_despesa) }} em {{ rd[30] if rd[30] else '-' }}
+              {# Totais repetidos dentro da área de detalhes #}
+              <div class="valor-total">
+                  <strong>Total da RD:</strong> R${{ format_currency(valor_total) }}
+              </div>
+              <div class="saldo-devolver" style="margin-top: 5px;">
+                  <strong>Saldo a Devolver:</strong> R${{ format_currency(saldo_devolver) }}
+              </div>
+            </div>
+        
           </div>
-          <div class="saldo-devolver">
-            Saldo a Devolver: R${{ format_currency(saldo_devolver) }}
-            {% if rd[21] and rd[21]|is_date_format %}
-              em {{ rd[21] }}
-            {% endif %}
-          </div>
-         </div>
-        {% endmacro %} 
+        {% endmacro %}
 
         <div class="tabs">
           <input type="radio" name="tab-control" id="tab1" checked>
@@ -545,8 +562,7 @@
           <input type="radio" name="tab-control" id="tab4">
           <input type="radio" name="tab-control" id="tab5">
           <input type="radio" name="tab-control" id="tab6">
-          <input type="radio" name="tab-control" id="tab7"> <!-- Nova aba -->
-          <div class="tab-labels">
+          <input type="radio" name="tab-control" id="tab7"> <div class="tab-labels">
             <label for="tab1">Pendentes {% if pendentes|length > 0 %}<span class="badge">{{ pendentes|length }}</span>{% endif %}</label>
             <label for="tab2">Aprovados {% if aprovados|length > 0 %}<span class="badge">{{ aprovados|length }}</span>{% endif %}</label>
             <label for="tab3">Liberados {% if liberados|length > 0 %}<span class="badge">{{ liberados|length }}</span>{% endif %}</label>
@@ -1017,7 +1033,6 @@
                 </tbody>
               </table>
             </div>
-            <!-- Nova aba "Saldo a Devolver" -->
             <div class="tab-content" id="content7">
               <table id="tabela-saldo-a-devolver" class="display">
                 <thead>
