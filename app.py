@@ -124,7 +124,20 @@ def init_db():
     """
     cursor.execute(create_rd_table)
 
-    # Verificar e adicionar colunas novas, se necessário
+    # Tabela historico_acoes (NOVA)
+    create_historico_acoes_table = """
+    CREATE TABLE IF NOT EXISTS historico_acoes (
+        id SERIAL PRIMARY KEY,
+        rd_id TEXT NOT NULL,
+        data_acao TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        usuario TEXT NOT NULL,
+        acao TEXT NOT NULL,
+        detalhes TEXT
+    );
+    """
+    cursor.execute(create_historico_acoes_table)
+
+    # Verificar e adicionar colunas novas na tabela RD, se necessário
     for col in ['data_credito_solicitado', 'data_credito_liberado', 'data_debito_despesa']:
         cursor.execute(f"""
         SELECT column_name 
@@ -183,7 +196,7 @@ def init_db():
     """
     cursor.execute(create_funcionarios_table)
 
-    # Tabela historico_exclusao (Nova tabela para histórico de exclusões)
+    # Tabela historico_exclusao
     create_historico_table = """
     CREATE TABLE IF NOT EXISTS historico_exclusao (
         id SERIAL PRIMARY KEY,
@@ -196,6 +209,7 @@ def init_db():
     """
     cursor.execute(create_historico_table)
 
+    # Commit e fechamento devem ser no final de tudo
     conn.commit()
     cursor.close()
     conn.close()
@@ -281,6 +295,23 @@ def set_saldo_global(novo_saldo):
     cursor.execute("UPDATE saldo_global SET saldo=%s WHERE id=1", (novo_saldo,))
     conn.commit()
     conn.close()
+
+def registrar_historico(conn, rd_id, acao, detalhes=""):
+    """Registra uma nova ação no histórico de uma RD."""
+    try:
+        usuario = session.get('user_role', 'Sistema')
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO historico_acoes (rd_id, usuario, acao, detalhes)
+            VALUES (%s, %s, %s, %s)
+            """,
+            (rd_id, usuario, acao, detalhes)
+        )
+    except psycopg2.Error as e:
+        # Logar o erro é importante, mas não queremos que uma falha no histórico
+        # impeça a operação principal.
+        logging.error(f"Falha ao registrar histórico para RD {rd_id}: {e}")
 
 def format_currency(value):
     if value is None:
@@ -392,6 +423,8 @@ def index():
 def can_mark_pronto_fechamento(status):
     return user_role() == "supervisor" and status == "Liberado"
 
+
+
 @app.route("/add", methods=["POST"])
 def add_rd():
     if not can_add():
@@ -408,7 +441,7 @@ def add_rd():
 
     try:
         valor = float(request.form["valor"].replace(",", "."))
-    except:
+    except (ValueError, TypeError):
         flash("Valor inválido.")
         return redirect(url_for("index"))
 
@@ -436,12 +469,47 @@ def add_rd():
             %s,%s,%s)
     """, (custom_id, solicitante, funcionario, data_str, centro_custo,
           valor, "Pendente", arquivos_str, observacao, rd_tipo, unidade_negocio, data_atual))
+    
+    # --- ADIÇÃO ---
+    detalhe_valor = f"Valor solicitado: R$ {format_currency(valor)}"
+    registrar_historico(conn, custom_id, "RD Criada", detalhe_valor)
+    # --- FIM DA ADIÇÃO ---
+
     conn.commit()
     cursor.close()
     conn.close()
     flash("RD adicionada com sucesso.")
     return redirect(url_for("index"))
 
+@app.route("/historico/<rd_id>")
+def ver_historico(rd_id):
+    if "user_role" not in session:
+        return redirect(url_for("index"))
+
+    conn = get_pg_connection()
+    cursor = conn.cursor(cursor_factory=DictCursor)
+
+    # Buscar a RD principal
+    cursor.execute("SELECT * FROM rd WHERE id = %s", (rd_id,))
+    rd = cursor.fetchone()
+
+    # Buscar o histórico de ações
+    cursor.execute(
+        "SELECT * FROM historico_acoes WHERE rd_id = %s ORDER BY data_acao DESC",
+        (rd_id,)
+    )
+    historico = cursor.fetchall()
+    
+    conn.close()
+
+    if not rd:
+        flash("RD não encontrada.")
+        return redirect(url_for("index"))
+
+    # Não se esqueça de criar o template historico_rd.html se ainda não o fez
+    return render_template("historico_rd.html", rd=rd, historico=historico, format_currency=format_currency)
+
+# A função de permissão, agora no lugar certo e sem uma rota
 def can_edit_status(id):
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
@@ -483,7 +551,6 @@ def edit_submit(id):
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
 
-    # Buscar dados atuais da RD
     cursor.execute("SELECT status, arquivos, valor_adicional, valor_liberado, valor_despesa, observacao FROM rd WHERE id=%s", (id,))
     row = cursor.fetchone()
     if not row:
@@ -494,12 +561,11 @@ def edit_submit(id):
     original_status, arquivos_str, valor_adicional_antigo, valor_liberado, valor_despesa_antigo, observacao_antiga = row
     logging.debug(f"Status original: {original_status}")
 
-    # Processar anexos
     arqs_list = arquivos_str.split(",") if arquivos_str else []
     if "arquivo" in request.files:
         uploaded_files = request.files.getlist("arquivo")
         for f in uploaded_files:
-            if f and f.filename:  # Verificar se o arquivo é válido
+            if f and f.filename:
                 fname = f"{id}_{f.filename}"
                 upload_file_to_r2(f, fname)
                 arqs_list.append(fname)
@@ -507,7 +573,6 @@ def edit_submit(id):
     new_arqs = ",".join(arqs_list) if arqs_list else None
 
     if user_role() == "supervisor":
-        # Supervisor só pode alterar arquivos e observação
         observacao = request.form.get("observacao", "").strip()
         try:
             cursor.execute("""
@@ -516,6 +581,11 @@ def edit_submit(id):
             WHERE id=%s
             """, (new_arqs, observacao, id))
             logging.debug(f"Supervisor atualizou arquivos: {new_arqs} e observação: {observacao}")
+            
+            # --- ADIÇÃO ---
+            registrar_historico(conn, id, "RD Editada pelo Supervisor", "Anexos e/ou observação foram atualizados.")
+            # --- FIM DA ADIÇÃO ---
+            
             conn.commit()
         except psycopg2.Error as e:
             logging.error(f"Erro no banco de dados: {e}")
@@ -524,7 +594,6 @@ def edit_submit(id):
             conn.close()
             return redirect(url_for("index"))
     else:
-        # Lógica para outros papéis
         solicitante = request.form.get("solicitante", "").strip()
         funcionario = request.form.get("funcionario", "").strip()
         data_str = request.form.get("data", "").strip()
@@ -553,32 +622,30 @@ def edit_submit(id):
             conn.close()
             return redirect(url_for("index"))
 
-        # Recalcular o saldo_devolver
         total_cred = valor_novo + valor_adicional_novo
         saldo_devolver_novo = total_cred - valor_despesa_novo if valor_despesa_novo else None
 
         try:
             cursor.execute("""
             UPDATE rd
-            SET solicitante=%s,
-                funcionario=%s,
-                data=%s,
-                centro_custo=%s,
-                valor=%s,
-                valor_adicional=%s,
-                valor_despesa=%s,
-                saldo_devolver=%s,
-                arquivos=%s,
-                observacao=%s,
-                unidade_negocio=%s
+            SET solicitante=%s, funcionario=%s, data=%s, centro_custo=%s, valor=%s, valor_adicional=%s,
+                valor_despesa=%s, saldo_devolver=%s, arquivos=%s, observacao=%s, unidade_negocio=%s
             WHERE id=%s
             """, (solicitante, funcionario, data_str, centro_custo, valor_novo, valor_adicional_novo,
                   valor_despesa_novo, saldo_devolver_novo, new_arqs, observacao, unidade_negocio, id))
             logging.debug(f"Executou UPDATE principal para RD {id}")
 
+            # --- ADIÇÃO ---
+            registrar_historico(conn, id, "RD Editada")
+            # --- FIM DA ADIÇÃO ---
+
             if is_solicitante() and original_status == "Fechamento Recusado":
                 cursor.execute("UPDATE rd SET status='Fechamento Solicitado', motivo_recusa=NULL WHERE id=%s", (id,))
                 logging.debug(f"Status alterado para 'Fechamento Solicitado'")
+                
+                # --- ADIÇÃO ---
+                registrar_historico(conn, id, "Reenviada para Fechamento", "RD corrigida após recusa.")
+                # --- FIM DA ADIÇÃO ---
 
             conn.commit()
             logging.debug(f"Commit realizado com sucesso para RD {id}")
@@ -618,6 +685,10 @@ def approve(id):
         UPDATE rd SET status=%s, aprovado_data=%s
         WHERE id=%s
         """, (new_st, now, id))
+        # --- ADIÇÃO ---
+        registrar_historico(conn, id, "Aprovada pelo Gestor")
+        # --- FIM DA ADIÇÃO ---
+
     elif st_atual == "Aprovado" and is_financeiro():
         if rd_tipo.lower() == "reembolso":
             new_st = "Fechado"
@@ -625,11 +696,12 @@ def approve(id):
             UPDATE rd SET status=%s, data_fechamento=%s
             WHERE id=%s
             """, (new_st, now, id))
+            # --- ADIÇÃO ---
+            registrar_historico(conn, id, "Reembolso Aprovado e Fechado")
+            # --- FIM DA ADIÇÃO ---
         else:
             new_st = "Liberado"
-            # Calcular o total de crédito (valor inicial + valor adicional)
             total_credit = val + (val_adic or 0)
-            # Deduzir apenas o novo crédito (total menos o que já foi liberado)
             novo_credito = total_credit - (valor_liberado_anterior or 0)
             saldo_atual = get_saldo_global()
             novo_saldo = saldo_atual - novo_credito
@@ -638,12 +710,20 @@ def approve(id):
             UPDATE rd SET status=%s, liberado_data=%s, valor_liberado=%s, data_credito_liberado=%s
             WHERE id=%s
             """, (new_st, now, total_credit, now, id))
+            # --- ADIÇÃO ---
+            detalhe_liberado = f"Valor liberado: R$ {format_currency(total_credit)}"
+            registrar_historico(conn, id, "Crédito Liberado pelo Financeiro", detalhe_liberado)
+            # --- FIM DA ADIÇÃO ---
+
     elif st_atual == "Fechamento Solicitado" and is_gestor():
         new_st = "Saldos a Devolver"
         cursor.execute("""
         UPDATE rd SET status=%s, data_fechamento=%s
         WHERE id=%s
         """, (new_st, now, id))
+        # --- ADIÇÃO ---
+        registrar_historico(conn, id, "Fechamento Aprovado pelo Gestor")
+        # --- FIM DA ADIÇÃO ---
     else:
         conn.close()
         flash("Não é possível aprovar/liberar esta RD.")
@@ -672,7 +752,11 @@ def delete_rd(id):
         flash("Ação não permitida.")
         return redirect(url_for("index"))
 
-    # Registrar no histórico antes de excluir
+    # --- ADIÇÃO ---
+    # Registra no novo histórico antes de excluir
+    registrar_historico(conn, id, "RD Excluída")
+    # --- FIM DA ADIÇÃO ---
+
     usuario_excluiu = session.get("user_role", "desconhecido")
     data_exclusao = datetime.now().strftime("%Y-%m-%d")
     try:
@@ -724,7 +808,7 @@ def adicional_submit(id):
 
     try:
         val_adi = float(request.form["valor_adicional"].replace(",", "."))
-    except:
+    except (ValueError, TypeError):
         flash("Valor adicional inválido.")
         return redirect(url_for("index"))
 
@@ -751,7 +835,6 @@ def adicional_submit(id):
     else:
         add_ind = f"Adicional 1:{val_adi:.2f}"
 
-    # Calcular saldo_devolver
     total_cred = val_sol + novo_total
     saldo_dev = total_cred - (val_desp or 0)
 
@@ -761,6 +844,12 @@ def adicional_submit(id):
     SET valor_adicional=%s, adicional_data=%s, status='Pendente', adicionais_individuais=%s, saldo_devolver=%s
     WHERE id=%s
     """, (novo_total, data_add, add_ind, saldo_dev, id))
+    
+    # --- ADIÇÃO ---
+    detalhe_adicional = f"Valor adicional solicitado: R$ {format_currency(val_adi)}"
+    registrar_historico(conn, id, "Solicitação de Crédito Adicional", detalhe_adicional)
+    # --- FIM DA ADIÇÃO ---
+
     conn.commit()
     cursor.close()
     conn.close()
@@ -788,7 +877,7 @@ def fechamento_submit(id):
 
     try:
         val_desp = float(request.form["valor_despesa"].replace(",", "."))
-    except:
+    except (ValueError, TypeError):
         flash("Valor da despesa inválido.")
         return redirect(url_for("index"))
 
@@ -821,6 +910,12 @@ def fechamento_submit(id):
         status='Fechamento Solicitado', data_debito_despesa=%s
     WHERE id=%s
     """, (val_desp, saldo_dev, data_fech, data_fech, id))
+
+    # --- ADIÇÃO ---
+    detalhe_gasto = f"Valor gasto informado: R$ {format_currency(val_desp)}"
+    registrar_historico(conn, id, "Solicitação de Fechamento", detalhe_gasto)
+    # --- FIM DA ADIÇÃO ---
+    
     conn.commit()
     cursor.close()
     conn.close()
@@ -851,6 +946,12 @@ def reject_fechamento(id):
     SET status='Fechamento Recusado', motivo_recusa=%s
     WHERE id=%s
     """, (motivo, id))
+
+    # --- ADIÇÃO ---
+    detalhe_motivo = f"Motivo: {motivo}"
+    registrar_historico(conn, id, "Fechamento Recusado pelo Gestor", detalhe_motivo)
+    # --- FIM DA ADIÇÃO ---
+
     conn.commit()
     cursor.close()
     conn.close()
@@ -957,10 +1058,16 @@ def registrar_saldo_devolvido(id):
     UPDATE rd SET data_saldo_devolvido=%s, status='Fechado'
     WHERE id=%s
     """, (now, id))
+
+    # --- ADIÇÃO ---
+    detalhe_devolvido = f"Valor devolvido ao saldo global: R$ {format_currency(saldo_dev)}"
+    registrar_historico(conn, id, "Devolução de Saldo Registrada", detalhe_devolvido)
+    # --- FIM DA ADIÇÃO ---
+
     conn.commit()
     cursor.close()
     conn.close()
-    flash(f"Saldo devolvido com sucesso. Valor= R${saldo_dev:,.2f}")
+    flash(f"Saldo devolvido com sucesso. Valor= R${format_currency(saldo_dev)}")
     return redirect(url_for("index"))
 
 @app.route("/export_excel", methods=["GET"])
@@ -1077,6 +1184,26 @@ def export_historico():
         mimetype="text/plain"
     )
 
+@app.route("/historico_geral")
+def historico_geral():
+    if "user_role" not in session:
+        flash("Acesso negado.")
+        return redirect(url_for("index"))
+
+    conn = get_pg_connection()
+    cursor = conn.cursor(cursor_factory=DictCursor)
+    
+    # Busca TODOS os eventos de histórico, ordenados pelo mais recente
+    cursor.execute(
+        "SELECT * FROM historico_acoes ORDER BY data_acao DESC"
+    )
+    historico_completo = cursor.fetchall()
+    
+    conn.close()
+
+    # Esta rota vai renderizar o novo template que criamos na conversa anterior
+    return render_template("historico_geral.html", historico=historico_completo)
+
 @app.route("/logout")
 def logout():
     session.clear()
@@ -1120,24 +1247,48 @@ def marcar_divergente(id):
         flash("Ação não permitida.")
         return redirect(url_for("index"))
 
+    conn = get_pg_connection()
+    cursor = conn.cursor(cursor_factory=DictCursor)
+
+    # Verifica o status atual da RD para evitar marcar RDs fechadas
+    cursor.execute("SELECT status FROM rd WHERE id = %s", (id,))
+    rd = cursor.fetchone()
+    if not rd:
+        flash("RD não encontrada.")
+        cursor.close()
+        conn.close()
+        return redirect(url_for("index"))
+
+    if rd['status'] == 'Fechado':
+        flash("Não é possível marcar uma RD já fechada como divergente.")
+        cursor.close()
+        conn.close()
+        return redirect(url_for("index"))
+    
     if request.method == "GET":
+        cursor.close()
+        conn.close()
         return render_template("motivo_divergente.html", rd_id=id)
-    else:
+    else: # POST
         motivo_div = request.form.get("motivo_divergente", "").strip()
-        conn = get_pg_connection()
-        cursor = conn.cursor(cursor_factory=DictCursor)
         cursor.execute("""
         UPDATE rd
         SET anexo_divergente = TRUE,
             motivo_divergente = %s
         WHERE id = %s
         """, (motivo_div, id))
+        
+        # --- ADIÇÃO ---
+        detalhe_motivo = f"Motivo: {motivo_div}" if motivo_div else "Nenhum motivo informado."
+        registrar_historico(conn, id, "Marcada como Divergente", detalhe_motivo)
+        # --- FIM DA ADIÇÃO ---
+        
         conn.commit()
         cursor.close()
         conn.close()
-        flash("RD marcado como divergente.")
+        flash("RD marcada como divergente.")
         return redirect(url_for("index"))
-
+    
 @app.route("/anexos_divergentes", methods=["GET"])
 def anexos_divergentes():
     if "user_role" not in session:
@@ -1170,7 +1321,7 @@ def corrigir_divergente(id):
             flash("RD não encontrada.")
             return redirect(url_for("anexos_divergentes"))
         return render_template("corrigir_divergente.html", rd=rd)
-    else:
+    else: # POST
         conn = get_pg_connection()
         cursor = conn.cursor(cursor_factory=DictCursor)
 
@@ -1189,19 +1340,25 @@ def corrigir_divergente(id):
         cursor.execute("UPDATE rd SET arquivos = %s WHERE id = %s", (new_arq_str, id))
         conn.commit()
 
+        # Apenas remove a marcação de divergente, sem alterar o status.
         cursor.execute("""
         UPDATE rd
         SET anexo_divergente = FALSE,
-            status = 'Liberado'
+            motivo_divergente = NULL
         WHERE id = %s
         """, (id,))
+        
+        # --- ADIÇÃO ---
+        registrar_historico(conn, id, "Divergência Corrigida")
+        # --- FIM DA ADIÇÃO ---
+        
         conn.commit()
 
         cursor.close()
         conn.close()
-        flash("Correção realizada e RD retornou para Liberados.")
+        flash("Correção da divergência realizada com sucesso.")
         return redirect(url_for("anexos_divergentes"))
-
+    
 @app.route("/marcar_pronto_fechamento/<id>", methods=["POST"])
 def marcar_pronto_fechamento(id):
     if user_role() != "supervisor":
