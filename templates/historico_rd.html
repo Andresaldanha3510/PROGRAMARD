@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Histórico da RD {{ rd.id }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f2f3f5; 
+            color: #2c3e50;
+        }
+        .container { 
+            max-width: 900px; 
+            margin: 20px auto; 
+            padding: 20px; 
+        }
+        .card {
+            background: #fff;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        }
+        .header-flex {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+        h1 { 
+            font-size: 1.8rem;
+            color: #34495e; 
+            margin: 0;
+        }
+        .btn { 
+            padding: 8px 15px; 
+            border-radius: 5px; 
+            text-decoration: none; 
+            display: inline-flex; 
+            align-items: center; 
+            justify-content: center; 
+            color: white; 
+            border: none;
+            cursor: pointer;
+        }
+        .btn-secondary { 
+            background-color: #6c757d; 
+        }
+        .rd-details p {
+            margin: 8px 0;
+            font-size: 1rem;
+        }
+        .rd-details strong {
+            display: inline-block;
+            width: 150px;
+            color: #555;
+        }
+        .badge {
+            font-size: 0.9rem;
+            font-weight: 600;
+            padding: 5px 10px;
+            border-radius: 5px;
+            color: #fff;
+            background-color: #3498db;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        th {
+            background-color: #f7f7f7;
+            font-weight: 600;
+            color: #34495e;
+        }
+        tr:last-child td {
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="card">
+        <div class="header-flex">
+            <h1><i class="fas fa-receipt"></i> Histórico da RD #{{ rd.id }}</h1>
+            <a href="{{ url_for('historico_geral') }}" class="btn btn-secondary">Voltar ao Histórico Geral</a>
+        </div>
+        <div class="rd-details">
+            <p><strong>Solicitante:</strong> {{ rd.solicitante }}</p>
+            <p><strong>Funcionário:</strong> {{ rd.funcionario }}</p>
+            <p><strong>Status Atual:</strong> <span class="badge">{{ rd.status }}</span></p>
+            <p><strong>Valor Total:</strong> R$ {{ format_currency(rd.valor + (rd.valor_adicional or 0)) }}</p>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2><i class="fas fa-stream"></i> Linha do Tempo</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Data/Hora</th>
+                    <th>Usuário</th>
+                    <th>Ação Realizada</th>
+                    <th>Detalhes</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for evento in historico %}
+                <tr>
+                    <td>{{ evento.data_acao.strftime('%d/%m/%Y %H:%M:%S') }}</td>
+                    <td>{{ evento.usuario | capitalize }}</td>
+                    <td>{{ evento.acao }}</td>
+                    <td>{{ evento.detalhes or 'N/A' }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="4" style="text-align: center; padding: 20px;">Nenhum histórico encontrado para esta RD.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+</body>
+</html>

@@ -23,6 +23,43 @@
       --input-border: #dcdde1;
     }
 
+    .form-group {
+      margin-bottom: 15px; /* Espaço entre os campos de usuário e senha */
+      text-align: left;
+    }
+    .form-group label {
+        display: block; /* Faz a label ocupar uma linha inteira */
+        margin-bottom: 5px; /* Espaço entre a label e o input */
+        font-weight: 600;
+    }
+    .form-group input {
+        width: 100%; /* Faz o input ocupar toda a largura */
+    }
+
+    .btn-history {
+      background-color: #5bc0de; /* Cor azul claro (info) */
+      color: #fff;
+    }
+    .btn-history:hover {
+        background-color: #31b0d5;
+    }
+
+/* Adicione este novo estilo para o container de login */
+    .login-form-container {
+      max-width: 450px; /* Define uma largura máxima para o formulário */
+      margin: 50px auto; /* Centraliza o formulário na tela e adiciona espaço em cima/baixo */
+      padding: 30px;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      text-align: center; /* Centraliza o texto e o botão dentro do container */
+    }
+
+    .login-form-container h2 {
+      margin-bottom: 25px;
+      color: var(--header-color);
+    }
+
 /* Estilo para o wrapper do valor e tooltip */
     .valor-tooltip-wrapper {
       position: relative;
@@ -489,14 +526,26 @@
     </div>
 
     {% if user_role is not defined %}
-      <form action="/" method="POST" class="main-form">
-        {% if error %}<p class="error-message">{{ error }}</p>{% endif %}
-        <label for="username">Usuário:</label>
-        <input type="text" id="username" name="username" required>
-        <label for="password">Senha:</label>
-        <input type="password" id="password" name="password" required>
-        <button type="submit"><i class="fas fa-sign-in-alt"></i> Entrar</button>
-      </form>
+      <div class="login-form-container">
+        <h2>Acessar o Sistema</h2>
+        <form action="/" method="POST">
+          <form action="/" method="POST">
+          {% if error %}<p class="error-message">{{ error }}</p>{% endif %}
+
+          <div class="form-group">
+            <label for="username">Usuário:</label>
+            <input type="text" id="username" name="username" required>
+          </div>
+
+          <div class="form-group">
+            <label for="password">Senha:</label>
+            <input type="password" id="password" name="password" required>
+          </div>
+          
+          <button type="submit" style="width: 100%; margin-top: 10px;"><i class="fas fa-sign-in-alt"></i> Entrar</button>
+        </form>
+      </div>
+
     {% else %}
       {% if adicional_id %}
         <div class="form-adicional">
@@ -558,6 +607,9 @@
         <div style="text-align:center; margin:20px 0;">
           <a href="{{ url_for('cadastro_funcionario') }}" class="btn btn-success" style="margin-right: 10px;">
             <i class="fas fa-user-plus"></i> Cadastro Funcionários
+          </a>
+          <a href="{{ url_for('historico_geral') }}" class="btn btn-info" style="margin-right: 10px; background-color: #5bc0de;">
+            <i class="fas fa-history"></i> Histórico Geral
           </a>
           <a href="{{ url_for('consulta_funcionario') }}" class="btn btn-success" style="margin-right: 10px;">
             <i class="fas fa-search"></i> Consulta Funcionários
