@@ -1,0 +1,2217 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Gerenciamento de RDs</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css" />
+  <style>
+    :root {
+      --primary-color: #2563eb;
+      --primary-light: #3b82f6;
+      --primary-dark: #1d4ed8;
+      --secondary-color: #f59e0b;
+      --success-color: #10b981;
+      --danger-color: #ef4444;
+      --warning-color: #f59e0b;
+      --info-color: #0ea5e9;
+      --background-color: #d1d5db;
+      --surface-color: #ffffff;
+      --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      --card-shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      --text-primary: #1e293b;
+      --text-secondary: #64748b;
+      --text-muted: #94a3b8;
+      --border-color: #e2e8f0;
+      --header-height: 70px;
+      --sidebar-width: 280px;
+      --border-radius: 12px;
+      --border-radius-sm: 8px;
+      --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--background-color);
+      color: var(--text-primary);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* Header Styles */
+    .top-bar {
+      background: var(--surface-color);
+      height: var(--header-height);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(10px);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .header-brand {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .logo {
+      height: 50px;
+      width: auto;
+    }
+
+    .brand-text {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--primary-color);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.5rem 1rem;
+      background: var(--background-color);
+      border-radius: var(--border-radius-sm);
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .saldo-info {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: linear-gradient(135deg, var(--success-color), #059669);
+      color: white;
+      border-radius: var(--border-radius-sm);
+      font-weight: 600;
+      box-shadow: var(--card-shadow);
+    }
+
+    .top-bar a {
+      color: var(--danger-color);
+      text-decoration: none;
+      font-weight: 500;
+      padding: 0.5rem 1rem;
+      border-radius: var(--border-radius-sm);
+      transition: var(--transition);
+    }
+
+    .top-bar a:hover {
+      background: var(--danger-color);
+      color: white;
+    }
+
+    /* Container Styles */
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+      min-height: calc(100vh - var(--header-height) - 60px);
+    }
+
+    .login-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+    }
+
+    .login-card {
+      background: var(--surface-color);
+      padding: 3rem;
+      border-radius: var(--border-radius);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      width: 100%;
+      max-width: 420px;
+      backdrop-filter: blur(10px);
+    }
+
+    .login-card h2 {
+      text-align: center;
+      margin-bottom: 2rem;
+      color: var(--text-primary);
+      font-weight: 700;
+      font-size: 1.75rem;
+    }
+
+    /* Form Styles */
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      font-size: 0.875rem;
+    }
+
+    /* Enhanced contrast for input fields */
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      padding: 0.875rem 1rem;
+      border: 2px solid #e2e8f0;
+      border-radius: var(--border-radius-sm);
+      font-size: 0.875rem;
+      transition: var(--transition);
+      background: #ffffff; /* Fundo branco puro para destaque */
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      ring: 2px;
+      ring-color: rgba(37, 99, 235, 0.2);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1), 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Card Styles */
+    .card {
+      background: var(--surface-color);
+      border-radius: var(--border-radius);
+      box-shadow: var(--card-shadow);
+      transition: var(--transition);
+      border: 1px solid var(--border-color);
+    }
+
+    .card:hover {
+      box-shadow: var(--card-shadow-hover);
+    }
+
+    .card-header {
+      padding: 1.5rem 2rem 1rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .card-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: 0;
+    }
+
+    .card-body {
+      padding: 2rem;
+    }
+
+    .main-form {
+      background: var(--surface-color);
+      border-radius: var(--border-radius);
+      padding: 2rem;
+      box-shadow: var(--card-shadow);
+      border: 1px solid var(--border-color);
+      margin-bottom: 2rem;
+    }
+
+    /* Action Bar */
+    .action-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin: 2rem 0;
+      padding: 1.5rem;
+      background: var(--surface-color);
+      border-radius: var(--border-radius);
+      box-shadow: var(--card-shadow);
+      justify-content: center;
+    }
+
+    /* Button Styles */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: var(--border-radius-sm);
+      font-weight: 500;
+      font-size: 0.875rem;
+      text-decoration: none;
+      cursor: pointer;
+      transition: var(--transition);
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+      color: white;
+      box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.4);
+    }
+
+    .btn-secondary {
+      background: linear-gradient(135deg, var(--secondary-color), #d97706);
+      color: white;
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, var(--success-color), #059669);
+      color: white;
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, var(--danger-color), #dc2626);
+      color: white;
+    }
+
+    .btn-warning {
+      background: linear-gradient(135deg, var(--warning-color), #d97706);
+      color: white;
+    }
+
+    .btn-info {
+      background: linear-gradient(135deg, var(--info-color), #0284c7);
+      color: white;
+    }
+
+    .btn-approve { background: linear-gradient(135deg, var(--success-color), #059669); color: white; }
+    .btn-additional { background: linear-gradient(135deg, var(--secondary-color), #d97706); color: white; }
+    .btn-fechamento { background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; }
+    .btn-edit { background: linear-gradient(135deg, var(--warning-color), #d97706); color: white; }
+    .btn-blue { background: linear-gradient(135deg, var(--info-color), #0284c7); color: white; }
+    .btn-history { background: linear-gradient(135deg, var(--info-color), #0284c7); color: white; }
+    .btn-pronto-fechamento { background: linear-gradient(135deg, var(--success-color), #059669); color: white; }
+
+    .btn-delete-rd {
+      background: linear-gradient(135deg, var(--danger-color), #dc2626);
+      color: white;
+      padding: 0.5rem 1rem;
+      font-size: 0.75rem;
+    }
+
+    .btn-delete-file {
+      background: var(--danger-color);
+      color: white;
+      padding: 0.25rem;
+      border-radius: 50%;
+      width: 24px;
+      height: 24px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.1);
+    }
+
+    .btn-animated {
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    /* Badge Styles */
+    .badge {
+      background: var(--danger-color);
+      color: white;
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 0.25rem 0.5rem;
+      border-radius: 9999px;
+      min-width: 20px;
+      text-align: center;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Tab Styles */
+    .tabs {
+      margin-top: 2rem;
+    }
+
+    .tabs input[type="radio"] {
+      display: none;
+    }
+
+    .tab-labels {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 2rem;
+      background: var(--surface-color);
+      padding: 1rem;
+      border-radius: var(--border-radius);
+      box-shadow: var(--card-shadow);
+      justify-content: space-between; /* Distribui os botões uniformemente */
+    }
+
+    .tab-labels label {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      background: var(--background-color);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius-sm);
+      cursor: pointer;
+      transition: var(--transition);
+      font-weight: 500;
+      color: var(--text-secondary);
+      flex: 1; /* Faz cada botão ocupar espaço igual */
+      justify-content: center; /* Centraliza o conteúdo dentro de cada botão */
+      text-align: center;
+      min-width: 0; /* Permite que o flex funcione corretamente */
+    }
+
+    .tab-labels label:hover {
+      background: var(--primary-light);
+      color: white;
+      border-color: var(--primary-light);
+    }
+
+    input[type="radio"]:checked + label {
+      background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+      color: white;
+      border-color: var(--primary-color);
+      box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    #tab1:checked ~ .content #content1,
+    #tab2:checked ~ .content #content2,
+    #tab3:checked ~ .content #content3,
+    #tab4:checked ~ .content #content4,
+    #tab5:checked ~ .content #content5,
+    #tab6:checked ~ .content #content6,
+    #tab7:checked ~ .content #content7 {
+      display: block;
+    }
+
+    /* Table Styles */
+    .table-container {
+      background: var(--surface-color);
+      border-radius: var(--border-radius);
+      overflow: hidden;
+      box-shadow: var(--card-shadow);
+      border: 1px solid var(--border-color);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.875rem;
+    }
+
+    th {
+      background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+      color: white;
+      padding: 1rem;
+      text-align: left;
+      font-weight: 600;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-bottom: 2px solid var(--primary-dark);
+    }
+
+    /* ========== CONFIGURAÇÕES DAS LINHAS DA TABELA - CORES MELHORADAS ========== */
+    
+    td {
+      padding: 1rem;
+      border-right: 1px solid #cbd5e1;
+      border-bottom: 1px solid #cbd5e1;
+      vertical-align: middle;
+      background: #fdfdfe; /* Fundo levemente azulado muito sutil */
+    }
+
+    tbody tr:hover td {
+      background: rgba(59, 130, 246, 0.08) !important; /* Hover azul mais visível mas suave */
+    }
+
+    /* Special styling for pronto-fechamento rows - cores mais suaves */
+    .pronto-fechamento td {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(5, 150, 105, 0.18)) !important;
+      border-right: 1px solid #cbd5e1 !important;
+      border-bottom: 1px solid #cbd5e1 !important;
+      position: relative;
+    }
+
+    .pronto-fechamento:hover td {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(5, 150, 105, 0.25)) !important;
+      border-right: 1px solid #cbd5e1 !important;
+      border-bottom: 1px solid #cbd5e1 !important;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    /* Last column no right border */
+    td:last-child, th:last-child {
+      border-right: none;
+    }
+
+    /* Special styling for pronto-fechamento rows with better identification */
+    .pronto-fechamento td {
+      background: linear-gradient(135deg, rgba(34, 197, 94, 0.3), rgba(22, 163, 74, 0.4)) !important;
+      border-right: 1px solid #cbd5e1 !important; /* Bordas normais da tabela */
+      border-bottom: 1px solid #cbd5e1 !important; /* Bordas normais da tabela */
+      position: relative;
+      /* Removida animação da linha */
+    }
+
+    /* Add a visual badge for pronto fechamento */
+    .pronto-fechamento td:first-child::before {
+      content: "✓ PRONTO";
+      position: absolute;
+      top: -8px;
+      left: -2px;
+      background: linear-gradient(135deg, #16a34a, #15803d);
+      color: white;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 12px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      z-index: 1; /* Z-index menor para não interferir com tooltip */
+      animation: pulseReady 1.5s ease-in-out infinite;
+      pointer-events: none; /* Permite que eventos de mouse passem através */
+    }
+
+    @keyframes pulseReady {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.05); opacity: 0.9; }
+    }
+
+    .pronto-fechamento:hover td {
+      background: linear-gradient(135deg, rgba(34, 197, 94, 0.4), rgba(22, 163, 74, 0.5)) !important;
+      border-right: 1px solid #cbd5e1 !important; /* Mantém bordas normais no hover */
+      border-bottom: 1px solid #cbd5e1 !important; /* Mantém bordas normais no hover */
+      /* Removida animação da linha no hover */
+    }
+
+    /* Animação de pulso verde */
+    @keyframes pulseGreen {
+      0% {
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+        transform: scale(1);
+      }
+      50% {
+        box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.1);
+        transform: scale(1.002);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+        transform: scale(1);
+      }
+    }
+
+    @keyframes pulseGreenFast {
+      0% {
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6);
+        transform: scale(1);
+      }
+      50% {
+        box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.2);
+        transform: scale(1.004);
+      }
+      100% {
+        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+        transform: scale(1);
+      }
+    }
+
+    /* Remove any conflicting styling */
+    .pronto-fechamento {
+      border: none !important;
+      outline: none !important;
+    }
+
+    /* Tooltip Styles */
+    .valor-tooltip-wrapper {
+      position: relative;
+      display: inline-block;
+    }
+
+    .valor-total {
+      cursor: pointer;
+      color: var(--primary-color);
+      font-weight: 600;
+      padding: 0.25rem 0.5rem;
+      background: rgba(37, 99, 235, 0.1);
+      border-radius: var(--border-radius-sm);
+      transition: var(--transition);
+    }
+
+    .valor-total:hover {
+      background: rgba(37, 99, 235, 0.2);
+    }
+
+    .valor-tooltip {
+      visibility: hidden;
+      width: 350px;
+      max-height: 300px;
+      overflow-y: auto;
+      background: linear-gradient(135deg, #1e293b, #334155); /* Fundo escuro com gradiente */
+      color: #f1f5f9; /* Texto claro */
+      border: 1px solid #475569;
+      border-radius: var(--border-radius);
+      padding: 1.5rem;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+      position: fixed;
+      z-index: 1000;
+      opacity: 0;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
+    }
+
+    .valor-tooltip-wrapper:hover .valor-tooltip {
+      visibility: visible;
+      opacity: 1;
+    }
+
+    .valor-tooltip h3 {
+      margin: 0 0 1rem 0;
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: #60a5fa; /* Azul claro para o título */
+    }
+
+    .valor-tooltip p {
+      margin: 0.5rem 0;
+      color: #f1f5f9; /* Texto claro */
+    }
+
+    .valor-tooltip hr {
+      border: none;
+      height: 1px;
+      background: #475569; /* Linha divisória mais clara */
+      margin: 1rem 0;
+    }
+
+    .valor-tooltip p strong {
+      color: #fbbf24; /* Amarelo para destaques */
+      font-weight: 600;
+    }
+
+    /* Modal Styles */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 9999;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+    }
+
+    .modal-content {
+      background: var(--surface-color);
+      margin: 5% auto;
+      padding: 2rem;
+      border-radius: var(--border-radius);
+      max-width: 600px;
+      position: relative;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      animation: modalSlideIn 0.3s ease-out;
+    }
+
+    @keyframes modalSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(-50px) scale(0.9);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .close-btn {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      color: var(--text-muted);
+      font-size: 1.5rem;
+      cursor: pointer;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: var(--transition);
+    }
+
+    .close-btn:hover {
+      background: var(--danger-color);
+      color: white;
+    }
+
+    .modal-content h3 {
+      margin-top: 0;
+      margin-bottom: 1.5rem;
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    /* Alert Messages */
+    .notifications-container {
+      position: fixed;
+      top: 90px;
+      right: 20px;
+      z-index: 9999;
+      max-width: 400px;
+      width: 100%;
+    }
+
+    .notification {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1rem 1.25rem;
+      margin-bottom: 0.75rem;
+      border-radius: var(--border-radius);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      font-weight: 500;
+      animation: slideInRight 0.3s ease-out;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .notification:hover {
+      transform: translateX(-5px);
+    }
+
+    @keyframes slideInRight {
+      from {
+        opacity: 0;
+        transform: translateX(100%);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    @keyframes slideOutRight {
+      from {
+        opacity: 1;
+        transform: translateX(0);
+      }
+      to {
+        opacity: 0;
+        transform: translateX(100%);
+      }
+    }
+
+    .notification.removing {
+      animation: slideOutRight 0.3s ease-in forwards;
+    }
+
+    .notification-success {
+      background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+      border: 1px solid #86efac;
+      color: #14532d;
+    }
+
+    .notification-error {
+      background: linear-gradient(135deg, #fef2f2, #fee2e2);
+      border: 1px solid #fecaca;
+      color: #991b1b;
+    }
+
+    .notification-info {
+      background: linear-gradient(135deg, #eff6ff, #dbeafe);
+      border: 1px solid #93c5fd;
+      color: #1e40af;
+    }
+
+    .notification-warning {
+      background: linear-gradient(135deg, #fffbeb, #fef3c7);
+      border: 1px solid #fcd34d;
+      color: #92400e;
+    }
+
+    .notification-icon {
+      font-size: 1.25rem;
+      flex-shrink: 0;
+    }
+
+    .notification-content {
+      flex: 1;
+    }
+
+    .notification-close {
+      background: none;
+      border: none;
+      color: inherit;
+      cursor: pointer;
+      padding: 0.25rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.7;
+      transition: var(--transition);
+      flex-shrink: 0;
+    }
+
+    .notification-close:hover {
+      opacity: 1;
+      background: rgba(0, 0, 0, 0.1);
+    }
+
+    /* Legacy error message for fallback */
+    .error-message {
+      background: linear-gradient(135deg, #fef2f2, #fee2e2);
+      border: 1px solid #fecaca;
+      color: #991b1b;
+      padding: 1rem;
+      border-radius: var(--border-radius-sm);
+      margin: 1rem 0;
+      font-weight: 500;
+      list-style: none;
+    }
+
+    @media (max-width: 768px) {
+      .notifications-container {
+        top: 70px;
+        left: 10px;
+        right: 10px;
+        max-width: none;
+      }
+    }
+
+    /* Observation Toggle */
+    .observation-short {
+      color: var(--text-primary);
+    }
+
+    .toggle-observation {
+      background: none;
+      border: none;
+      color: var(--primary-color);
+      cursor: pointer;
+      font-weight: 600;
+      margin-left: 0.25rem;
+      padding: 0.25rem;
+      border-radius: var(--border-radius-sm);
+      transition: var(--transition);
+    }
+
+    .toggle-observation:hover {
+      background: var(--primary-color);
+      color: white;
+    }
+
+    .observation-full {
+      display: none;
+      margin-top: 0.5rem;
+      padding: 1rem;
+      background: rgba(37, 99, 235, 0.05);
+      border-radius: var(--border-radius-sm);
+      border-left: 4px solid var(--primary-color);
+    }
+
+    /* File Links */
+    .arquivo-link {
+      color: var(--primary-color);
+      text-decoration: none;
+      font-weight: 500;
+      transition: var(--transition);
+    }
+
+    .arquivo-link:hover {
+      color: var(--primary-light);
+      text-decoration: underline;
+    }
+
+    /* Footer */
+    footer {
+      text-align: center;
+      color: var(--text-muted);
+      padding: 2rem;
+      border-top: 1px solid var(--border-color);
+      background: var(--surface-color);
+      margin-top: 4rem;
+    }
+
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      .container {
+        padding: 1rem;
+      }
+
+      .top-bar {
+        padding: 0 1rem;
+        flex-wrap: wrap;
+        height: auto;
+        min-height: var(--header-height);
+      }
+
+      .header-actions {
+        width: 100%;
+        justify-content: space-between;
+        margin-top: 1rem;
+      }
+
+      .tab-labels {
+        flex-direction: column;
+      }
+
+      .action-bar {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .btn {
+        width: 100%;
+        justify-content: center;
+      }
+
+      table, thead, tbody, th, td, tr {
+        display: block;
+      }
+
+      th {
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+      }
+
+      tr {
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius-sm);
+        margin-bottom: 1rem;
+        padding: 1rem;
+        background: var(--surface-color);
+      }
+
+      td {
+        border: none;
+        position: relative;
+        padding: 0.5rem 0;
+        padding-left: 50%;
+        text-align: left;
+      }
+
+      td::before {
+        content: attr(data-label) ": ";
+        position: absolute;
+        left: 0;
+        width: 45%;
+        padding-right: 10px;
+        white-space: nowrap;
+        font-weight: 600;
+        color: var(--text-secondary);
+      }
+    }
+
+    /* DataTables Customization */
+    .dataTables_wrapper {
+      background: var(--surface-color);
+      border-radius: var(--border-radius);
+      overflow: hidden;
+    }
+
+    .dataTables_length,
+    .dataTables_filter,
+    .dataTables_info,
+    .dataTables_paginate {
+      color: var(--text-primary) !important;
+    }
+
+    .dataTables_length select,
+    .dataTables_filter input {
+      border: 1px solid var(--border-color) !important;
+      border-radius: var(--border-radius-sm) !important;
+      padding: 0.5rem !important;
+    }
+
+    /* Header Brand Animation */
+    .header-brand {
+      animation: slideInFromLeft 0.8s ease-out;
+    }
+
+    @keyframes slideInFromLeft {
+      from {
+        opacity: 0;
+        transform: translateX(-30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+
+    /* Loading States */
+    .btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none !important;
+    }
+
+    /* Enhanced Form Styling */
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1rem;
+    }
+
+    /* Enhanced Card Actions */
+    .card-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+
+    .card-actions .btn {
+      font-size: 0.8rem;
+      padding: 0.5rem 1rem;
+    }
+
+    /* Improved spacing */
+    .mb-1 { margin-bottom: 0.25rem; }
+    .mb-2 { margin-bottom: 0.5rem; }
+    .mb-3 { margin-bottom: 1rem; }
+    .mb-4 { margin-bottom: 1.5rem; }
+    .mb-5 { margin-bottom: 2rem; }
+
+    .mt-1 { margin-top: 0.25rem; }
+    .mt-2 { margin-top: 0.5rem; }
+    .mt-3 { margin-top: 1rem; }
+    .mt-4 { margin-top: 1.5rem; }
+    .mt-5 { margin-top: 2rem; }
+  </style>
+</head>
+<body>
+  {% if user_role is defined %}
+  <div class="top-bar">
+    <div class="header-brand">
+      <img src="https://pub-1e6f8559bc2b413c889fbf4860462599.r2.dev/logo_animado.gif" alt="Logo Tecsul" class="logo">
+      <div class="brand-text">Gerenciamento de RDs</div>
+    </div>
+    <div class="header-actions">
+      <div class="user-info">
+        <i class="fas fa-user-circle"></i>
+        <span>{{ user_role }}</span>
+      </div>
+      {% if saldo_global is defined and saldo_global is not none %}
+      <div class="saldo-info">
+        <i class="fas fa-wallet"></i>
+        <span>Saldo Global: R${{ format_currency(saldo_global) }}</span>
+      </div>
+      {% endif %}
+      <a href="{{ url_for('logout') }}">
+        <i class="fas fa-sign-out-alt"></i>
+        Sair
+      </a>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if user_role is not defined %}
+  <div class="login-container">
+    <div class="login-card">
+      <h2><i class="fas fa-shield-alt"></i> Acessar o Sistema</h2>
+      <form action="/" method="POST">
+        {% if error %}<p class="error-message">{{ error }}</p>{% endif %}
+        
+        <div class="form-group">
+          <label for="username">
+            <i class="fas fa-user"></i>
+            Usuário:
+          </label>
+          <input type="text" id="username" name="username" required>
+        </div>
+
+        <div class="form-group">
+          <label for="password">
+            <i class="fas fa-lock"></i>
+            Senha:
+          </label>
+          <input type="password" id="password" name="password" required>
+        </div>
+        
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+          <i class="fas fa-sign-in-alt"></i>
+          Entrar
+        </button>
+      </form>
+    </div>
+  </div>
+  {% else %}
+
+  <!-- Notifications Container -->
+  <div class="notifications-container" id="notificationsContainer">
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        {% for message in messages %}
+          <div class="notification" data-message="{{ message }}">
+            <div class="notification-icon">
+              <i class="fas fa-info-circle"></i>
+            </div>
+            <div class="notification-content">{{ message }}</div>
+            <button class="notification-close" onclick="closeNotification(this.parentElement); event.stopPropagation();">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+  </div>
+
+  <div class="container">
+
+    {% if adicional_id %}
+      <div class="main-form">
+        <h2><i class="fas fa-plus-circle"></i> Solicitar Crédito Adicional para RD #{{ adicional_id }}</h2>
+        <form action="/adicional_submit/{{ adicional_id }}" method="POST" enctype="multipart/form-data">
+          <div class="form-group">
+            <label for="valor_adicional">Valor Adicional (R$):</label>
+            <input type="number" id="valor_adicional" name="valor_adicional" step="0.01" required>
+          </div>
+          <div class="form-group">
+            <label for="arquivo">Anexar Arquivos (opcional):</label>
+            <input type="file" id="arquivo" name="arquivo" multiple>
+          </div>
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-paper-plane"></i>
+            Solicitar Adicional
+          </button>
+        </form>
+      </div>
+    {% elif fechamento_id %}
+      <div class="main-form">
+        <h2><i class="fas fa-lock"></i> Fechamento da RD #{{ fechamento_id }}</h2>
+        <form action="/fechamento_submit/{{ fechamento_id }}" method="POST" enctype="multipart/form-data">
+          <div class="form-group">
+            <label for="valor_despesa">Valor da Despesa (R$):</label>
+            <input type="number" id="valor_despesa" name="valor_despesa" step="0.01" required>
+          </div>
+          <div class="form-group">
+            <label for="arquivo">Anexar Arquivos Finais (opcional):</label>
+            <input type="file" id="arquivo" name="arquivo" multiple>
+          </div>
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-check-circle"></i>
+            Fechar RD
+          </button>
+        </form>
+      </div>
+    {% else %}
+      {% if can_add %}
+        <div class="action-bar">
+          <button type="button" id="btn-alelo" class="btn btn-primary">
+            <i class="fas fa-credit-card"></i>
+            Solicitação RD Alelo
+          </button>
+          <button type="button" id="btn-reembolso" class="btn btn-secondary">
+            <i class="fas fa-receipt"></i>
+            Solicitação RD Reembolso
+          </button>
+        </div>
+        <form id="form-solicitacao" action="/add" method="POST" enctype="multipart/form-data" class="main-form" style="display:none;">
+          <div class="form-row">
+            <div class="form-group">
+              <label id="lbl-solicitante" for="solicitante">Solicitante:</label>
+              <input type="text" id="solicitante" name="solicitante" required>
+            </div>
+            <div class="form-group">
+              <label for="funcionario">Funcionário:</label>
+              <input type="text" id="funcionario" name="funcionario" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="data">Data:</label>
+              <input type="date" id="data" name="data" required>
+            </div>
+            <div class="form-group">
+              <label for="centro_custo">Centro de Custo:</label>
+              <input type="text" id="centro_custo" name="centro_custo" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="unidade_negocio">Unidade de Negócio:</label>
+              <input type="text" id="unidade_negocio" name="unidade_negocio" placeholder="Cód. Filial">
+            </div>
+            <div class="form-group">
+              <label for="valor">Valor (R$):</label>
+              <input type="number" id="valor" name="valor" step="0.01" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="observacao">Observação:</label>
+            <textarea id="observacao" name="observacao" rows="3"></textarea>
+          </div>
+          <div class="form-group">
+            <label for="arquivo">Anexar Arquivos:</label>
+            <input type="file" id="arquivo" name="arquivo" multiple>
+          </div>
+          <input type="hidden" name="tipo" id="rd-tipo" value="">
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-plus-circle"></i>
+            Enviar Solicitação
+          </button>
+        </form>
+      {% endif %}
+      
+      {% if user_role == 'financeiro' %}
+        <div class="main-form">
+          <h2><i class="fas fa-wallet"></i> Editar Saldo Global</h2>
+          <form action="{{ url_for('edit_saldo') }}" method="POST">
+            <div class="form-group">
+              <label for="saldo_global">Saldo Global (R$):</label>
+              <input type="number" id="saldo_global" name="saldo_global" step="0.01" value="{{ saldo_global }}" required>
+            </div>
+            <button type="submit" class="btn btn-success">
+              <i class="fas fa-sync-alt"></i>
+              Atualizar Saldo
+            </button>
+          </form>
+        </div>
+      {% endif %}
+
+      <div class="action-bar">
+        <a href="{{ url_for('cadastro_funcionario') }}" class="btn btn-success">
+          <i class="fas fa-user-plus"></i>
+          Cadastro Funcionários
+        </a>
+        <a href="{{ url_for('historico_geral') }}" class="btn btn-history">
+          <i class="fas fa-history"></i>
+          Histórico Geral
+        </a>
+        <a href="{{ url_for('consulta_funcionario') }}" class="btn btn-success">
+          <i class="fas fa-search"></i>
+          Consulta Funcionários
+        </a>
+        <a href="{{ url_for('anexos_divergentes') }}" class="btn btn-blue {% if divergentes_count > 0 %}btn-animated{% endif %}">
+          <i class="fas fa-paperclip"></i>
+          Anexos Divergentes
+          {% if divergentes_count > 0 %}
+            <span class="badge">{{ divergentes_count }}</span>
+          {% endif %}
+        </a>
+        {% if user_role == 'financeiro' %}
+          <a href="{{ url_for('export_historico') }}" class="btn btn-success">
+            <i class="fas fa-history"></i>
+            Histórico de Movimentação
+          </a>
+        {% endif %}
+        <a href="{{ url_for('export_excel') }}" class="btn btn-success">
+          <i class="fas fa-file-excel"></i>
+          Exportar para Excel
+        </a>
+      </div>
+
+      {% macro mostrar_valores(rd) %}
+        {% set valor_inicial = rd[5] if rd[5] else 0 %}
+        {% set total_adicionais = rd[7] if rd[7] else 0 %}
+        {% set valor_despesa = rd[9] if rd[9] else 0 %}
+        {% set valor_total = valor_inicial + total_adicionais %}
+        {% set saldo_devolver = valor_total - valor_despesa %}
+        {% set adicionais_para_exibir = rd[19].split(',') if rd[19] else [] %}
+
+        <div class="valor-tooltip-wrapper" data-rd-id="{{ rd[0] }}">
+          <span class="valor-total">R${{ format_currency(valor_total) }}</span>
+          <div class="valor-tooltip" data-tooltip>
+            <h3>RD #{{ rd[0] }}</h3>
+            <p><strong>Valor Solicitado:</strong> R${{ format_currency(valor_inicial) }} em {{ rd[28] if rd[28] else '-' }}</p>
+            <p><strong>Valores Adicionais:</strong>
+              {% if adicionais_para_exibir %}
+                <ul>
+                  {% for adicional in adicionais_para_exibir %}
+                    {% set partes = adicional.split(':') %}
+                    {% set numero_adicional = partes[0].split(' ')[1] if partes|length > 0 and ' ' in partes[0] else 'N/A' %}
+                    {% set valor_adicional_display = (partes[1]|float) if partes|length > 1 else 0 %}
+                    <li>Adicional {{ numero_adicional }}: R${{ format_currency(valor_adicional_display) }} em {{ rd[8] if rd[8] else '-' }}</li>
+                  {% endfor %}
+                </ul>
+              {% else %}
+                Nenhum
+              {% endif %}
+            </p>
+            <p><strong>Valor Gasto (Despesa):</strong> R${{ format_currency(valor_despesa) }} em {{ rd[30] if rd[30] else '-' }}</p>
+            <hr>
+            <p><strong>Total da RD:</strong> R${{ format_currency(valor_total) }}</p>
+            <p><strong>Saldo a Devolver:</strong> R${{ format_currency(saldo_devolver) }}</p>
+          </div>
+        </div>
+      {% endmacro %}
+
+      <div class="tabs">
+        <input type="radio" name="tab-control" id="tab1" checked>
+        <input type="radio" name="tab-control" id="tab2">
+        <input type="radio" name="tab-control" id="tab3">
+        <input type="radio" name="tab-control" id="tab4">
+        <input type="radio" name="tab-control" id="tab5">
+        <input type="radio" name="tab-control" id="tab6">
+        <input type="radio" name="tab-control" id="tab7">
+        
+        <div class="tab-labels">
+          <label for="tab1">
+            <i class="fas fa-clock"></i>
+            Pendentes 
+            {% if pendentes|length > 0 %}<span class="badge">{{ pendentes|length }}</span>{% endif %}
+          </label>
+          <label for="tab2">
+            <i class="fas fa-check"></i>
+            Aprovados 
+            {% if aprovados|length > 0 %}<span class="badge">{{ aprovados|length }}</span>{% endif %}
+          </label>
+          <label for="tab3">
+            <i class="fas fa-unlock"></i>
+            Liberados 
+            {% if liberados|length > 0 %}<span class="badge">{{ liberados|length }}</span>{% endif %}
+          </label>
+          <label for="tab4">
+            <i class="fas fa-hourglass-half"></i>
+            Fechamento Solicitado 
+            {% if fechamento_solicitado|length > 0 %}<span class="badge">{{ fechamento_solicitado|length }}</span>{% endif %}
+          </label>
+          <label for="tab5">
+            <i class="fas fa-times-circle"></i>
+            Fechamento Recusado 
+            {% if fechamento_recusado|length > 0 %}<span class="badge">{{ fechamento_recusado|length }}</span>{% endif %}
+          </label>
+          <label for="tab6">
+            <i class="fas fa-check-circle"></i>
+            Fechados 
+            {% if fechados|length > 0 %}<span class="badge">{{ fechados|length }}</span>{% endif %}
+          </label>
+          <label for="tab7" class="{% if saldos_a_devolver|length > 0 %}btn-animated{% endif %}">
+            <i class="fas fa-money-bill-wave"></i>
+            Saldo a Devolver 
+            {% if saldos_a_devolver|length > 0 %}<span class="badge">{{ saldos_a_devolver|length }}</span>{% endif %}
+          </label>
+        </div>
+
+        <div class="content">
+          <!-- Pendentes -->
+          <div class="tab-content" id="content1">
+            <div class="table-container">
+              <table id="tabela-pendentes" class="display">
+                <thead>
+                  <tr>
+                    <th><i class="fas fa-hashtag"></i> ID</th>
+                    <th><i class="fas fa-user"></i> Solicitante</th>
+                    <th><i class="fas fa-user-tie"></i> Funcionário</th>
+                    <th><i class="fas fa-calendar"></i> Data</th>
+                    <th><i class="fas fa-building"></i> Centro de Custo</th>
+                    <th><i class="fas fa-industry"></i> Unidade de Negócio</th>
+                    <th><i class="fas fa-comment"></i> Observação</th>
+                    <th><i class="fas fa-paperclip"></i> Arquivos</th>
+                    <th><i class="fas fa-dollar-sign"></i> Valores</th>
+                    <th><i class="fas fa-cogs"></i> Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for rd in pendentes %}
+                  {% set rd_id = rd[0] %}
+                  {% set status = rd[6] %}
+                  <tr>
+                    <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
+                    <td data-label="Solicitante">{{ rd[1] }}</td>
+                    <td data-label="Funcionário">{{ rd[2] }}</td>
+                    <td data-label="Data">{{ rd[3] }}</td>
+                    <td data-label="Centro de Custo">{{ rd[4] }}<br><small>{{ rd[18] }}</small></td>
+                    <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td>
+                    <td data-label="Observação">
+                      {% if rd[16] %}
+                        {% set obs = rd[16] %}
+                        {% if obs|length > 50 %}
+                          <span class="observation-short">{{ obs[:50] }}...</span>
+                          <button class="toggle-observation">+</button>
+                          <div class="observation-full">{{ obs }}</div>
+                        {% else %}
+                          {{ obs }}
+                        {% endif %}
+                      {% else %}
+                        -
+                      {% endif %}
+                    </td>
+                    <td data-label="Arquivos">
+                      {% if rd[12] %}
+                        <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}">
+                          <i class="fas fa-paperclip"></i>
+                          Anexos
+                        </button>
+                      {% else %}
+                        -
+                      {% endif %}
+                    </td>
+                    <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
+                    <td data-label="Ações">
+                      <div class="card-actions">
+                        {% if can_approve_func(status) %}
+                          <form action="/approve/{{ rd_id }}" method="POST" class="action-form">
+                            <button type="submit" class="btn btn-approve">
+                              <i class="fas fa-check"></i>
+                              Aprovar
+                            </button>
+                          </form>
+                        {% endif %}
+                        {% if can_edit_func(status) %}
+                          <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit">
+                            <i class="fas fa-edit"></i>
+                            Editar
+                          </a>
+                        {% endif %}
+                        {% if can_delete_func(status, rd[1]) %}
+                          <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
+                            <button type="submit" class="btn btn-delete-rd">
+                              <i class="fas fa-trash-alt"></i>
+                              Excluir
+                            </button>
+                          </form>
+                        {% endif %}
+                      </div>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Aprovados -->
+          <div class="tab-content" id="content2">
+            <div class="table-container">
+              <table id="tabela-aprovados" class="display">
+                <thead>
+                  <tr>
+                    <th><i class="fas fa-hashtag"></i> ID</th>
+                    <th><i class="fas fa-user"></i> Solicitante</th>
+                    <th><i class="fas fa-user-tie"></i> Funcionário</th>
+                    <th><i class="fas fa-calendar"></i> Data</th>
+                    <th><i class="fas fa-building"></i> Centro de Custo</th>
+                    <th><i class="fas fa-industry"></i> Unidade de Negócio</th>
+                    <th><i class="fas fa-comment"></i> Observação</th>
+                    <th><i class="fas fa-paperclip"></i> Arquivos</th>
+                    <th><i class="fas fa-dollar-sign"></i> Valores</th>
+                    <th><i class="fas fa-cogs"></i> Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for rd in aprovados %}
+                  {% set rd_id = rd[0] %}
+                  {% set status = rd[6] %}
+                  <tr>
+                    <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
+                    <td data-label="Solicitante">{{ rd[1] }}</td>
+                    <td data-label="Funcionário">{{ rd[2] }}</td>
+                    <td data-label="Data">{{ rd[3] }}</td>
+                    <td data-label="Centro de Custo">{{ rd[4] }}</td>
+                    <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td>
+                    <td data-label="Observação">
+                      {% if rd[16] %}
+                        {% set obs = rd[16] %}
+                        {% if obs|length > 50 %}
+                          <span class="observation-short">{{ obs[:50] }}...</span>
+                          <button class="toggle-observation">+</button>
+                          <div class="observation-full">{{ obs }}</div>
+                        {% else %}
+                          {{ obs }}
+                        {% endif %}
+                      {% else %}
+                        -
+                      {% endif %}
+                    </td>
+                    <td data-label="Arquivos">
+                      {% if rd[12] %}
+                        <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}">
+                          <i class="fas fa-paperclip"></i>
+                          Anexos
+                        </button>
+                      {% else %}
+                        -
+                      {% endif %}
+                    </td>
+                    <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
+                    <td data-label="Ações">
+                      <div class="card-actions">
+                        {% if can_approve_func(status) %}
+                          <form action="/approve/{{ rd_id }}" method="POST" class="action-form">
+                            <button type="submit" class="btn btn-approve">
+                              <i class="fas fa-check"></i>
+                              Liberar
+                            </button>
+                          </form>
+                        {% endif %}
+                        {% if can_edit_func(status) %}
+                          <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit">
+                            <i class="fas fa-edit"></i>
+                            Editar
+                          </a>
+                        {% endif %}
+                        {% if can_delete_func(status, rd[1]) %}
+                          <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
+                            <button type="submit" class="btn btn-delete-rd">
+                              <i class="fas fa-trash-alt"></i>
+                              Excluir
+                            </button>
+                          </form>
+                        {% endif %}
+                      </div>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Liberados -->
+          <div class="tab-content" id="content3">
+            <div class="table-container">
+              <table id="tabela-liberados" class="display">
+                <thead>
+                  <tr>
+                    <th><i class="fas fa-hashtag"></i> ID</th>
+                    <th><i class="fas fa-user"></i> Solicitante</th>
+                    <th><i class="fas fa-user-tie"></i> Funcionário</th>
+                    <th><i class="fas fa-calendar"></i> Data</th>
+                    <th><i class="fas fa-building"></i> Centro de Custo</th>
+                    <th><i class="fas fa-industry"></i> Unidade de Negócio</th>
+                    <th><i class="fas fa-comment"></i> Observação</th>
+                    <th><i class="fas fa-paperclip"></i> Arquivos</th>
+                    <th><i class="fas fa-dollar-sign"></i> Valores</th>
+                    <th><i class="fas fa-cogs"></i> Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for rd in liberados %}
+                  {% set rd_id = rd[0] %}
+                  {% set status = rd[6] %}
+                  {% set pronto_fechamento = rd.pronto_fechamento %}
+                  <tr class="{{ 'pronto-fechamento' if rd.pronto_fechamento else '' }}">
+                    <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
+                    <td data-label="Solicitante">{{ rd[1] }}</td>
+                    <td data-label="Funcionário">{{ rd[2] }}</td>
+                    <td data-label="Data">{{ rd[3] }}</td>
+                    <td data-label="Centro de Custo">{{ rd[4] }}</td>
+                    <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td>
+                    <td data-label="Observação">
+                      {% if rd[16] %}
+                        {% set obs = rd[16] %}
+                        {% if obs|length > 50 %}
+                          <span class="observation-short">{{ obs[:50] }}...</span>
+                          <button class="toggle-observation">+</button>
+                          <div class="observation-full">{{ obs }}</div>
+                        {% else %}
+                          {{ obs }}
+                        {% endif %}
+                      {% else %}
+                        -
+                      {% endif %}
+                    </td>
+                    <td data-label="Arquivos">
+                      {% if rd[12] %}
+                        <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}">
+                          <i class="fas fa-paperclip"></i>
+                          Anexos
+                        </button>
+                      {% else %}
+                        -
+                      {% endif %}
+                    </td>
+                    <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
+                    <td data-label="Ações">
+                      <div class="card-actions">
+                        {% if can_edit_func(status) %}
+                          <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit">
+                            <i class="fas fa-edit"></i>
+                            Editar
+                          </a>
+                        {% endif %}
+                        {% if can_delete_func(status, rd[1]) %}
+                          <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
+                            <button type="submit" class="btn btn-delete-rd">
+                              <i class="fas fa-trash-alt"></i>
+                              Excluir
+                            </button>
+                          </form>
+                        {% endif %}
+                        {% if can_request_additional(status) %}
+                          <form action="/" method="GET" class="action-form">
+                            <input type="hidden" name="adicional" value="{{ rd_id }}">
+                            <button type="submit" class="btn btn-additional">
+                              <i class="fas fa-plus"></i>
+                              Adicional
+                            </button>
+                          </form>
+                        {% endif %}
+                        {% if can_close(status) %}
+                          <form action="/" method="GET" class="action-form">
+                            <input type="hidden" name="fechamento" value="{{ rd_id }}">
+                            <button type="submit" class="btn btn-fechamento">
+                              <i class="fas fa-lock"></i>
+                              Fechamento
+                            </button>
+                          </form>
+                        {% endif %}
+                        {% if user_role in ['gestor', 'solicitante'] %}
+                          <form action="{{ url_for('marcar_divergente', id=rd_id) }}" method="GET">
+                            <button type="submit" class="btn btn-blue btn-animated">
+                              <i class="fas fa-exclamation-circle"></i>
+                              Anexo Divergente
+                            </button>
+                          </form>
+                        {% endif %}
+                        {% if user_role == 'supervisor' and status == 'Liberado' %}
+                          <form action="{{ url_for('marcar_pronto_fechamento', id=rd_id) }}" method="POST" class="action-form">
+                            <button type="submit" class="btn {{ 'btn-blue btn-animated' if pronto_fechamento else 'btn-pronto-fechamento' }}">
+                              <i class="fas {{ 'fa-undo' if pronto_fechamento else 'fa-check-circle' }}"></i>
+                              {{ 'Desfazer' if pronto_fechamento else 'Pronto para Fechamento' }}
+                            </button>
+                          </form>
+                        {% endif %}
+                      </div>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Fechamento Solicitado -->
+          <div class="tab-content" id="content4">
+            <div class="table-container">
+              <table id="tabela-fechamento-solicitado" class="display">
+                <thead>
+                  <tr>
+                    <th><i class="fas fa-hashtag"></i> ID</th>
+                    <th><i class="fas fa-user"></i> Solicitante</th>
+                    <th><i class="fas fa-user-tie"></i> Funcionário</th>
+                    <th><i class="fas fa-calendar"></i> Data</th>
+                    <th><i class="fas fa-building"></i> Centro de Custo</th>
+                    <th><i class="fas fa-industry"></i> Unidade de Negócio</th>
+                    <th><i class="fas fa-comment"></i> Observação</th>
+                    <th><i class="fas fa-paperclip"></i> Arquivos</th>
+                    <th><i class="fas fa-dollar-sign"></i> Valores</th>
+                    <th><i class="fas fa-cogs"></i> Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for rd in fechamento_solicitado %}
+                  {% set rd_id = rd[0] %}
+                  {% set status = rd[6] %}
+                  <tr>
+                    <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
+                    <td data-label="Solicitante">{{ rd[1] }}</td>
+                    <td data-label="Funcionário">{{ rd[2] }}</td>
+                    <td data-label="Data">{{ rd[3] }}</td>
+                    <td data-label="Centro de Custo">{{ rd[4] }}</td>
+                    <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td>
+                    <td data-label="Observação">
+                      {% if rd[16] %}
+                        {% set obs = rd[16] %}
+                        {% if obs|length > 50 %}
+                          <span class="observation-short">{{ obs[:50] }}...</span>
+                          <button class="toggle-observation">+</button>
+                          <div class="observation-full">{{ obs }}</div>
+                        {% else %}
+                          {{ obs }}
+                        {% endif %}
+                      {% else %}
+                        -
+                      {% endif %}
+                    </td>
+                    <td data-label="Arquivos">
+                      {% if rd[12] %}
+                        <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}">
+                          <i class="fas fa-paperclip"></i>
+                          Anexos
+                        </button>
+                      {% else %}
+                        -
+                      {% endif %}
+                    </td>
+                    <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
+                    <td data-label="Ações">
+                      <div class="card-actions">
+                        {% if can_approve_func(status) %}
+                          <form action="/approve/{{ rd_id }}" method="POST" class="action-form">
+                            <button type="submit" class="btn btn-approve">
+                              <i class="fas fa-check"></i>
+                              Fechar
+                            </button>
+                          </form>
+                        {% endif %}
+                        {% if is_gestor() and status == 'Fechamento Solicitado' %}
+                          <button type="button" class="btn btn-danger btn-recusar" data-rd-id="{{ rd_id }}">
+                            <i class="fas fa-times"></i>
+                            Recusar
+                          </button>
+                        {% endif %}
+                      </div>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Fechamento Recusado -->
+          <div class="tab-content" id="content5">
+            <div class="table-container">
+              <table id="tabela-fechamento-recusado" class="display">
+                <thead>
+                  <tr>
+                    <th><i class="fas fa-hashtag"></i> ID</th>
+                    <th><i class="fas fa-user"></i> Solicitante</th>
+                    <th><i class="fas fa-user-tie"></i> Funcionário</th>
+                    <th><i class="fas fa-calendar"></i> Data</th>
+                    <th><i class="fas fa-building"></i> Centro de Custo</th>
+                    <th><i class="fas fa-industry"></i> Unidade de Negócio</th>
+                    <th><i class="fas fa-comment"></i> Observação</th>
+                    <th><i class="fas fa-exclamation-triangle"></i> Motivo da Recusa</th>
+                    <th><i class="fas fa-paperclip"></i> Arquivos</th>
+                    <th><i class="fas fa-dollar-sign"></i> Valores</th>
+                    <th><i class="fas fa-cogs"></i> Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for rd in fechamento_recusado %}
+                  {% set rd_id = rd[0] %}
+                  <tr>
+                    <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
+                    <td data-label="Solicitante">{{ rd[1] }}</td>
+                    <td data-label="Funcionário">{{ rd[2] }}</td>
+                    <td data-label="Data">{{ rd[3] }}</td>
+                    <td data-label="Centro de Custo">{{ rd[4] }}</td>
+                    <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td>
+                    <td data-label="Observação">
+                      {% if rd[16] %}
+                        {% set obs = rd[16] %}
+                        {% if obs|length > 50 %}
+                          <span class="observation-short">{{ obs[:50] }}...</span>
+                          <button class="toggle-observation">+</button>
+                          <div class="observation-full">{{ obs }}</div>
+                        {% else %}
+                          {{ obs }}
+                        {% endif %}
+                      {% else %}
+                        -
+                      {% endif %}
+                    </td>
+                    <td data-label="Motivo da Recusa">{{ rd[20] }}</td>
+                    <td data-label="Arquivos">
+                      {% if rd[12] %}
+                        <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}">
+                          <i class="fas fa-paperclip"></i>
+                          Anexos
+                        </button>
+                      {% else %}
+                        -
+                      {% endif %}
+                    </td>
+                    <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
+                    <td data-label="Ações">
+                      <div class="card-actions">
+                        {% if is_solicitante() %}
+                          <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit">
+                            <i class="fas fa-edit"></i>
+                            Corrigir e reenviar
+                          </a>
+                        {% endif %}
+                      </div>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Fechados -->
+          <div class="tab-content" id="content6">
+            <div class="table-container">
+              <table id="tabela-fechados" class="display">
+                <thead>
+                  <tr>
+                    <th><i class="fas fa-hashtag"></i> ID</th>
+                    <th><i class="fas fa-user"></i> Solicitante</th>
+                    <th><i class="fas fa-user-tie"></i> Funcionário</th>
+                    <th><i class="fas fa-calendar"></i> Data</th>
+                    <th><i class="fas fa-building"></i> Centro de Custo</th>
+                    <th><i class="fas fa-industry"></i> Unidade de Negócio</th>
+                    <th><i class="fas fa-comment"></i> Observação</th>
+                    <th><i class="fas fa-paperclip"></i> Arquivos</th>
+                    <th><i class="fas fa-dollar-sign"></i> Valores</th>
+                    <th><i class="fas fa-cogs"></i> Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for rd in fechados %}
+                  {% set rd_id = rd[0] %}
+                  <tr>
+                    <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
+                    <td data-label="Solicitante">{{ rd[1] }}</td>
+                    <td data-label="Funcionário">{{ rd[2] }}</td>
+                    <td data-label="Data">{{ rd[3] }}</td>
+                    <td data-label="Centro de Custo">{{ rd[4] }}</td>
+                    <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td>
+                    <td data-label="Observação">
+                      {% if rd[16] %}
+                        {% set obs = rd[16] %}
+                        {% if obs|length > 50 %}
+                          <span class="observation-short">{{ obs[:50] }}...</span>
+                          <button class="toggle-observation">+</button>
+                          <div class="observation-full">{{ obs }}</div>
+                        {% else %}
+                          {{ obs }}
+                        {% endif %}
+                      {% else %}
+                        -
+                      {% endif %}
+                    </td>
+                    <td data-label="Arquivos">
+                      {% if rd[12] %}
+                        <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}">
+                          <i class="fas fa-paperclip"></i>
+                          Anexos
+                        </button>
+                      {% else %}
+                        -
+                      {% endif %}
+                    </td>
+                    <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
+                    <td data-label="Ações">
+                      <div class="card-actions">
+                        {% if is_financeiro() %}
+                          {% if not rd[21] %}
+                            <form action="/registrar_saldo_devolvido/{{ rd_id }}" method="POST" class="action-form">
+                              <button type="submit" class="btn btn-warning">
+                                <i class="fas fa-money-bill-wave"></i>
+                                Saldo Devolvido
+                              </button>
+                            </form>
+                          {% else %}
+                            <span style="color: var(--success-color); font-weight: 600;">
+                              <i class="fas fa-check-circle"></i>
+                              Devolvido em {{ rd[21] }}
+                            </span>
+                          {% endif %}
+                        {% endif %}
+                      </div>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Saldo a Devolver -->
+          <div class="tab-content" id="content7">
+            <div class="table-container">
+              <table id="tabela-saldo-a-devolver" class="display">
+                <thead>
+                  <tr>
+                    <th><i class="fas fa-hashtag"></i> ID</th>
+                    <th><i class="fas fa-user"></i> Solicitante</th>
+                    <th><i class="fas fa-user-tie"></i> Funcionário</th>
+                    <th><i class="fas fa-calendar"></i> Data</th>
+                    <th><i class="fas fa-building"></i> Centro de Custo</th>
+                    <th><i class="fas fa-industry"></i> Unidade de Negócio</th>
+                    <th><i class="fas fa-comment"></i> Observação</th>
+                    <th><i class="fas fa-paperclip"></i> Arquivos</th>
+                    <th><i class="fas fa-dollar-sign"></i> Valores</th>
+                    <th><i class="fas fa-cogs"></i> Ações</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for rd in saldos_a_devolver %}
+                  {% set rd_id = rd[0] %}
+                  {% set status = rd[6] %}
+                  <tr>
+                    <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
+                    <td data-label="Solicitante">{{ rd[1] }}</td>
+                    <td data-label="Funcionário">{{ rd[2] }}</td>
+                    <td data-label="Data">{{ rd[3] }}</td>
+                    <td data-label="Centro de Custo">{{ rd[4] }}</td>
+                    <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td>
+                    <td data-label="Observação">
+                      {% if rd[16] %}
+                        {% set obs = rd[16] %}
+                        {% if obs|length > 50 %}
+                          <span class="observation-short">{{ obs[:50] }}...</span>
+                          <button class="toggle-observation">+</button>
+                          <div class="observation-full">{{ obs }}</div>
+                        {% else %}
+                          {{ obs }}
+                        {% endif %}
+                      {% else %}
+                        -
+                      {% endif %}
+                    </td>
+                    <td data-label="Arquivos">
+                      {% if rd[12] %}
+                        <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}">
+                          <i class="fas fa-paperclip"></i>
+                          Anexos
+                        </button>
+                      {% else %}
+                        -
+                      {% endif %}
+                    </td>
+                    <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
+                    <td data-label="Ações">
+                      <div class="card-actions">
+                        {% if is_financeiro() %}
+                          <form action="/registrar_saldo_devolvido/{{ rd_id }}" method="POST" class="action-form">
+                            <button type="submit" class="btn btn-warning">
+                              <i class="fas fa-money-bill-wave"></i>
+                              Saldo Devolvido
+                            </button>
+                          </form>
+                        {% endif %}
+                      </div>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+  {% endif %}
+
+  <!-- Modals -->
+  <div id="popupDivergentes" class="modal">
+    <div class="modal-content">
+      <span class="close-btn" id="closePopupDivergentes">×</span>
+      <h3><i class="fas fa-exclamation-triangle"></i> Atenção, Supervisor!</h3>
+      <p>Há {{ divergentes_count }} RD(s) com anexos divergentes que precisam ser corrigidos.</p>
+      <a href="{{ url_for('anexos_divergentes') }}" class="btn btn-blue">
+        <i class="fas fa-arrow-right"></i>
+        Ir para Anexos Divergentes
+      </a>
+    </div>
+  </div>
+
+  <div id="fileModal" class="modal">
+    <div class="modal-content">
+      <span class="close-btn" id="closeFileModal">×</span>
+      <h3><i class="fas fa-paperclip"></i> Arquivos Anexados</h3>
+      <div id="modalFilesContainer"></div>
+    </div>
+  </div>
+
+  <div id="recusaModal" class="modal">
+    <div class="modal-content">
+      <span class="close-btn" id="closeRecusaModal">×</span>
+      <h3><i class="fas fa-times-circle"></i> Informe o Motivo da Recusa</h3>
+      <form id="formRecusa" method="POST">
+        <div class="form-group">
+          <label for="motivo">Motivo da recusa:</label>
+          <textarea name="motivo" id="motivo" rows="4" placeholder="Digite o motivo da recusa..."></textarea>
+        </div>
+        <button type="submit" class="btn btn-danger">
+          <i class="fas fa-paper-plane"></i>
+          Enviar Recusa
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <footer>
+    <div>
+      <i class="fas fa-code"></i>
+      Desenvolvido por André Ferreira
+    </div>
+  </footer>
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script type="text/javascript" src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
+  <script>
+    // Notification System - Simplified and Fixed
+    function closeNotification(element) {
+      if (!element) return;
+      
+      element.style.animation = 'slideOutRight 0.3s ease-in forwards';
+      setTimeout(() => {
+        if (element && element.parentNode) {
+          element.parentNode.removeChild(element);
+        }
+      }, 300);
+    }
+
+    function createAutoCloseTimer(notification, delay) {
+      setTimeout(() => {
+        if (notification && notification.parentNode) {
+          closeNotification(notification);
+        }
+      }, delay);
+    }
+
+    function initNotifications() {
+      // Process all notifications immediately
+      const notifications = document.querySelectorAll('.notification[data-message]');
+      
+      notifications.forEach((notification, index) => {
+        const message = notification.getAttribute('data-message');
+        const lowerMessage = message.toLowerCase();
+        
+        // Determine type based on message content
+        let type = 'info';
+        let icon = 'info-circle';
+        let autoCloseTime = 6000; // default 6 seconds
+        
+        if (lowerMessage.includes('sucesso') || lowerMessage.includes('bem-sucedido') || 
+            lowerMessage.includes('adicionada') || lowerMessage.includes('atualizada') || 
+            lowerMessage.includes('realizada') || lowerMessage.includes('registrado') ||
+            lowerMessage.includes('aprovado') || lowerMessage.includes('liberado') ||
+            lowerMessage.includes('fechado') || lowerMessage.includes('devolvido') ||
+            lowerMessage.includes('solicitado') || lowerMessage.includes('cadastrado') ||
+            lowerMessage.includes('excluída') || lowerMessage.includes('marcada')) {
+          type = 'success';
+          icon = 'check-circle';
+          autoCloseTime = 4000; // 4 seconds for success
+        } else if (lowerMessage.includes('erro') || lowerMessage.includes('falha') || 
+                   lowerMessage.includes('inválido') || lowerMessage.includes('negado') ||
+                   lowerMessage.includes('credenciais inválidas') || lowerMessage.includes('não encontrada') ||
+                   lowerMessage.includes('acesso negado')) {
+          type = 'error';
+          icon = 'exclamation-circle';
+          autoCloseTime = 8000; // 8 seconds for errors
+        } else if (lowerMessage.includes('atenção') || lowerMessage.includes('aviso') ||
+                   lowerMessage.includes('aguarde') || lowerMessage.includes('recusado') ||
+                   lowerMessage.includes('voltou para') || lowerMessage.includes('pendente')) {
+          type = 'warning';
+          icon = 'exclamation-triangle';
+          autoCloseTime = 6000; // 6 seconds for warnings
+        }
+        
+        // Apply styling immediately
+        notification.classList.add(`notification-${type}`);
+        
+        // Update icon
+        const iconElement = notification.querySelector('.notification-icon i');
+        if (iconElement) {
+          iconElement.className = `fas fa-${icon}`;
+        }
+        
+        // Add click to close functionality
+        notification.addEventListener('click', function(e) {
+          if (!e.target.closest('.notification-close')) {
+            closeNotification(this);
+          }
+        });
+        
+        // Set up auto-close with delay based on index to show them sequentially
+        const delay = autoCloseTime + (index * 500); // Stagger by 500ms each
+        createAutoCloseTimer(notification, delay);
+        
+        console.log(`Notification #${index + 1}: "${message}" | Type: ${type} | Auto-close in: ${delay}ms`);
+      });
+      
+      console.log(`Initialized ${notifications.length} notifications`);
+    }
+
+    $(document).ready(function(){
+      // Initialize notifications
+      initNotifications();
+
+      // Bloquear digitação manual no campo de data
+      $('#data').on('keydown', function(e) {
+        e.preventDefault();
+      });
+
+      $('#tabela-pendentes').DataTable();
+      $('#tabela-aprovados').DataTable();
+      $('#tabela-liberados').DataTable();
+      $('#tabela-fechamento-solicitado').DataTable();
+      $('#tabela-fechamento-recusado').DataTable();
+      $('#tabela-fechados').DataTable();
+      $('#tabela-saldo-a-devolver').DataTable();
+
+      {% if user_role == 'supervisor' and divergentes_count > 0 %}
+        $("#popupDivergentes").show();
+      {% endif %}
+
+      $("#closePopupDivergentes").click(function(){
+        $("#popupDivergentes").hide();
+      });
+      
+      $(document).on('click', '.toggle-details', function(){
+        var details = $(this).closest('.valor-resumo').next('.rd-details');
+        if(details.is(':visible')){
+          details.slideUp();
+          $(this).text('+');
+        } else {
+          details.slideDown();
+          $(this).text('-');
+        }
+      });
+
+      $(document).on('click', '.toggle-observation', function(){
+        var full = $(this).siblings('.observation-full');
+        if(full.is(':visible')){
+          full.slideUp();
+          $(this).text('+');
+        } else {
+          full.slideDown();
+          $(this).text('-');
+        }
+      });
+
+      $(document).on('click', '.btn-view-files', function(){
+        let filesStr = $(this).data('files');    
+        let rdId     = $(this).data('rdId');     
+        if(!filesStr){ return; }
+        let filesArr = filesStr.split(',');
+        let html = '';
+        filesArr.forEach(function(arquivo){
+          html += `
+            <div class="file-item" style="display: flex; align-items: center; gap: 1rem; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); margin-bottom: 0.5rem;">
+              <a href="${getPublicUrl(arquivo)}" class="arquivo-link" target="_blank" style="flex: 1;">${arquivo}</a>
+              <form action="/delete_file/${rdId}" method="POST" style="margin: 0;">
+                <input type="hidden" name="filename" value="${arquivo}">
+                <button type="submit" class="btn btn-delete-file" title="Excluir Arquivo"><i class="fas fa-times"></i></button>
+              </form>
+            </div>
+          `;
+        });
+        $('#modalFilesContainer').html(html);
+        $('#fileModal').show();
+      });
+      $('#closeFileModal').click(function(){ $('#fileModal').hide(); });
+      $(window).click(function(e){
+        if(e.target == document.getElementById('fileModal')){ $('#fileModal').hide(); }
+      });
+      function getPublicUrl(filename){
+        return "https://pub-1e6f8559bc2b413c889fbf4860462599.r2.dev/" + filename;
+      }
+
+      document.getElementById('btn-alelo')?.addEventListener('click', function(){
+        document.getElementById('form-solicitacao').style.display = 'block';
+        document.getElementById('rd-tipo').value = 'credito alelo';
+        document.getElementById('lbl-solicitante').innerText = 'Solicitante do RD Alelo';
+      });
+      document.getElementById('btn-reembolso')?.addEventListener('click', function(){
+        document.getElementById('form-solicitacao').style.display = 'block';
+        document.getElementById('rd-tipo').value = 'reembolso';
+        document.getElementById('lbl-solicitante').innerText = 'Solicitante do RD Reembolso';
+      });
+      
+      $(document).on('click', '.btn-recusar', function(){
+        var rdId = $(this).data('rdId');
+        $('#formRecusa').attr('action', '/reject_fechamento/' + rdId);
+        $('#recusaModal').show();
+      });
+      $('#closeRecusaModal').click(function(){ $('#recusaModal').hide(); });
+      $(window).click(function(e){
+        if(e.target == document.getElementById('recusaModal')){ $('#recusaModal').hide(); }
+      });
+
+      // Salvar aba selecionada
+      document.querySelectorAll('input[name="tab-control"]').forEach(tab => {
+        tab.addEventListener('change', () => {
+          localStorage.setItem('abaSelecionada', tab.id);
+        });
+      });
+
+      // Recuperar aba selecionada
+      window.addEventListener('DOMContentLoaded', () => {
+        const abaSalva = localStorage.getItem('abaSelecionada');
+        if (abaSalva) {
+          const abaInput = document.getElementById(abaSalva);
+          if (abaInput) abaInput.checked = true;
+        }
+      });
+
+      // JavaScript para posicionar o tooltip dinamicamente
+      const tooltips = document.querySelectorAll('.valor-tooltip-wrapper');
+      tooltips.forEach(wrapper => {
+        const tooltip = wrapper.querySelector('.valor-tooltip');
+        const total = wrapper.querySelector('.valor-total');
+
+        if (!tooltip || !total) return; // Safety check
+
+        wrapper.addEventListener('mouseenter', function(e) {
+          const rect = total.getBoundingClientRect();
+          const viewportWidth = window.innerWidth;
+          const viewportHeight = window.innerHeight;
+          const tooltipWidth = 350;
+          const tooltipHeight = 300;
+
+          // Calculate position
+          let left = rect.right + 10; // Default: to the right
+          let top = rect.top;
+
+          // If tooltip goes off right edge, position to the left
+          if (left + tooltipWidth > viewportWidth) {
+            left = rect.left - tooltipWidth - 10;
+          }
+
+          // If tooltip goes off bottom, adjust upward
+          if (top + tooltipHeight > viewportHeight) {
+            top = viewportHeight - tooltipHeight - 10;
+          }
+
+          // Ensure tooltip doesn't go above viewport
+          if (top < 10) {
+            top = 10;
+          }
+
+          // Ensure tooltip doesn't go off left edge
+          if (left < 10) {
+            left = 10;
+          }
+
+          tooltip.style.left = `${left}px`;
+          tooltip.style.top = `${top}px`;
+          tooltip.style.visibility = 'visible';
+          tooltip.style.opacity = '1';
+        });
+
+        wrapper.addEventListener('mouseleave', function() {
+          tooltip.style.visibility = 'hidden';
+          tooltip.style.opacity = '0';
+        });
+      });
+    });
+  </script>
+</body>
+</html>
