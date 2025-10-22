@@ -154,13 +154,12 @@
         <a href="{{ url_for('historico_geral_completo') }}" class="btn btn-primary">
           <i class="fas fa-list-ul"></i> Completo
         </a>
-        <a href="{{ url_for('historico_geral') }}" class="btn btn-secondary">
+        <a href="{{ url_for('index') }}" class="btn btn-secondary">
           <i class="fas fa-arrow-left"></i> Voltar
         </a>
       </div>
     </div>
 
-    <!-- Estatísticas -->
     <div class="stats-box">
       <div class="stat-item">
         <div class="stat-label">Total de RDs</div>
@@ -176,7 +175,6 @@
       </div>
     </div>
 
-    <!-- Tabela Resumida por RD -->
     <table id="tabela-historico" class="display" style="width:100%">
       <thead>
         <tr>
@@ -224,9 +222,17 @@
   <script>
     $(document).ready(function() {
       $('#tabela-historico').DataTable({
-        "order": [[ 2, "desc" ]],
+        "order": [[ 0, "desc" ]],
         "pageLength": 25,
         "lengthMenu": [[10, 25, 50, 100], [10, 25, 50, 100]],
+        "columnDefs": [
+          { "orderable": false, "targets": 0 },
+          { "orderable": false, "targets": 1 },
+          { "orderable": false, "targets": 2 },
+          { "orderable": false, "targets": 3 },
+          { "orderable": false, "targets": 4 },
+          { "orderable": false, "targets": 5 }
+        ],
         "language": {
           "sProcessing": "Processando...",
           "sLengthMenu": "Mostrar _MENU_ registros",
