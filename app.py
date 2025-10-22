@@ -1230,7 +1230,9 @@ def historico_geral():
         COALESCE(c.total_movimentacoes, 0) as total_movimentacoes
     FROM ultima_acao_por_rd u
     LEFT JOIN contagem_por_rd c ON u.rd_id = c.rd_id
-    ORDER BY u.data_ultima_acao DESC
+    ORDER BY 
+        CAST(split_part(u.rd_id, '.', 1) AS BIGINT) DESC,
+        CAST(split_part(u.rd_id, '.', 2) AS BIGINT) DESC
     """
     
     try:
@@ -1241,32 +1243,31 @@ def historico_geral():
         conn.rollback()
         resumo_rds = []
 
-    # ============ ESTATÍSTICAS ============
+    # ============ ESTATÍSTICAS (queries separadas, sem rollback desnecessário) ============
     total_rds = len(resumo_rds)
     
     # Total geral de ações
+    total_acoes = 0
     try:
         cursor.execute("SELECT COUNT(*) as total FROM historico_acoes WHERE rd_id IS NOT NULL")
         total_acoes_row = cursor.fetchone()
-        total_acoes = total_acoes_row['total'] if total_acoes_row else 0
+        if total_acoes_row:
+            total_acoes = total_acoes_row['total']
     except psycopg2.Error as e:
         logging.error(f"Erro ao contar ações: {e}")
-        conn.rollback()
         total_acoes = 0
     
     # Última ação do sistema
+    ultima_acao = "N/A"
     try:
         cursor.execute(
-            "SELECT data_acao FROM historico_acoes ORDER BY data_acao DESC LIMIT 1"
+            "SELECT MAX(data_acao) as data_acao FROM historico_acoes WHERE rd_id IS NOT NULL"
         )
         ultima_acao_row = cursor.fetchone()
         if ultima_acao_row and ultima_acao_row['data_acao']:
             ultima_acao = ultima_acao_row['data_acao'].strftime('%d/%m/%Y %H:%M')
-        else:
-            ultima_acao = "N/A"
     except psycopg2.Error as e:
         logging.error(f"Erro ao buscar última ação: {e}")
-        conn.rollback()
         ultima_acao = "N/A"
 
     conn.close()
@@ -1426,7 +1427,6 @@ def historico_geral_completo():
         usuarios_disponiveis=usuarios_disponiveis,
         acoes_disponiveis=acoes_disponiveis
     )
-
 
 @app.route("/logout")
 def logout():
