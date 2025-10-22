@@ -360,6 +360,9 @@ def index():
     if "user_role" not in session:
         return render_template("index.html", error=None, format_currency=format_currency)
 
+    # NOVO: Captura o parâmetro da aba ativa da URL. O padrão é 'tab1'.
+    active_tab = request.args.get('active_tab', 'tab1')
+
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
 
@@ -417,7 +420,8 @@ def index():
         can_request_additional=can_request_additional,
         can_close=can_close,
         adicional_id=adicional_id,
-        fechamento_id=fechamento_id
+        fechamento_id=fechamento_id,
+        active_tab=active_tab  # NOVO: Passa a variável para o template
     )
 
 def can_mark_pronto_fechamento(status):
@@ -470,16 +474,17 @@ def add_rd():
     """, (custom_id, solicitante, funcionario, data_str, centro_custo,
           valor, "Pendente", arquivos_str, observacao, rd_tipo, unidade_negocio, data_atual))
     
-    # --- ADIÇÃO ---
     detalhe_valor = f"Valor solicitado: R$ {format_currency(valor)}"
     registrar_historico(conn, custom_id, "RD Criada", detalhe_valor)
-    # --- FIM DA ADIÇÃO ---
 
     conn.commit()
     cursor.close()
     conn.close()
     flash("RD adicionada com sucesso.")
-    return redirect(url_for("index"))
+    
+    # MODIFICADO: Captura a aba do formulário.
+    active_tab = request.form.get('active_tab', 'tab1')
+    return redirect(url_for("index", active_tab=active_tab))
 
 @app.route("/historico/<rd_id>")
 def ver_historico(rd_id):
@@ -489,11 +494,9 @@ def ver_historico(rd_id):
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
 
-    # Buscar a RD principal
     cursor.execute("SELECT * FROM rd WHERE id = %s", (rd_id,))
     rd = cursor.fetchone()
 
-    # Buscar o histórico de ações
     cursor.execute(
         "SELECT * FROM historico_acoes WHERE rd_id = %s ORDER BY data_acao DESC",
         (rd_id,)
@@ -506,10 +509,8 @@ def ver_historico(rd_id):
         flash("RD não encontrada.")
         return redirect(url_for("index"))
 
-    # Não se esqueça de criar o template historico_rd.html se ainda não o fez
     return render_template("historico_rd.html", rd=rd, historico=historico, format_currency=format_currency)
 
-# A função de permissão, agora no lugar certo e sem uma rota
 def can_edit_status(id):
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
@@ -582,9 +583,7 @@ def edit_submit(id):
             """, (new_arqs, observacao, id))
             logging.debug(f"Supervisor atualizou arquivos: {new_arqs} e observação: {observacao}")
             
-            # --- ADIÇÃO ---
             registrar_historico(conn, id, "RD Editada pelo Supervisor", "Anexos e/ou observação foram atualizados.")
-            # --- FIM DA ADIÇÃO ---
             
             conn.commit()
         except psycopg2.Error as e:
@@ -635,17 +634,13 @@ def edit_submit(id):
                   valor_despesa_novo, saldo_devolver_novo, new_arqs, observacao, unidade_negocio, id))
             logging.debug(f"Executou UPDATE principal para RD {id}")
 
-            # --- ADIÇÃO ---
             registrar_historico(conn, id, "RD Editada")
-            # --- FIM DA ADIÇÃO ---
 
             if is_solicitante() and original_status == "Fechamento Recusado":
                 cursor.execute("UPDATE rd SET status='Fechamento Solicitado', motivo_recusa=NULL WHERE id=%s", (id,))
                 logging.debug(f"Status alterado para 'Fechamento Solicitado'")
                 
-                # --- ADIÇÃO ---
                 registrar_historico(conn, id, "Reenviada para Fechamento", "RD corrigida após recusa.")
-                # --- FIM DA ADIÇÃO ---
 
             conn.commit()
             logging.debug(f"Commit realizado com sucesso para RD {id}")
@@ -658,7 +653,10 @@ def edit_submit(id):
 
     conn.close()
     flash("RD atualizada com sucesso.")
-    return redirect(url_for("index"))
+    
+    # MODIFICADO: Captura a aba do formulário.
+    active_tab = request.form.get('active_tab', 'tab1')
+    return redirect(url_for("index", active_tab=active_tab))
 
 @app.route("/approve/<id>", methods=["POST"])
 def approve(id):
@@ -685,20 +683,17 @@ def approve(id):
         UPDATE rd SET status=%s, aprovado_data=%s
         WHERE id=%s
         """, (new_st, now, id))
-        # --- ADIÇÃO ---
         registrar_historico(conn, id, "Aprovada pelo Gestor")
-        # --- FIM DA ADIÇÃO ---
 
     elif st_atual == "Aprovado" and is_financeiro():
         if rd_tipo.lower() == "reembolso":
             new_st = "Fechado"
+            # MODIFICADO: Adiciona valor_despesa e saldo_devolver para consistência dos dados
             cursor.execute("""
-            UPDATE rd SET status=%s, data_fechamento=%s
+            UPDATE rd SET status=%s, data_fechamento=%s, valor_despesa=valor, saldo_devolver=0
             WHERE id=%s
             """, (new_st, now, id))
-            # --- ADIÇÃO ---
             registrar_historico(conn, id, "Reembolso Aprovado e Fechado")
-            # --- FIM DA ADIÇÃO ---
         else:
             new_st = "Liberado"
             total_credit = val + (val_adic or 0)
@@ -710,10 +705,8 @@ def approve(id):
             UPDATE rd SET status=%s, liberado_data=%s, valor_liberado=%s, data_credito_liberado=%s
             WHERE id=%s
             """, (new_st, now, total_credit, now, id))
-            # --- ADIÇÃO ---
             detalhe_liberado = f"Valor liberado: R$ {format_currency(total_credit)}"
             registrar_historico(conn, id, "Crédito Liberado pelo Financeiro", detalhe_liberado)
-            # --- FIM DA ADIÇÃO ---
 
     elif st_atual == "Fechamento Solicitado" and is_gestor():
         new_st = "Saldos a Devolver"
@@ -721,9 +714,7 @@ def approve(id):
         UPDATE rd SET status=%s, data_fechamento=%s
         WHERE id=%s
         """, (new_st, now, id))
-        # --- ADIÇÃO ---
         registrar_historico(conn, id, "Fechamento Aprovado pelo Gestor")
-        # --- FIM DA ADIÇÃO ---
     else:
         conn.close()
         flash("Não é possível aprovar/liberar esta RD.")
@@ -733,7 +724,10 @@ def approve(id):
     cursor.close()
     conn.close()
     flash("Operação realizada com sucesso.")
-    return redirect(url_for("index"))
+    
+    # MODIFICADO: Captura a aba do formulário.
+    active_tab = request.form.get('active_tab', 'tab1')
+    return redirect(url_for("index", active_tab=active_tab))
 
 @app.route("/delete/<id>", methods=["POST"])
 def delete_rd(id):
@@ -752,10 +746,7 @@ def delete_rd(id):
         flash("Ação não permitida.")
         return redirect(url_for("index"))
 
-    # --- ADIÇÃO ---
-    # Registra no novo histórico antes de excluir
     registrar_historico(conn, id, "RD Excluída")
-    # --- FIM DA ADIÇÃO ---
 
     usuario_excluiu = session.get("user_role", "desconhecido")
     data_exclusao = datetime.now().strftime("%Y-%m-%d")
@@ -785,7 +776,10 @@ def delete_rd(id):
     cursor.close()
     conn.close()
     flash("RD excluída com sucesso.")
-    return redirect(url_for("index"))
+    
+    # MODIFICADO: Captura a aba do formulário.
+    active_tab = request.form.get('active_tab', 'tab1')
+    return redirect(url_for("index", active_tab=active_tab))
 
 @app.route("/adicional_submit/<id>", methods=["POST"])
 def adicional_submit(id):
@@ -845,16 +839,17 @@ def adicional_submit(id):
     WHERE id=%s
     """, (novo_total, data_add, add_ind, saldo_dev, id))
     
-    # --- ADIÇÃO ---
     detalhe_adicional = f"Valor adicional solicitado: R$ {format_currency(val_adi)}"
     registrar_historico(conn, id, "Solicitação de Crédito Adicional", detalhe_adicional)
-    # --- FIM DA ADIÇÃO ---
 
     conn.commit()
     cursor.close()
     conn.close()
     flash("Crédito adicional solicitado. A RD voltou para 'Pendente'.")
-    return redirect(url_for("index"))
+    
+    # MODIFICADO: Captura a aba do formulário com um padrão inteligente.
+    active_tab = request.form.get('active_tab', 'tab3')
+    return redirect(url_for("index", active_tab=active_tab))
 
 @app.route("/fechamento_submit/<id>", methods=["POST"])
 def fechamento_submit(id):
@@ -911,16 +906,17 @@ def fechamento_submit(id):
     WHERE id=%s
     """, (val_desp, saldo_dev, data_fech, data_fech, id))
 
-    # --- ADIÇÃO ---
     detalhe_gasto = f"Valor gasto informado: R$ {format_currency(val_desp)}"
     registrar_historico(conn, id, "Solicitação de Fechamento", detalhe_gasto)
-    # --- FIM DA ADIÇÃO ---
     
     conn.commit()
     cursor.close()
     conn.close()
     flash("Fechamento solicitado. Aguarde aprovação do gestor.")
-    return redirect(url_for("index"))
+    
+    # MODIFICADO: Captura a aba do formulário com um padrão inteligente.
+    active_tab = request.form.get('active_tab', 'tab3')
+    return redirect(url_for("index", active_tab=active_tab))
 
 @app.route("/reject_fechamento/<id>", methods=["POST"])
 def reject_fechamento(id):
@@ -947,16 +943,17 @@ def reject_fechamento(id):
     WHERE id=%s
     """, (motivo, id))
 
-    # --- ADIÇÃO ---
     detalhe_motivo = f"Motivo: {motivo}"
     registrar_historico(conn, id, "Fechamento Recusado pelo Gestor", detalhe_motivo)
-    # --- FIM DA ADIÇÃO ---
 
     conn.commit()
     cursor.close()
     conn.close()
     flash("Fechamento recusado com sucesso.")
-    return redirect(url_for("index"))
+    
+    # MODIFICADO: Captura a aba do formulário com um padrão inteligente.
+    active_tab = request.form.get('active_tab', 'tab4')
+    return redirect(url_for("index", active_tab=active_tab))
 
 @app.route("/reenviar_fechamento/<id>", methods=["POST"])
 def reenviar_fechamento(id):
@@ -977,14 +974,17 @@ def edit_saldo():
 
     set_saldo_global(novo_saldo)
     flash("Saldo Global atualizado com sucesso.")
-    return redirect(url_for("index"))
+    
+    # MODIFICADO: Captura a aba do formulário.
+    active_tab = request.form.get('active_tab', 'tab1')
+    return redirect(url_for("index", active_tab=active_tab))
 
 @app.route("/delete_file/<id>", methods=["POST"])
 def delete_file(id):
     filename = request.form.get("filename")
     if not filename:
         flash("Nenhum arquivo para excluir.")
-        return redirect(request.referrer or url_for("index"))
+        return redirect(url_for("index"))
 
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
@@ -993,24 +993,24 @@ def delete_file(id):
     if not row:
         conn.close()
         flash("RD não encontrada.")
-        return redirect(request.referrer or url_for("index"))
+        return redirect(url_for("index"))
 
     arquivos_str, rd_status, rd_solic = row
     if not arquivos_str:
         conn.close()
         flash("Nenhum arquivo na RD.")
-        return redirect(request.referrer or url_for("index"))
+        return redirect(url_for("index"))
 
     if not (can_edit(rd_status) or can_delete(rd_status, rd_solic)):
         conn.close()
         flash("Você não pode excluir arquivos desta RD.")
-        return redirect(request.referrer or url_for("index"))
+        return redirect(url_for("index"))
 
     arq_list = arquivos_str.split(",")
     if filename not in arq_list:
         conn.close()
         flash("Arquivo não pertence a esta RD.")
-        return redirect(request.referrer or url_for("index"))
+        return redirect(url_for("index"))
 
     delete_file_from_r2(filename)
     arq_list.remove(filename)
@@ -1020,7 +1020,10 @@ def delete_file(id):
     cursor.close()
     conn.close()
     flash("Arquivo excluído com sucesso.")
-    return redirect(request.referrer or url_for("index"))
+    
+    # MODIFICADO: Usa a lógica da aba ativa em vez de request.referrer
+    active_tab = request.form.get('active_tab', 'tab1')
+    return redirect(url_for("index", active_tab=active_tab))
 
 @app.route("/registrar_saldo_devolvido/<id>", methods=["POST"])
 def registrar_saldo_devolvido(id):
@@ -1059,16 +1062,17 @@ def registrar_saldo_devolvido(id):
     WHERE id=%s
     """, (now, id))
 
-    # --- ADIÇÃO ---
     detalhe_devolvido = f"Valor devolvido ao saldo global: R$ {format_currency(saldo_dev)}"
     registrar_historico(conn, id, "Devolução de Saldo Registrada", detalhe_devolvido)
-    # --- FIM DA ADIÇÃO ---
 
     conn.commit()
     cursor.close()
     conn.close()
     flash(f"Saldo devolvido com sucesso. Valor= R${format_currency(saldo_dev)}")
-    return redirect(url_for("index"))
+    
+    # MODIFICADO: Captura a aba do formulário com um padrão inteligente.
+    active_tab = request.form.get('active_tab', 'tab7')
+    return redirect(url_for("index", active_tab=active_tab))
 
 @app.route("/export_excel", methods=["GET"])
 def export_excel():
@@ -1184,25 +1188,245 @@ def export_historico():
         mimetype="text/plain"
     )
 
+
 @app.route("/historico_geral")
 def historico_geral():
+    """
+    Exibe uma visão resumida do histórico por RD.
+    Mostra apenas a última ação de cada RD.
+    """
     if "user_role" not in session:
         flash("Acesso negado.")
         return redirect(url_for("index"))
 
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
-    
-    # Busca TODOS os eventos de histórico, ordenados pelo mais recente
-    cursor.execute(
-        "SELECT * FROM historico_acoes ORDER BY data_acao DESC"
+
+    # ============ QUERY OTIMIZADA: ÚLTIMA AÇÃO + CONTAGEM EM UMA SÓ QUERY ============
+    query = """
+    WITH ultima_acao_por_rd AS (
+        SELECT DISTINCT ON (rd_id)
+            rd_id,
+            acao as ultima_acao,
+            data_acao as data_ultima_acao,
+            usuario as usuario_ultima_acao,
+            detalhes as detalhes_ultima_acao
+        FROM historico_acoes
+        WHERE rd_id IS NOT NULL
+        ORDER BY rd_id, data_acao DESC
+    ),
+    contagem_por_rd AS (
+        SELECT rd_id, COUNT(*) as total_movimentacoes
+        FROM historico_acoes
+        WHERE rd_id IS NOT NULL
+        GROUP BY rd_id
     )
-    historico_completo = cursor.fetchall()
+    SELECT 
+        u.rd_id,
+        u.ultima_acao,
+        u.data_ultima_acao,
+        u.usuario_ultima_acao,
+        u.detalhes_ultima_acao,
+        COALESCE(c.total_movimentacoes, 0) as total_movimentacoes
+    FROM ultima_acao_por_rd u
+    LEFT JOIN contagem_por_rd c ON u.rd_id = c.rd_id
+    ORDER BY u.data_ultima_acao DESC
+    """
     
+    try:
+        cursor.execute(query)
+        resumo_rds = cursor.fetchall()
+    except psycopg2.Error as e:
+        logging.error(f"Erro ao consultar histórico resumido: {e}")
+        conn.rollback()
+        resumo_rds = []
+
+    # ============ ESTATÍSTICAS ============
+    total_rds = len(resumo_rds)
+    
+    # Total geral de ações
+    try:
+        cursor.execute("SELECT COUNT(*) as total FROM historico_acoes WHERE rd_id IS NOT NULL")
+        total_acoes_row = cursor.fetchone()
+        total_acoes = total_acoes_row['total'] if total_acoes_row else 0
+    except psycopg2.Error as e:
+        logging.error(f"Erro ao contar ações: {e}")
+        conn.rollback()
+        total_acoes = 0
+    
+    # Última ação do sistema
+    try:
+        cursor.execute(
+            "SELECT data_acao FROM historico_acoes ORDER BY data_acao DESC LIMIT 1"
+        )
+        ultima_acao_row = cursor.fetchone()
+        if ultima_acao_row and ultima_acao_row['data_acao']:
+            ultima_acao = ultima_acao_row['data_acao'].strftime('%d/%m/%Y %H:%M')
+        else:
+            ultima_acao = "N/A"
+    except psycopg2.Error as e:
+        logging.error(f"Erro ao buscar última ação: {e}")
+        conn.rollback()
+        ultima_acao = "N/A"
+
     conn.close()
 
-    # Esta rota vai renderizar o novo template que criamos na conversa anterior
-    return render_template("historico_geral.html", historico=historico_completo)
+    return render_template(
+        "historico_geral.html",
+        resumo_rds=resumo_rds,
+        total_rds=total_rds,
+        total_acoes=total_acoes,
+        ultima_acao=ultima_acao
+    )
+
+
+@app.route("/historico_geral_completo")
+def historico_geral_completo():
+    """
+    Exibe o histórico completo com todos os eventos de todas as RDs.
+    Com filtros avançados.
+    """
+    if "user_role" not in session:
+        flash("Acesso negado.")
+        return redirect(url_for("index"))
+
+    conn = get_pg_connection()
+    cursor = conn.cursor(cursor_factory=DictCursor)
+
+    # ============ CAPTURA DE FILTROS ============
+    filtro_rd_id = request.args.get('rd_id', '').strip()
+    filtro_usuario = request.args.get('usuario', '').strip()
+    filtro_acao = request.args.get('acao', '').strip()
+    filtro_data_inicio = request.args.get('data_inicio', '').strip()
+    filtro_data_fim = request.args.get('data_fim', '').strip()
+    filtro_periodo = request.args.get('periodo', '').strip()
+
+    # ============ MONTAGEM DA QUERY DINÂMICA ============
+    query = "SELECT * FROM historico_acoes WHERE 1=1"
+    params = []
+
+    # Filtro por RD
+    if filtro_rd_id:
+        query += " AND rd_id = %s"
+        params.append(filtro_rd_id)
+
+    # Filtro por Usuário
+    if filtro_usuario:
+        query += " AND usuario = %s"
+        params.append(filtro_usuario)
+
+    # Filtro por Ação
+    if filtro_acao:
+        query += " AND acao = %s"
+        params.append(filtro_acao)
+
+    # Filtro por Período Rápido
+    if filtro_periodo:
+        hoje = datetime.now().date()
+        if filtro_periodo == 'hoje':
+            data_inicio = hoje
+            data_fim = hoje
+        elif filtro_periodo == '7dias':
+            data_inicio = hoje - timedelta(days=7)
+            data_fim = hoje
+        elif filtro_periodo == '30dias':
+            data_inicio = hoje - timedelta(days=30)
+            data_fim = hoje
+        elif filtro_periodo == '90dias':
+            data_inicio = hoje - timedelta(days=90)
+            data_fim = hoje
+        else:
+            data_inicio = None
+            data_fim = None
+        
+        if data_inicio and data_fim:
+            query += " AND DATE(data_acao) >= %s AND DATE(data_acao) <= %s"
+            params.extend([data_inicio, data_fim])
+    else:
+        # Filtro por Datas Específicas
+        if filtro_data_inicio:
+            query += " AND DATE(data_acao) >= %s"
+            params.append(filtro_data_inicio)
+        
+        if filtro_data_fim:
+            query += " AND DATE(data_acao) <= %s"
+            params.append(filtro_data_fim)
+
+    # Ordenação padrão
+    query += " ORDER BY data_acao DESC"
+
+    # ============ EXECUÇÃO DA QUERY ============
+    try:
+        cursor.execute(query, params)
+        historico_completo = cursor.fetchall()
+    except psycopg2.Error as e:
+        logging.error(f"Erro ao consultar histórico completo: {e}")
+        conn.rollback()
+        historico_completo = []
+
+    # ============ ESTATÍSTICAS ============
+    total_acoes = len(historico_completo)
+    
+    # Usuários únicos
+    usuarios_unicos = set(evt['usuario'] for evt in historico_completo if evt['usuario'])
+    usuarios_unicos_count = len(usuarios_unicos)
+    
+    # RDs afetadas
+    rds_afetadas = set(evt['rd_id'] for evt in historico_completo if evt['rd_id'])
+    rds_afetadas_count = len(rds_afetadas)
+
+    # Período exibido
+    if historico_completo:
+        data_mais_recente = historico_completo[0]['data_acao'].strftime('%d/%m/%Y')
+        data_mais_antiga = historico_completo[-1]['data_acao'].strftime('%d/%m/%Y')
+        periodo = f"{data_mais_antiga} a {data_mais_recente}"
+    else:
+        periodo = "Sem dados"
+
+    # ============ LISTAS PARA DROPDOWNS ============
+    # Usuários disponíveis
+    try:
+        cursor.execute(
+            "SELECT DISTINCT usuario FROM historico_acoes WHERE usuario IS NOT NULL ORDER BY usuario"
+        )
+        usuarios_disponiveis = [row['usuario'] for row in cursor.fetchall()]
+    except psycopg2.Error as e:
+        logging.error(f"Erro ao buscar usuários: {e}")
+        conn.rollback()
+        usuarios_disponiveis = []
+
+    # Ações disponíveis
+    try:
+        cursor.execute(
+            "SELECT DISTINCT acao FROM historico_acoes WHERE acao IS NOT NULL ORDER BY acao"
+        )
+        acoes_disponiveis = [row['acao'] for row in cursor.fetchall()]
+    except psycopg2.Error as e:
+        logging.error(f"Erro ao buscar ações: {e}")
+        conn.rollback()
+        acoes_disponiveis = []
+
+    conn.close()
+
+    return render_template(
+        "historico_geral_completo.html",
+        historico=historico_completo,
+        total_acoes=total_acoes,
+        usuarios_unicos=usuarios_unicos_count,
+        rds_afetadas=rds_afetadas_count,
+        periodo=periodo,
+        # Filtros aplicados
+        filtro_rd_id=filtro_rd_id,
+        filtro_usuario=filtro_usuario,
+        filtro_acao=filtro_acao,
+        filtro_data_inicio=filtro_data_inicio,
+        filtro_data_fim=filtro_data_fim,
+        filtro_periodo=filtro_periodo,
+        # Opções dos dropdowns
+        usuarios_disponiveis=usuarios_disponiveis,
+        acoes_disponiveis=acoes_disponiveis
+    )
+
 
 @app.route("/logout")
 def logout():
@@ -1250,7 +1474,6 @@ def marcar_divergente(id):
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
 
-    # Verifica o status atual da RD para evitar marcar RDs fechadas
     cursor.execute("SELECT status FROM rd WHERE id = %s", (id,))
     rd = cursor.fetchone()
     if not rd:
@@ -1278,16 +1501,17 @@ def marcar_divergente(id):
         WHERE id = %s
         """, (motivo_div, id))
         
-        # --- ADIÇÃO ---
         detalhe_motivo = f"Motivo: {motivo_div}" if motivo_div else "Nenhum motivo informado."
         registrar_historico(conn, id, "Marcada como Divergente", detalhe_motivo)
-        # --- FIM DA ADIÇÃO ---
         
         conn.commit()
         cursor.close()
         conn.close()
         flash("RD marcada como divergente.")
-        return redirect(url_for("index"))
+        
+        # MODIFICADO: Captura a aba do formulário.
+        active_tab = request.form.get('active_tab', 'tab3')
+        return redirect(url_for("index", active_tab=active_tab))
     
 @app.route("/anexos_divergentes", methods=["GET"])
 def anexos_divergentes():
@@ -1340,7 +1564,6 @@ def corrigir_divergente(id):
         cursor.execute("UPDATE rd SET arquivos = %s WHERE id = %s", (new_arq_str, id))
         conn.commit()
 
-        # Apenas remove a marcação de divergente, sem alterar o status.
         cursor.execute("""
         UPDATE rd
         SET anexo_divergente = FALSE,
@@ -1348,9 +1571,7 @@ def corrigir_divergente(id):
         WHERE id = %s
         """, (id,))
         
-        # --- ADIÇÃO ---
         registrar_historico(conn, id, "Divergência Corrigida")
-        # --- FIM DA ADIÇÃO ---
         
         conn.commit()
 
@@ -1384,7 +1605,10 @@ def marcar_pronto_fechamento(id):
         flash("RD marcada como pronta para fechamento.")
     else:
         flash("RD desmarcada como pronta para fechamento.")
-    return redirect(url_for("index"))
+        
+    # MODIFICADO: Captura a aba do formulário com um padrão inteligente.
+    active_tab = request.form.get('active_tab', 'tab3')
+    return redirect(url_for("index", active_tab=active_tab))
 
 
 if __name__ == "__main__":
