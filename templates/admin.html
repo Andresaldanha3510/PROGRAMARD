@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Painel de Administração</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    referrerpolicy="no-referrer" />
+  
+  <style>
+    :root {
+      --primary-color: #2563eb;
+      --primary-light: #3b82f6;
+      --primary-dark: #1d4ed8;
+      --secondary-color: #f59e0b;
+      --success-color: #10b981;
+      --danger-color: #ef4444;
+      --warning-color: #f59e0b;
+      --info-color: #0ea5e9;
+      --background-color: #f1f5f9;
+      --surface-color: #ffffff;
+      --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      --text-primary: #1e293b;
+      --text-secondary: #64748b;
+      --border-color: #e2e8f0;
+      --header-height: 70px;
+      --border-radius: 12px;
+      --border-radius-sm: 8px;
+      --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--background-color);
+      color: var(--text-primary);
+      min-height: 100vh;
+    }
+    .top-bar {
+      background: var(--surface-color);
+      height: var(--header-height);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+      position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    .header-brand { display: flex; align-items: center; gap: 1rem; }
+    .logo { height: 50px; width: auto; }
+    .brand-text { font-size: 1.5rem; font-weight: 700; color: var(--primary-color); }
+    .header-actions { display: flex; align-items: center; gap: 1.5rem; }
+    .user-info { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 1rem; background: var(--background-color); border-radius: var(--border-radius-sm); font-weight: 500; color: var(--text-primary); }
+    .top-bar a { color: var(--danger-color); text-decoration: none; font-weight: 500; padding: 0.5rem 1rem; border-radius: var(--border-radius-sm); transition: var(--transition); }
+    .top-bar a:hover { background: var(--danger-color); color: white; }
+    .btn-back { color: var(--primary-color) !important; background: rgba(37, 99, 235, 0.1); }
+    .btn-back:hover { background: var(--primary-color) !important; color: white !important; }
+    .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+      gap: 2rem;
+    }
+    .card {
+      background: var(--surface-color);
+      border-radius: var(--border-radius);
+      box-shadow: var(--card-shadow);
+      border: 1px solid var(--border-color);
+    }
+    .card-header { padding: 1.5rem 2rem 1rem; border-bottom: 1px solid var(--border-color); }
+    .card-title { font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin: 0; }
+    .card-body { padding: 2rem; }
+    .form-group { margin-bottom: 1.5rem; }
+    .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; color: var(--text-primary); font-size: 0.875rem; }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 0.875rem 1rem;
+      border: 2px solid #e2e8f0;
+      border-radius: var(--border-radius-sm);
+      font-size: 0.875rem;
+      transition: var(--transition);
+      background: #ffffff;
+    }
+    .form-group input:focus, .form-group select:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: var(--border-radius-sm);
+      font-weight: 500;
+      font-size: 0.875rem;
+      text-decoration: none;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    .btn-primary { background: linear-gradient(135deg, var(--primary-color), var(--primary-light)); color: white; }
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3); }
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    th, td { padding: 1rem; text-align: left; border-bottom: 1px solid var(--border-color); }
+    th { background: var(--background-color); font-weight: 600; }
+    tr:last-child td { border-bottom: none; }
+  </style>
+</head>
+
+<body>
+  <div class="top-bar">
+    <div class="header-brand">
+      <img src="https://pub-1e6f8559bc2b413c889fbf4860462599.r2.dev/logo_animado.gif" alt="Logo Tecsul" class="logo">
+      <div class="brand-text">Administração</div>
+    </div>
+    <div class="header-actions">
+      <a href="{{ url_for('index') }}" class="btn-back" style="text-decoration: none;">
+        <i class="fas fa-arrow-left"></i>
+        Voltar ao Sistema
+      </a>
+      <div class="user-info">
+        <i class="fas fa-user-circle"></i>
+        <span>{{ user_role }} ({{ setor_atual }})</span>
+      </div>
+      <a href="{{ url_for('logout') }}">
+        <i class="fas fa-sign-out-alt"></i>
+        Sair
+      </a>
+    </div>
+  </div>
+
+  <div class="container">
+    <h1>Painel de Administração (Financeiro)</h1>
+    <p style="margin-top: 0.5rem; color: var(--text-secondary);">
+      Gerencie os setores e usuários do sistema.
+    </p>
+
+    <div class="grid" style="margin-top: 2rem;">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title"><i class="fas fa-building"></i> Gerenciar Setores</h2>
+        </div>
+        <div class="card-body">
+          <form action="{{ url_for('add_setor') }}" method="POST">
+            <div class="form-group">
+              <label for="nome_setor">Nome do Novo Setor (ex: comercial)</label>
+              <input type="text" id="nome_setor" name="nome_setor" placeholder="comercial" required>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">
+              <i class="fas fa-plus-circle"></i>
+              Adicionar Setor (Base Zerada)
+            </button>
+          </form>
+
+          <hr style="border: none; border-top: 1px solid var(--border-color); margin: 2rem 0;">
+
+          <h3><i class="fas fa-list-ul"></i> Setores e Saldos Atuais</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Setor</th>
+                <th>Saldo Atual</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for setor in setores %}
+              <tr>
+                <td><strong>{{ setor.setor }}</strong></td>
+                <td>R$ {{ format_currency(setor.saldo) }}</td>
+              </tr>
+              {% else %}
+              <tr><td colspan="2">Nenhum setor encontrado.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title"><i class="fas fa-user-plus"></i> Gerenciar Usuários</h2>
+        </div>
+        <div class="card-body">
+          <form action="{{ url_for('add_usuario') }}" method="POST">
+            <div class="form-group">
+              <label for="username">Nome de Usuário (ex: gestor_comercial)</label>
+              <input type="text" id="username" name="username" required>
+            </div>
+            <div class="form-group">
+              <label for="password">Senha</label>
+              <input type="password" id="password" name="password" required>
+            </div>
+            <div class="form-group">
+              <label for="role">Perfil (Role)</label>
+              <select id="role" name="role" required>
+                <option value="">Selecione um perfil...</option>
+                <option value="solicitante">Solicitante</option>
+                <option value="gestor">Gestor</option>
+                <option value="supervisor">Supervisor</option>
+                <option value="financeiro">Financeiro</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="setor">Associar ao Setor</label>
+              <select id="setor" name="setor" required>
+                <option value="">Selecione um setor...</option>
+                {% for setor in setores %}
+                  <option value="{{ setor.setor }}">{{ setor.setor }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">
+              <i class="fas fa-user-plus"></i>
+              Criar Novo Usuário
+            </button>
+          </form>
+
+          <hr style="border: none; border-top: 1px solid var(--border-color); margin: 2rem 0;">
+
+          <h3><i class="fas fa-users"></i> Usuários do seu Setor ({{ setor_atual }})</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Usuário</th>
+                <th>Perfil (Role)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for usuario in usuarios_setor %}
+              <tr>
+                <td>{{ usuario.username }}</td>
+                <td>{{ usuario.role }}</td>
+              </tr>
+              {% else %}
+              <tr><td colspan="2">Nenhum usuário neste setor.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

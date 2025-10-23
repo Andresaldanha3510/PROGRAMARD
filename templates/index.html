@@ -1190,7 +1190,7 @@
         <i class="fas fa-info-circle"></i>
       </div>
       <div class="notification-content">{{ message }}</div>
-      <button class="notification-close" onclick="closeNotification(this.parentElement); event.stopPropagation();">
+      <button class="notification-close">
         <i class="fas fa-times"></i>
       </button>
     </div>
@@ -1310,6 +1310,12 @@
           Atualizar Saldo
         </button>
       </form>
+    </div>
+    <div class="action-bar" style="justify-content: center; background: var(--primary-dark);">
+      <a href="{{ url_for('admin_hub') }}" class="btn" style="background: var(--warning-color); color: white;">
+        <i class="fas fa-cogs"></i>
+        Painel de Administração (Setores e Usuários)
+      </a>
     </div>
     {% endif %}
 
@@ -2151,10 +2157,20 @@
 
           // Add click to close functionality
           notification.addEventListener('click', function (e) {
+            // Só fecha se o clique for no corpo, não no botão
             if (!e.target.closest('.notification-close')) {
               closeNotification(this);
             }
           });
+
+          // 2. Clicar no botão 'X' também a fecha (o que estava faltando)
+          const closeButton = notification.querySelector('.notification-close');
+          if (closeButton) {
+            closeButton.addEventListener('click', function (e) {
+              e.stopPropagation(); // Impede que o clique "vaze" para o corpo
+              closeNotification(notification); // Passa a notificação inteira para fechar
+            });
+          }
 
           // Set up auto-close with delay based on index to show them sequentially
           const delay = autoCloseTime + (index * 500); // Stagger by 500ms each
@@ -2241,15 +2257,16 @@
           return "https://pub-1e6f8559bc2b413c889fbf4860462599.r2.dev/" + filename;
         }
 
-        document.getElementById('btn-alelo')?.addEventListener('click', function () {
-          document.getElementById('form-solicitacao').style.display = 'block';
-          document.getElementById('rd-tipo').value = 'credito alelo';
-          document.getElementById('lbl-solicitante').innerText = 'Solicitante do RD Alelo';
+        $(document).on('click', '#btn-alelo', function () {
+          $('#form-solicitacao').show(); // .show() é o equivalente do jQuery para display = 'block'
+          $('#rd-tipo').val('credito alelo');
+          $('#lbl-solicitante').text('Solicitante do RD Alelo');
         });
-        document.getElementById('btn-reembolso')?.addEventListener('click', function () {
-          document.getElementById('form-solicitacao').style.display = 'block';
-          document.getElementById('rd-tipo').value = 'reembolso';
-          document.getElementById('lbl-solicitante').innerText = 'Solicitante do RD Reembolso';
+
+        $(document).on('click', '#btn-reembolso', function () {
+          $('#form-solicitacao').show();
+          $('#rd-tipo').val('reembolso');
+          $('#lbl-solicitante').text('Solicitante do RD Reembolso');
         });
 
         $(document).on('click', '.btn-recusar', function () {
