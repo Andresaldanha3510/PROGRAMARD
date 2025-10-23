@@ -3,6 +3,9 @@ import psycopg2
 from psycopg2.extras import DictCursor
 import os
 from dotenv import load_dotenv
+# NOVAS IMPORTAÇÕES PARA LOGIN
+from werkzeug.security import check_password_hash, generate_password_hash
+
 load_dotenv()
 
 # ============ Config. Cloudflare R2 ============
@@ -91,12 +94,16 @@ def get_pg_connection():
         sys.exit(1)
 
 
-
+# ==========================================================
+# FUNÇÃO init_db ATUALIZADA
+# Agora ela cria as novas tabelas e adiciona as colunas 'setor'
+# se elas não existirem.
+# ==========================================================
 def init_db():
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
 
-    # Tabela RD
+    # Tabela RD (com 'setor')
     create_rd_table = """
     CREATE TABLE IF NOT EXISTS rd (
         id TEXT PRIMARY KEY,
@@ -123,12 +130,16 @@ def init_db():
         data_saldo_devolvido DATE,
         data_credito_solicitado DATE,
         data_credito_liberado DATE,
-        data_debito_despesa DATE
+        data_debito_despesa DATE,
+        setor TEXT NOT NULL DEFAULT 'servicos', /* NOVO */
+        pronto_fechamento BOOLEAN DEFAULT FALSE,
+        anexo_divergente BOOLEAN DEFAULT FALSE,
+        motivo_divergente TEXT
     );
     """
     cursor.execute(create_rd_table)
 
-    # Tabela historico_acoes (NOVA)
+    # Tabela historico_acoes (com 'setor')
     create_historico_acoes_table = """
     CREATE TABLE IF NOT EXISTS historico_acoes (
         id SERIAL PRIMARY KEY,
@@ -136,71 +147,25 @@ def init_db():
         data_acao TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
         usuario TEXT NOT NULL,
         acao TEXT NOT NULL,
-        detalhes TEXT
+        detalhes TEXT,
+        setor TEXT NOT NULL DEFAULT 'servicos' /* NOVO */
     );
     """
     cursor.execute(create_historico_acoes_table)
 
-    # Verificar e adicionar colunas novas na tabela RD, se necessário
-    for col in ['data_credito_solicitado', 'data_credito_liberado', 'data_debito_despesa']:
-        cursor.execute(f"""
-        SELECT column_name 
-        FROM information_schema.columns 
-        WHERE table_name='rd' AND column_name='{col}'
-        """)
-        if not cursor.fetchone():
-            cursor.execute(f"ALTER TABLE rd ADD COLUMN {col} DATE")
-
-    cursor.execute("""
-        SELECT column_name
-        FROM information_schema.columns
-        WHERE table_name='rd' AND column_name='pronto_fechamento'
-    """)
-    if not cursor.fetchone():
-        cursor.execute("ALTER TABLE rd ADD COLUMN pronto_fechamento BOOLEAN DEFAULT FALSE")
-
-    # anexo_divergente
-    cursor.execute("""
-    SELECT column_name 
-    FROM information_schema.columns
-    WHERE table_name='rd' AND column_name='anexo_divergente'
-    """)
-    if not cursor.fetchone():
-        cursor.execute("ALTER TABLE rd ADD COLUMN anexo_divergente BOOLEAN DEFAULT FALSE")
-
-    # motivo_divergente
-    cursor.execute("""
-    SELECT column_name
-    FROM information_schema.columns
-    WHERE table_name='rd' AND column_name='motivo_divergente'
-    """)
-    if not cursor.fetchone():
-        cursor.execute("ALTER TABLE rd ADD COLUMN motivo_divergente TEXT")
-
-    # Tabela saldo_global
-    create_saldo_global_table = """
-    CREATE TABLE IF NOT EXISTS saldo_global (
-        id SERIAL PRIMARY KEY,
-        saldo NUMERIC(15,2) DEFAULT 30000
-    );
-    """
-    cursor.execute(create_saldo_global_table)
-    cursor.execute("SELECT COUNT(*) FROM saldo_global")
-    if cursor.fetchone()[0] == 0:
-        cursor.execute("INSERT INTO saldo_global (saldo) VALUES (30000)")
-
-    # Tabela funcionarios
+    # Tabela funcionarios (com 'setor')
     create_funcionarios_table = """
     CREATE TABLE IF NOT EXISTS funcionarios (
         id SERIAL PRIMARY KEY,
         nome TEXT NOT NULL,
         centro_custo TEXT NOT NULL,
-        unidade_negocio TEXT NOT NULL
+        unidade_negocio TEXT NOT NULL,
+        setor TEXT NOT NULL DEFAULT 'servicos' /* NOVO */
     );
     """
     cursor.execute(create_funcionarios_table)
-
-    # Tabela historico_exclusao
+    
+    # Tabela historico_exclusao (com 'setor')
     create_historico_table = """
     CREATE TABLE IF NOT EXISTS historico_exclusao (
         id SERIAL PRIMARY KEY,
@@ -208,37 +173,70 @@ def init_db():
         solicitante TEXT NOT NULL,
         valor NUMERIC(15,2) NOT NULL,
         data_exclusao DATE NOT NULL,
-        usuario_excluiu TEXT NOT NULL
+        usuario_excluiu TEXT NOT NULL,
+        setor TEXT NOT NULL DEFAULT 'servicos' /* NOVO */
     );
     """
     cursor.execute(create_historico_table)
 
-    # Commit e fechamento devem ser no final de tudo
+    # NOVA Tabela saldo_global_por_setor
+    create_saldo_global_setor_table = """
+    CREATE TABLE IF NOT EXISTS saldo_global_por_setor (
+        id SERIAL PRIMARY KEY,
+        setor TEXT NOT NULL UNIQUE,
+        saldo NUMERIC(15,2) DEFAULT 0
+    );
+    """
+    cursor.execute(create_saldo_global_setor_table)
+
+    # NOVA Tabela usuarios
+    create_usuarios_table = """
+    CREATE TABLE IF NOT EXISTS usuarios (
+        id SERIAL PRIMARY KEY,
+        username TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        role TEXT NOT NULL,
+        setor TEXT NOT NULL
+    );
+    """
+    cursor.execute(create_usuarios_table)
+
+
+    # Adiciona colunas se não existirem (migração segura)
+    colunas_para_adicionar = {
+        'rd': 'setor TEXT NOT NULL DEFAULT \'servicos\'',
+        'funcionarios': 'setor TEXT NOT NULL DEFAULT \'servicos\'',
+        'historico_acoes': 'setor TEXT NOT NULL DEFAULT \'servicos\'',
+        'historico_exclusao': 'setor TEXT NOT NULL DEFAULT \'servicos\''
+    }
+    
+    for tabela, definicao_coluna in colunas_para_adicionar.items():
+        coluna_nome = definicao_coluna.split(' ')[0]
+        cursor.execute(f"""
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name='{tabela}' AND column_name='{coluna_nome}'
+        """)
+        if not cursor.fetchone():
+            cursor.execute(f"ALTER TABLE {tabela} ADD COLUMN {definicao_coluna}")
+            logging.info(f"Coluna '{coluna_nome}' adicionada à tabela '{tabela}'.")
+
+    # Remove tabela antiga se existir (opcional, mas limpa)
+    # cursor.execute("DROP TABLE IF EXISTS saldo_global;")
+
     conn.commit()
     cursor.close()
     conn.close()
 
-# ====== Funções de lógica ======
-def generate_custom_id():
-    current_year = datetime.now().year % 100
-    conn = get_pg_connection()
-    cursor = conn.cursor(cursor_factory=DictCursor)
-    cursor.execute("""
-        SELECT id FROM rd
-        WHERE split_part(id, '.', 2)::INTEGER=%s
-        ORDER BY (split_part(id, '.',1))::INTEGER DESC LIMIT 1
-    """, (current_year,))
-    last_id = cursor.fetchone()
-    conn.close()
-    if not last_id:
-        return f"400.{current_year}"
-    last_str = last_id[0]
-    last_num_str, _ = last_str.split('.')
-    last_num = int(last_num_str)
-    return f"{last_num+1}.{current_year}"
-
+# ====== Funções de lógica (Leitura da Sessão) ======
 def user_role():
     return session.get('user_role')
+
+def user_setor():
+    return session.get('user_setor')
+
+def user_username():
+    return session.get('username')
 
 def is_solicitante():
     return user_role() == "solicitante"
@@ -249,6 +247,9 @@ def is_gestor():
 def is_financeiro():
     return user_role() == "financeiro"
 
+def is_supervisor():
+    return user_role() == "supervisor"
+
 def can_add():
     return user_role() in ["solicitante", "gestor", "financeiro"]
 
@@ -257,7 +258,7 @@ def can_edit(status):
         return False
     if is_solicitante():
         return status in ["Pendente", "Fechamento Recusado"]
-    if is_gestor() or is_financeiro() or user_role() == "supervisor":
+    if is_gestor() or is_financeiro() or is_supervisor():
         return True
     return False
 
@@ -285,36 +286,55 @@ def can_request_additional(status):
 def can_close(status):
     return (is_solicitante() and status == "Liberado")
 
-def get_saldo_global():
-    conn = get_pg_connection()
-    cursor = conn.cursor(cursor_factory=DictCursor)
-    cursor.execute("SELECT saldo FROM saldo_global LIMIT 1")
-    saldo = cursor.fetchone()[0]
-    conn.close()
-    return saldo
 
-def set_saldo_global(novo_saldo):
+# ==========================================================
+# FUNÇÕES DE SALDO ATUALIZADAS
+# Agora elas operam na nova tabela 'saldo_global_por_setor'
+# ==========================================================
+def get_saldo_global(setor):
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
-    cursor.execute("UPDATE saldo_global SET saldo=%s WHERE id=1", (novo_saldo,))
+    cursor.execute("SELECT saldo FROM saldo_global_por_setor WHERE setor = %s", (setor,))
+    resultado = cursor.fetchone()
+    conn.close()
+    if resultado:
+        return resultado['saldo']
+    return 0 # Retorna 0 se o setor não tiver saldo
+
+def set_saldo_global(setor, novo_saldo):
+    conn = get_pg_connection()
+    cursor = conn.cursor(cursor_factory=DictCursor)
+    # Garante que o setor exista antes de atualizar
+    cursor.execute(
+        """
+        INSERT INTO saldo_global_por_setor (setor, saldo)
+        VALUES (%s, %s)
+        ON CONFLICT (setor) DO UPDATE SET saldo = %s
+        """,
+        (setor, novo_saldo, novo_saldo)
+    )
     conn.commit()
     conn.close()
 
+# ==========================================================
+# FUNÇÃO DE HISTÓRICO ATUALIZADA
+# Agora salva o 'username' e o 'setor'
+# ==========================================================
 def registrar_historico(conn, rd_id, acao, detalhes=""):
     """Registra uma nova ação no histórico de uma RD."""
     try:
-        usuario = session.get('user_role', 'Sistema')
+        usuario = session.get('username', 'Sistema') # Salva o username
+        setor = session.get('user_setor', 'desconhecido') # Salva o setor
+        
         cursor = conn.cursor()
         cursor.execute(
             """
-            INSERT INTO historico_acoes (rd_id, usuario, acao, detalhes)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO historico_acoes (rd_id, usuario, acao, detalhes, setor)
+            VALUES (%s, %s, %s, %s, %s)
             """,
-            (rd_id, usuario, acao, detalhes)
+            (rd_id, usuario, acao, detalhes, setor)
         )
     except psycopg2.Error as e:
-        # Logar o erro é importante, mas não queremos que uma falha no histórico
-        # impeça a operação principal.
         logging.error(f"Falha ao registrar histórico para RD {rd_id}: {e}")
 
 def format_currency(value):
@@ -337,41 +357,50 @@ app.jinja_env.globals.update(
 
 # ============ ROTAS ============
 
+# ==========================================================
+# ROTA INDEX ATUALIZADA
+# Usa a tabela 'usuarios' para login e filtra tudo por 'setor'
+# ==========================================================
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "").strip()
 
-        if username == "gestor" and password == "337146":
-            session["user_role"] = "gestor"
-            flash("Login como gestor bem-sucedido.")
-        elif username == "financeiro" and password == "351073":
-            session["user_role"] = "financeiro"
-            flash("Login como financeiro bem-sucedido.")
-        elif username == "solicitante" and password == "102030":
-            session["user_role"] = "solicitante"
-            flash("Login como solicitante bem-sucedido.")
-        elif username == "supervisor" and password == "223344":
-            session["user_role"] = "supervisor"
-            flash("Login como supervisor bem-sucedido.")
+        conn = get_pg_connection()
+        cursor = conn.cursor(cursor_factory=DictCursor)
+        cursor.execute("SELECT * FROM usuarios WHERE username = %s", (username,))
+        user = cursor.fetchone()
+        conn.close()
+
+        if user and check_password_hash(user['password_hash'], password):
+            # Login bem-sucedido, armazena dados na sessão
+            session["user_id"] = user['id']
+            session["username"] = user['username']
+            session["user_role"] = user['role']
+            session["user_setor"] = user['setor']
+            flash(f"Login como {user['username']} ({user['role']}) bem-sucedido.")
+            return redirect(url_for("index"))
         else:
+            # Login falhou
             flash("Credenciais inválidas.")
             return render_template("index.html", error="Credenciais inválidas", format_currency=format_currency)
-
-        return redirect(url_for("index"))
 
     if "user_role" not in session:
         return render_template("index.html", error=None, format_currency=format_currency)
 
-    # NOVO: Captura o parâmetro da aba ativa da URL. O padrão é 'tab1'.
+    # Usuário está logado, buscar dados do SEU SETOR
+    setor_do_usuario = user_setor()
+    role_do_usuario = user_role()
+    
     active_tab = request.args.get('active_tab', 'tab1')
 
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
 
-    if user_role() == "supervisor":
-        cursor.execute("SELECT * FROM rd WHERE status='Liberado'")
+    # Lógica especial do SUPERVISOR (só vê liberados e divergentes do seu setor)
+    if role_do_usuario == "supervisor":
+        cursor.execute("SELECT * FROM rd WHERE status='Liberado' AND setor = %s", (setor_do_usuario,))
         liberados = cursor.fetchall()
         pendentes = []
         aprovados = []
@@ -379,26 +408,29 @@ def index():
         fechamento_recusado = []
         saldos_a_devolver = []
         fechados = []
-        cursor.execute("SELECT COUNT(*) FROM rd WHERE anexo_divergente=TRUE")
+        cursor.execute("SELECT COUNT(*) FROM rd WHERE anexo_divergente=TRUE AND setor = %s", (setor_do_usuario,))
         divergentes_count = cursor.fetchone()[0]
     else:
-        cursor.execute("SELECT * FROM rd WHERE status='Pendente'")
+        # Lógica para outros usuários (gestor, financeiro, solicitante)
+        cursor.execute("SELECT * FROM rd WHERE status='Pendente' AND setor = %s", (setor_do_usuario,))
         pendentes = cursor.fetchall()
-        cursor.execute("SELECT * FROM rd WHERE status='Aprovado'")
+        cursor.execute("SELECT * FROM rd WHERE status='Aprovado' AND setor = %s", (setor_do_usuario,))
         aprovados = cursor.fetchall()
-        cursor.execute("SELECT * FROM rd WHERE status='Liberado'")
+        cursor.execute("SELECT * FROM rd WHERE status='Liberado' AND setor = %s", (setor_do_usuario,))
         liberados = cursor.fetchall()
-        cursor.execute("SELECT * FROM rd WHERE status='Fechamento Solicitado'")
+        cursor.execute("SELECT * FROM rd WHERE status='Fechamento Solicitado' AND setor = %s", (setor_do_usuario,))
         fechamento_solicitado = cursor.fetchall()
-        cursor.execute("SELECT * FROM rd WHERE status='Fechamento Recusado'")
+        cursor.execute("SELECT * FROM rd WHERE status='Fechamento Recusado' AND setor = %s", (setor_do_usuario,))
         fechamento_recusado = cursor.fetchall()
-        cursor.execute("SELECT * FROM rd WHERE status='Saldos a Devolver'")
+        cursor.execute("SELECT * FROM rd WHERE status='Saldos a Devolver' AND setor = %s", (setor_do_usuario,))
         saldos_a_devolver = cursor.fetchall()
-        cursor.execute("SELECT * FROM rd WHERE status='Fechado'")
+        cursor.execute("SELECT * FROM rd WHERE status='Fechado' AND setor = %s", (setor_do_usuario,))
         fechados = cursor.fetchall()
-        divergentes_count = 0
+        divergentes_count = 0 # Outros perfis não veem o contador de divergentes
 
-    saldo_global = get_saldo_global()
+    # Busca o saldo global APENAS do setor do usuário
+    saldo_global_setor = get_saldo_global(setor_do_usuario)
+    
     adicional_id = request.args.get("adicional")
     fechamento_id = request.args.get("fechamento")
     conn.close()
@@ -407,8 +439,8 @@ def index():
         "index.html",
         error=None,
         format_currency=format_currency,
-        user_role=user_role(),
-        saldo_global=saldo_global if is_financeiro() else None,
+        user_role=role_do_usuario, # Passa a role para o template
+        saldo_global=saldo_global_setor if is_financeiro() else None, # Passa o saldo do SETOR
         pendentes=pendentes,
         aprovados=aprovados,
         liberados=liberados,
@@ -425,19 +457,25 @@ def index():
         can_close=can_close,
         adicional_id=adicional_id,
         fechamento_id=fechamento_id,
-        active_tab=active_tab  # NOVO: Passa a variável para o template
+        active_tab=active_tab
     )
 
 def can_mark_pronto_fechamento(status):
     return user_role() == "supervisor" and status == "Liberado"
 
 
-
+# ==========================================================
+# ROTA add_rd ATUALIZADA
+# Adiciona 'setor' automaticamente no INSERT
+# ==========================================================
 @app.route("/add", methods=["POST"])
 def add_rd():
     if not can_add():
         flash("Acesso negado.")
         return "Acesso negado", 403
+
+    # Pega o setor do usuário logado
+    setor_do_usuario = user_setor()
 
     solicitante     = request.form["solicitante"].strip()
     funcionario     = request.form["funcionario"].strip()
@@ -470,13 +508,14 @@ def add_rd():
     INSERT INTO rd (
       id, solicitante, funcionario, data, centro_custo,
       valor, status, arquivos, valor_liberado, observacao,
-      tipo, unidade_negocio, data_credito_solicitado
+      tipo, unidade_negocio, data_credito_solicitado, setor
     )
     VALUES (%s,%s,%s,%s,%s,
             %s,%s,%s,0,%s,
-            %s,%s,%s)
+            %s,%s,%s,%s)
     """, (custom_id, solicitante, funcionario, data_str, centro_custo,
-          valor, "Pendente", arquivos_str, observacao, rd_tipo, unidade_negocio, data_atual))
+          valor, "Pendente", arquivos_str, observacao, rd_tipo, 
+          unidade_negocio, data_atual, setor_do_usuario)) # Adiciona o setor
     
     detalhe_valor = f"Valor solicitado: R$ {format_currency(valor)}"
     registrar_historico(conn, custom_id, "RD Criada", detalhe_valor)
@@ -486,39 +525,47 @@ def add_rd():
     conn.close()
     flash("RD adicionada com sucesso.")
     
-    # MODIFICADO: Captura a aba do formulário.
     active_tab = request.form.get('active_tab', 'tab1')
     return redirect(url_for("index", active_tab=active_tab))
 
+# ==========================================================
+# ROTA historico ATUALIZADA
+# Filtra por 'setor'
+# ==========================================================
 @app.route("/historico/<rd_id>")
 def ver_historico(rd_id):
     if "user_role" not in session:
         return redirect(url_for("index"))
 
+    setor_do_usuario = user_setor()
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
 
-    cursor.execute("SELECT * FROM rd WHERE id = %s", (rd_id,))
+    # Garante que o usuário só veja RDs do seu setor
+    cursor.execute("SELECT * FROM rd WHERE id = %s AND setor = %s", (rd_id, setor_do_usuario))
     rd = cursor.fetchone()
 
+    if not rd:
+        flash("RD não encontrada ou pertence a outro setor.")
+        conn.close()
+        return redirect(url_for("index"))
+
     cursor.execute(
-        "SELECT * FROM historico_acoes WHERE rd_id = %s ORDER BY data_acao DESC",
-        (rd_id,)
+        "SELECT * FROM historico_acoes WHERE rd_id = %s AND setor = %s ORDER BY data_acao DESC",
+        (rd_id, setor_do_usuario)
     )
     historico = cursor.fetchall()
     
     conn.close()
 
-    if not rd:
-        flash("RD não encontrada.")
-        return redirect(url_for("index"))
-
     return render_template("historico_rd.html", rd=rd, historico=historico, format_currency=format_currency)
 
 def can_edit_status(id):
+    setor_do_usuario = user_setor()
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
-    cursor.execute("SELECT status FROM rd WHERE id=%s", (id,))
+    # Verifica status E setor
+    cursor.execute("SELECT status FROM rd WHERE id=%s AND setor = %s", (id, setor_do_usuario))
     row = cursor.fetchone()
     conn.close()
     if not row:
@@ -527,9 +574,10 @@ def can_edit_status(id):
 
 @app.route("/edit_form/<id>", methods=["GET"])
 def edit_form(id):
+    setor_do_usuario = user_setor()
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
-    cursor.execute("SELECT * FROM rd WHERE id=%s", (id,))
+    cursor.execute("SELECT * FROM rd WHERE id=%s AND setor = %s", (id, setor_do_usuario))
     rd = cursor.fetchone()
     conn.close()
 
@@ -537,18 +585,22 @@ def edit_form(id):
         flash("RD não encontrada.")
         return "RD não encontrada", 404
 
-    if not can_edit(rd[6]):
+    if not can_edit(rd['status']):
         flash("Acesso negado.")
         return "Acesso negado", 403
 
     return render_template("edit_form.html", rd=rd, user_role=session.get("user_role"))
 
+# ==========================================================
+# ROTA edit_submit ATUALIZADA
+# Filtra por 'setor'
+# ==========================================================
 @app.route("/edit_submit/<id>", methods=["POST"])
 def edit_submit(id):
     logging.debug(f"Iniciando edição da RD {id}")
-    logging.debug(f"Dados do formulário: {request.form}")
+    setor_do_usuario = user_setor()
 
-    if not can_edit_status(id):
+    if not can_edit_status(id): # can_edit_status já checa o setor
         logging.warning(f"Acesso negado para RD {id}")
         flash("Acesso negado.")
         return "Acesso negado", 403
@@ -556,16 +608,15 @@ def edit_submit(id):
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
 
-    cursor.execute("SELECT status, arquivos, valor_adicional, valor_liberado, valor_despesa, observacao FROM rd WHERE id=%s", (id,))
+    cursor.execute("SELECT status, arquivos, valor_adicional, valor_liberado, valor_despesa, observacao FROM rd WHERE id=%s AND setor = %s", (id, setor_do_usuario))
     row = cursor.fetchone()
     if not row:
-        logging.error(f"RD {id} não encontrada")
+        logging.error(f"RD {id} não encontrada no setor {setor_do_usuario}")
         conn.close()
         return redirect(url_for("index"))
     
     original_status, arquivos_str, valor_adicional_antigo, valor_liberado, valor_despesa_antigo, observacao_antiga = row
-    logging.debug(f"Status original: {original_status}")
-
+    
     arqs_list = arquivos_str.split(",") if arquivos_str else []
     if "arquivo" in request.files:
         uploaded_files = request.files.getlist("arquivo")
@@ -574,7 +625,6 @@ def edit_submit(id):
                 fname = f"{id}_{f.filename}"
                 upload_file_to_r2(f, fname)
                 arqs_list.append(fname)
-                logging.debug(f"Anexo adicionado: {fname}")
     new_arqs = ",".join(arqs_list) if arqs_list else None
 
     if user_role() == "supervisor":
@@ -583,20 +633,17 @@ def edit_submit(id):
             cursor.execute("""
             UPDATE rd
             SET arquivos=%s, observacao=%s
-            WHERE id=%s
-            """, (new_arqs, observacao, id))
-            logging.debug(f"Supervisor atualizou arquivos: {new_arqs} e observação: {observacao}")
+            WHERE id=%s AND setor = %s
+            """, (new_arqs, observacao, id, setor_do_usuario))
             
             registrar_historico(conn, id, "RD Editada pelo Supervisor", "Anexos e/ou observação foram atualizados.")
-            
             conn.commit()
         except psycopg2.Error as e:
             logging.error(f"Erro no banco de dados: {e}")
             conn.rollback()
             flash("Erro ao salvar no banco de dados.")
-            conn.close()
-            return redirect(url_for("index"))
     else:
+        # Lógica para outros perfis
         solicitante = request.form.get("solicitante", "").strip()
         funcionario = request.form.get("funcionario", "").strip()
         data_str = request.form.get("data", "").strip()
@@ -605,7 +652,6 @@ def edit_submit(id):
         unidade_negocio = request.form.get("unidade_negocio", "").strip()
 
         if not all([solicitante, funcionario, data_str, centro_custo]):
-            logging.error(f"Campos obrigatórios ausentes: solicitante={solicitante}, funcionario={funcionario}, data={data_str}, centro_custo={centro_custo}")
             flash("Preencha todos os campos obrigatórios.")
             conn.close()
             return redirect(url_for("index"))
@@ -613,14 +659,12 @@ def edit_submit(id):
         valor_raw = request.form.get("valor", "").strip()
         valor_adicional_raw = request.form.get("valor_adicional", "").strip()
         valor_despesa_raw = request.form.get("valor_despesa", "").strip()
-        logging.debug(f"Valor bruto: {valor_raw}, Valor Adicional bruto: {valor_adicional_raw}, Valor Despesa bruto: {valor_despesa_raw}")
 
         try:
             valor_novo = float(valor_raw.replace(",", "."))
             valor_adicional_novo = float(valor_adicional_raw.replace(",", ".")) if valor_adicional_raw else 0.0
             valor_despesa_novo = float(valor_despesa_raw.replace(",", ".")) if valor_despesa_raw else valor_despesa_antigo
         except ValueError as e:
-            logging.error(f"Erro ao converter valores: {e}")
             flash("Valor, Valor Adicional ou Valor Despesa inválido.")
             conn.close()
             return redirect(url_for("index"))
@@ -633,40 +677,38 @@ def edit_submit(id):
             UPDATE rd
             SET solicitante=%s, funcionario=%s, data=%s, centro_custo=%s, valor=%s, valor_adicional=%s,
                 valor_despesa=%s, saldo_devolver=%s, arquivos=%s, observacao=%s, unidade_negocio=%s
-            WHERE id=%s
+            WHERE id=%s AND setor = %s
             """, (solicitante, funcionario, data_str, centro_custo, valor_novo, valor_adicional_novo,
-                  valor_despesa_novo, saldo_devolver_novo, new_arqs, observacao, unidade_negocio, id))
-            logging.debug(f"Executou UPDATE principal para RD {id}")
-
+                  valor_despesa_novo, saldo_devolver_novo, new_arqs, observacao, unidade_negocio, id, setor_do_usuario))
+            
             registrar_historico(conn, id, "RD Editada")
 
             if is_solicitante() and original_status == "Fechamento Recusado":
-                cursor.execute("UPDATE rd SET status='Fechamento Solicitado', motivo_recusa=NULL WHERE id=%s", (id,))
-                logging.debug(f"Status alterado para 'Fechamento Solicitado'")
-                
+                cursor.execute("UPDATE rd SET status='Fechamento Solicitado', motivo_recusa=NULL WHERE id=%s AND setor = %s", (id, setor_do_usuario))
                 registrar_historico(conn, id, "Reenviada para Fechamento", "RD corrigida após recusa.")
 
             conn.commit()
-            logging.debug(f"Commit realizado com sucesso para RD {id}")
         except psycopg2.Error as e:
             logging.error(f"Erro no banco de dados: {e}")
             conn.rollback()
             flash("Erro ao salvar no banco de dados.")
-            conn.close()
-            return redirect(url_for("index"))
 
     conn.close()
     flash("RD atualizada com sucesso.")
     
-    # MODIFICADO: Captura a aba do formulário.
     active_tab = request.form.get('active_tab', 'tab1')
     return redirect(url_for("index", active_tab=active_tab))
 
+# ==========================================================
+# ROTA approve ATUALIZADA
+# Filtra por 'setor' e usa saldo do 'setor'
+# ==========================================================
 @app.route("/approve/<id>", methods=["POST"])
 def approve(id):
+    setor_do_usuario = user_setor()
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
-    cursor.execute("SELECT status, valor, valor_adicional, tipo, valor_liberado FROM rd WHERE id=%s", (id,))
+    cursor.execute("SELECT status, valor, valor_adicional, tipo, valor_liberado FROM rd WHERE id=%s AND setor = %s", (id, setor_do_usuario))
     row = cursor.fetchone()
     if not row:
         conn.close()
@@ -685,30 +727,32 @@ def approve(id):
         new_st = "Aprovado"
         cursor.execute("""
         UPDATE rd SET status=%s, aprovado_data=%s
-        WHERE id=%s
-        """, (new_st, now, id))
+        WHERE id=%s AND setor = %s
+        """, (new_st, now, id, setor_do_usuario))
         registrar_historico(conn, id, "Aprovada pelo Gestor")
 
     elif st_atual == "Aprovado" and is_financeiro():
         if rd_tipo.lower() == "reembolso":
             new_st = "Fechado"
-            # MODIFICADO: Adiciona valor_despesa e saldo_devolver para consistência dos dados
             cursor.execute("""
             UPDATE rd SET status=%s, data_fechamento=%s, valor_despesa=valor, saldo_devolver=0
-            WHERE id=%s
-            """, (new_st, now, id))
+            WHERE id=%s AND setor = %s
+            """, (new_st, now, id, setor_do_usuario))
             registrar_historico(conn, id, "Reembolso Aprovado e Fechado")
         else:
             new_st = "Liberado"
             total_credit = val + (val_adic or 0)
             novo_credito = total_credit - (valor_liberado_anterior or 0)
-            saldo_atual = get_saldo_global()
-            novo_saldo = saldo_atual - novo_credito
-            set_saldo_global(novo_saldo)
+            
+            # ATUALIZA SALDO DO SETOR
+            saldo_atual_setor = get_saldo_global(setor_do_usuario)
+            novo_saldo_setor = saldo_atual_setor - novo_credito
+            set_saldo_global(setor_do_usuario, novo_saldo_setor)
+            
             cursor.execute("""
             UPDATE rd SET status=%s, liberado_data=%s, valor_liberado=%s, data_credito_liberado=%s
-            WHERE id=%s
-            """, (new_st, now, total_credit, now, id))
+            WHERE id=%s AND setor = %s
+            """, (new_st, now, total_credit, now, id, setor_do_usuario))
             detalhe_liberado = f"Valor liberado: R$ {format_currency(total_credit)}"
             registrar_historico(conn, id, "Crédito Liberado pelo Financeiro", detalhe_liberado)
 
@@ -716,8 +760,8 @@ def approve(id):
         new_st = "Saldos a Devolver"
         cursor.execute("""
         UPDATE rd SET status=%s, data_fechamento=%s
-        WHERE id=%s
-        """, (new_st, now, id))
+        WHERE id=%s AND setor = %s
+        """, (new_st, now, id, setor_do_usuario))
         registrar_historico(conn, id, "Fechamento Aprovado pelo Gestor")
     else:
         conn.close()
@@ -729,15 +773,19 @@ def approve(id):
     conn.close()
     flash("Operação realizada com sucesso.")
     
-    # MODIFICADO: Captura a aba do formulário.
     active_tab = request.form.get('active_tab', 'tab1')
     return redirect(url_for("index", active_tab=active_tab))
 
+# ==========================================================
+# ROTA delete_rd ATUALIZADA
+# Filtra por 'setor' e usa saldo do 'setor'
+# ==========================================================
 @app.route("/delete/<id>", methods=["POST"])
 def delete_rd(id):
+    setor_do_usuario = user_setor()
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
-    cursor.execute("SELECT solicitante, status, valor_liberado, valor FROM rd WHERE id=%s", (id,))
+    cursor.execute("SELECT solicitante, status, valor_liberado, valor FROM rd WHERE id=%s AND setor = %s", (id, setor_do_usuario))
     row = cursor.fetchone()
     if not row:
         conn.close()
@@ -752,13 +800,14 @@ def delete_rd(id):
 
     registrar_historico(conn, id, "RD Excluída")
 
-    usuario_excluiu = session.get("user_role", "desconhecido")
+    usuario_excluiu = user_username() # Salva o username
     data_exclusao = datetime.now().strftime("%Y-%m-%d")
     try:
+        # Adiciona setor ao histórico de exclusão
         cursor.execute("""
-        INSERT INTO historico_exclusao (rd_id, solicitante, valor, data_exclusao, usuario_excluiu)
-        VALUES (%s, %s, %s, %s, %s)
-        """, (id, rd_solic, rd_valor, data_exclusao, usuario_excluiu))
+        INSERT INTO historico_exclusao (rd_id, solicitante, valor, data_exclusao, usuario_excluiu, setor)
+        VALUES (%s, %s, %s, %s, %s, %s)
+        """, (id, rd_solic, rd_valor, data_exclusao, usuario_excluiu, setor_do_usuario))
     except psycopg2.Error as e:
         conn.close()
         flash("Erro ao acessar banco de dados ao registrar histórico.")
@@ -766,31 +815,37 @@ def delete_rd(id):
         return redirect(url_for("index"))
 
     if rd_status == "Liberado" and rd_liber and rd_liber > 0:
-        saldo = get_saldo_global()
-        set_saldo_global(saldo + rd_liber)
+        # Devolve saldo para o SETOR
+        saldo_setor = get_saldo_global(setor_do_usuario)
+        set_saldo_global(setor_do_usuario, saldo_setor + rd_liber)
 
-    cursor.execute("SELECT arquivos FROM rd WHERE id=%s", (id,))
+    cursor.execute("SELECT arquivos FROM rd WHERE id=%s", (id,)) # Setor já checado
     arq_str = cursor.fetchone()[0]
     if arq_str:
         for a in arq_str.split(","):
             delete_file_from_r2(a)
 
-    cursor.execute("DELETE FROM rd WHERE id=%s", (id,))
+    cursor.execute("DELETE FROM rd WHERE id=%s AND setor = %s", (id, setor_do_usuario))
     conn.commit()
     cursor.close()
     conn.close()
     flash("RD excluída com sucesso.")
     
-    # MODIFICADO: Captura a aba do formulário.
     active_tab = request.form.get('active_tab', 'tab1')
     return redirect(url_for("index", active_tab=active_tab))
 
+# ==========================================================
+# ROTA adicional_submit ATUALIZADA
+# Filtra por 'setor'
+# ==========================================================
 @app.route("/adicional_submit/<id>", methods=["POST"])
 def adicional_submit(id):
+    setor_do_usuario = user_setor()
+    
     if "arquivo" in request.files:
         conn = get_pg_connection()
         cursor = conn.cursor(cursor_factory=DictCursor)
-        cursor.execute("SELECT arquivos FROM rd WHERE id=%s", (id,))
+        cursor.execute("SELECT arquivos FROM rd WHERE id=%s AND setor = %s", (id, setor_do_usuario))
         row = cursor.fetchone()
         arqs_atual = row[0].split(",") if row and row[0] else []
         for f in request.files.getlist("arquivo"):
@@ -799,7 +854,7 @@ def adicional_submit(id):
                 upload_file_to_r2(f, fname)
                 arqs_atual.append(fname)
         new_arqs_str = ",".join(arqs_atual) if arqs_atual else None
-        cursor.execute("UPDATE rd SET arquivos=%s WHERE id=%s", (new_arqs_str, id))
+        cursor.execute("UPDATE rd SET arquivos=%s WHERE id=%s AND setor = %s", (new_arqs_str, id, setor_do_usuario))
         conn.commit()
         cursor.close()
         conn.close()
@@ -812,7 +867,7 @@ def adicional_submit(id):
 
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
-    cursor.execute("SELECT status, valor_adicional, adicionais_individuais, valor, valor_despesa FROM rd WHERE id=%s", (id,))
+    cursor.execute("SELECT status, valor_adicional, adicionais_individuais, valor, valor_despesa FROM rd WHERE id=%s AND setor = %s", (id, setor_do_usuario))
     row = cursor.fetchone()
     if not row:
         conn.close()
@@ -840,8 +895,8 @@ def adicional_submit(id):
     cursor.execute("""
     UPDATE rd
     SET valor_adicional=%s, adicional_data=%s, status='Pendente', adicionais_individuais=%s, saldo_devolver=%s
-    WHERE id=%s
-    """, (novo_total, data_add, add_ind, saldo_dev, id))
+    WHERE id=%s AND setor = %s
+    """, (novo_total, data_add, add_ind, saldo_dev, id, setor_do_usuario))
     
     detalhe_adicional = f"Valor adicional solicitado: R$ {format_currency(val_adi)}"
     registrar_historico(conn, id, "Solicitação de Crédito Adicional", detalhe_adicional)
@@ -851,16 +906,21 @@ def adicional_submit(id):
     conn.close()
     flash("Crédito adicional solicitado. A RD voltou para 'Pendente'.")
     
-    # MODIFICADO: Captura a aba do formulário com um padrão inteligente.
     active_tab = request.form.get('active_tab', 'tab3')
     return redirect(url_for("index", active_tab=active_tab))
 
+# ==========================================================
+# ROTA fechamento_submit ATUALIZADA
+# Filtra por 'setor'
+# ==========================================================
 @app.route("/fechamento_submit/<id>", methods=["POST"])
 def fechamento_submit(id):
+    setor_do_usuario = user_setor()
+    
     if "arquivo" in request.files:
         conn = get_pg_connection()
         cursor = conn.cursor(cursor_factory=DictCursor)
-        cursor.execute("SELECT arquivos FROM rd WHERE id=%s", (id,))
+        cursor.execute("SELECT arquivos FROM rd WHERE id=%s AND setor = %s", (id, setor_do_usuario))
         row = cursor.fetchone()
         a_list = row[0].split(",") if row and row[0] else []
         for f in request.files.getlist("arquivo"):
@@ -869,7 +929,7 @@ def fechamento_submit(id):
                 upload_file_to_r2(f, fname)
                 a_list.append(fname)
         new_str = ",".join(a_list) if a_list else None
-        cursor.execute("UPDATE rd SET arquivos=%s WHERE id=%s", (new_str, id))
+        cursor.execute("UPDATE rd SET arquivos=%s WHERE id=%s AND setor = %s", (new_str, id, setor_do_usuario))
         conn.commit()
         cursor.close()
         conn.close()
@@ -882,7 +942,7 @@ def fechamento_submit(id):
 
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
-    cursor.execute("SELECT valor, valor_adicional, status FROM rd WHERE id=%s", (id,))
+    cursor.execute("SELECT valor, valor_adicional, status FROM rd WHERE id=%s AND setor = %s", (id, setor_do_usuario))
     row = cursor.fetchone()
     if not row:
         conn.close()
@@ -907,8 +967,8 @@ def fechamento_submit(id):
     UPDATE rd
     SET valor_despesa=%s, saldo_devolver=%s, data_fechamento=%s,
         status='Fechamento Solicitado', data_debito_despesa=%s
-    WHERE id=%s
-    """, (val_desp, saldo_dev, data_fech, data_fech, id))
+    WHERE id=%s AND setor = %s
+    """, (val_desp, saldo_dev, data_fech, data_fech, id, setor_do_usuario))
 
     detalhe_gasto = f"Valor gasto informado: R$ {format_currency(val_desp)}"
     registrar_historico(conn, id, "Solicitação de Fechamento", detalhe_gasto)
@@ -918,7 +978,6 @@ def fechamento_submit(id):
     conn.close()
     flash("Fechamento solicitado. Aguarde aprovação do gestor.")
     
-    # MODIFICADO: Captura a aba do formulário com um padrão inteligente.
     active_tab = request.form.get('active_tab', 'tab3')
     return redirect(url_for("index", active_tab=active_tab))
 
@@ -929,97 +988,82 @@ def decimal_default(obj):
 
 def get_date_range(req_args):
     """Obtém o intervalo de datas do request ou usa os últimos 30 dias como padrão."""
-    # Padrão: Últimos 30 dias
     data_fim_dt = datetime.now()
     data_inicio_dt = data_fim_dt - timedelta(days=30)
-    
-    # Sobrepõe com o filtro se existir
     data_inicio = req_args.get('data_inicio')
     data_fim = req_args.get('data_fim')
-    
     try:
         if data_inicio:
             data_inicio_dt = datetime.strptime(data_inicio, '%Y-%m-%d')
         if data_fim:
             data_fim_dt = datetime.strptime(data_fim, '%Y-%m-%d')
     except ValueError:
-        # Se a data for inválida, ignora e usa o padrão
         pass
-        
-    # Retorna como string e como datetime
     return (
         data_inicio_dt.strftime('%Y-%m-%d'), 
         data_fim_dt.strftime('%Y-%m-%d')
     )
 
+# ==========================================================
+# ROTA dashboard ATUALIZADA
+# Todas as queries são filtradas por 'setor'
+# ==========================================================
 @app.route("/dashboard")
 def dashboard():
     if "user_role" not in session:
         flash("Acesso negado.")
         return redirect(url_for("index"))
 
+    setor_do_usuario = user_setor()
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
     
-    # 1. Obter o filtro de data (padrão: últimos 30 dias)
     data_inicio, data_fim = get_date_range(request.args)
     
-    params = (data_inicio, data_fim)
+    # Parâmetros para queries de período
+    params_periodo = (data_inicio, data_fim, setor_do_usuario)
+    # Parâmetros para queries de setor apenas
+    params_setor = (setor_do_usuario,)
     
-    # ==================================
-    # 1. KPIs (Key Performance Indicators)
-    # ==================================
+    # === KPIs ===
     
     # KPI 1: Total Gasto no Período
     cursor.execute("""
         SELECT SUM(valor_despesa) as total_gasto
         FROM rd
-        WHERE data_fechamento BETWEEN %s AND %s
-    """, params)
+        WHERE data_fechamento BETWEEN %s AND %s AND setor = %s
+    """, params_periodo)
     kpi_gasto_total = cursor.fetchone()['total_gasto'] or 0
     
     # KPI 2: Valor Pendente de Aprovação (Gestor)
-    # Este é um "estado atual", não depende do filtro de data
     cursor.execute("""
         SELECT SUM(valor) as valor_pendente
         FROM rd
-        WHERE status = 'Pendente'
-    """)
+        WHERE status = 'Pendente' AND setor = %s
+    """, params_setor)
     kpi_valor_pendente = cursor.fetchone()['valor_pendente'] or 0
     
     # KPI 3: RDs Aguardando Devolução (Financeiro)
-    # Este é um "estado atual"
     cursor.execute("""
         SELECT COUNT(id) as count_saldos
         FROM rd
-        WHERE status = 'Saldos a Devolver'
-    """)
+        WHERE status = 'Saldos a Devolver' AND setor = %s
+    """, params_setor)
     kpi_saldos_devolver = cursor.fetchone()['count_saldos'] or 0
     
-    # ==============================================================
-    # CORREÇÃO APLICADA AQUI
-    # ==============================================================
-    # KPI 4: Tempo Médio de Aprovação (do Pedido à Liberação) no período
-    # (Corrigido: A subtração de datas (DATE - DATE) já retorna um INT de dias)
+    # KPI 4: Tempo Médio de Aprovação (no período)
     cursor.execute("""
-        SELECT 
-            AVG(liberado_data - data_credito_solicitado) as tempo_medio
+        SELECT AVG(liberado_data - data_credito_solicitado) as tempo_medio
         FROM rd
         WHERE data_credito_solicitado IS NOT NULL
           AND liberado_data IS NOT NULL
           AND liberado_data BETWEEN %s AND %s
-    """, params)
-    # ==============================================================
-    # FIM DA CORREÇÃO
-    # ==============================================================
-    
+          AND setor = %s
+    """, params_periodo)
     kpi_tempo_medio_result = cursor.fetchone()['tempo_medio']
-    # O resultado de AVG(INT) pode ser Decimal. Convertemos para float.
-    kpi_tempo_medio = round(float(kpi_tempo_medio_result or 0), 1) 
+    kpi_tempo_medio = round(float(kpi_tempo_medio_result or 0), 1)
     
-    # ==================================
-    # 2. Gráficos
-    # ==================================
+    # === Gráficos ===
     
     # Gráfico 1: Evolução de Gastos Mensais
     cursor.execute("""
@@ -1027,10 +1071,10 @@ def dashboard():
             to_char(date_trunc('month', data_fechamento), 'YYYY-MM') as mes_ano,
             SUM(valor_despesa) as total_gasto
         FROM rd
-        WHERE data_fechamento IS NOT NULL
+        WHERE data_fechamento IS NOT NULL AND setor = %s
         GROUP BY 1
         ORDER BY 1 ASC
-    """)
+    """, params_setor)
     evolucao_mensal = cursor.fetchall()
     
     # Gráfico 2: Gasto por Centro de Custo (no período)
@@ -1040,19 +1084,21 @@ def dashboard():
         WHERE status IN ('Fechado', 'Saldos a Devolver') 
           AND valor_despesa IS NOT NULL
           AND data_fechamento BETWEEN %s AND %s
+          AND setor = %s
         GROUP BY centro_custo
         HAVING SUM(valor_despesa) > 0
         ORDER BY total_gasto DESC
-    """, params)
+    """, params_periodo)
     gasto_por_cc = cursor.fetchall()
     
     # Gráfico 3: Distribuição de RDs por Status (Geral)
     cursor.execute("""
         SELECT status, COUNT(id) as total_rds
         FROM rd
+        WHERE setor = %s
         GROUP BY status
         ORDER BY total_rds DESC
-    """)
+    """, params_setor)
     status_dist = cursor.fetchall()
 
     # Gráfico 4: Top 5 Solicitantes por Valor Gasto (no período)
@@ -1062,25 +1108,24 @@ def dashboard():
         WHERE status IN ('Fechado', 'Saldos a Devolver') 
           AND valor_despesa IS NOT NULL
           AND data_fechamento BETWEEN %s AND %s
+          AND setor = %s
         GROUP BY solicitante
         HAVING SUM(valor_despesa) > 0
         ORDER BY total_gasto DESC
         LIMIT 5
-    """, params)
+    """, params_periodo)
     top_solicitantes = cursor.fetchall()
     
-    # ==================================
-    # 3. Tabela de Ações
-    # ==================================
+    # === Tabela de Ações ===
     
     # Top 5 RDs Pendentes mais Antigas (Estado Atual)
     cursor.execute("""
         SELECT id, solicitante, data, valor
         FROM rd
-        WHERE status = 'Pendente'
+        WHERE status = 'Pendente' AND setor = %s
         ORDER BY data ASC
         LIMIT 5
-    """)
+    """, params_setor)
     pendentes_antigas = cursor.fetchall()
     
     conn.close()
@@ -1093,44 +1138,41 @@ def dashboard():
             "saldos_devolver": kpi_saldos_devolver,
             "tempo_medio": kpi_tempo_medio
         },
-        "evolucao_mensal": {
-            "labels": [row['mes_ano'] for row in evolucao_mensal],
-            "data": [row['total_gasto'] for row in evolucao_mensal]
-        },
-        "gasto_por_cc": {
-            "labels": [row['centro_custo'] for row in gasto_por_cc],
-            "data": [row['total_gasto'] for row in gasto_por_cc]
-        },
-        "status_dist": {
-            "labels": [row['status'] for row in status_dist],
-            "data": [row['total_rds'] for row in status_dist]
-        },
-        "top_solicitantes": {
-            "labels": [row['solicitante'] for row in top_solicitantes],
-            "data": [row['total_gasto'] for row in top_solicitantes]
-        }
+        "evolucao_mensal": { "labels": [row['mes_ano'] for row in evolucao_mensal], "data": [row['total_gasto'] for row in evolucao_mensal] },
+        "gasto_por_cc": { "labels": [row['centro_custo'] for row in gasto_por_cc], "data": [row['total_gasto'] for row in gasto_por_cc] },
+        "status_dist": { "labels": [row['status'] for row in status_dist], "data": [row['total_rds'] for row in status_dist] },
+        "top_solicitantes": { "labels": [row['solicitante'] for row in top_solicitantes], "data": [row['total_gasto'] for row in top_solicitantes] }
     }
 
     chart_data_json = json.dumps(chart_data, default=decimal_default)
 
+    # Busca saldo do setor para o header
+    saldo_global_setor = get_saldo_global(setor_do_usuario)
+
     return render_template(
         "dashboard.html",
         user_role=session.get("user_role"),
-        saldo_global=get_saldo_global() if is_financeiro() else None, 
-        chart_data_json=chart_data_json, # Passa a estrutura COMPLETA
+        saldo_global=saldo_global_setor if is_financeiro() else None, 
+        chart_data_json=chart_data_json,
         pendentes_antigas=pendentes_antigas, 
         filtro_data_inicio=data_inicio, 
         filtro_data_fim=data_fim
     )
 
+# ==========================================================
+# ROTA reject_fechamento ATUALIZADA
+# Filtra por 'setor'
+# ==========================================================
 @app.route("/reject_fechamento/<id>", methods=["POST"])
 def reject_fechamento(id):
     if not is_gestor():
         flash("Acesso negado.")
         return redirect(url_for("index"))
+    
+    setor_do_usuario = user_setor()
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
-    cursor.execute("SELECT status FROM rd WHERE id=%s", (id,))
+    cursor.execute("SELECT status FROM rd WHERE id=%s AND setor = %s", (id, setor_do_usuario))
     row = cursor.fetchone()
     if not row or row[0] != "Fechamento Solicitado":
         conn.close()
@@ -1145,8 +1187,8 @@ def reject_fechamento(id):
     cursor.execute("""
     UPDATE rd
     SET status='Fechamento Recusado', motivo_recusa=%s
-    WHERE id=%s
-    """, (motivo, id))
+    WHERE id=%s AND setor = %s
+    """, (motivo, id, setor_do_usuario))
 
     detalhe_motivo = f"Motivo: {motivo}"
     registrar_historico(conn, id, "Fechamento Recusado pelo Gestor", detalhe_motivo)
@@ -1156,7 +1198,6 @@ def reject_fechamento(id):
     conn.close()
     flash("Fechamento recusado com sucesso.")
     
-    # MODIFICADO: Captura a aba do formulário com um padrão inteligente.
     active_tab = request.form.get('active_tab', 'tab4')
     return redirect(url_for("index", active_tab=active_tab))
 
@@ -1165,25 +1206,33 @@ def reenviar_fechamento(id):
     flash("Utilize o botão 'Corrigir e reenviar' para editar a RD.")
     return redirect(url_for("index"))
 
+# ==========================================================
+# ROTA edit_saldo ATUALIZADA
+# Edita o saldo do 'setor' do financeiro
+# ==========================================================
 @app.route("/edit_saldo", methods=["POST"])
 def edit_saldo():
     if not is_financeiro():
         flash("Acesso negado.")
         return redirect(url_for("index"))
 
+    setor_do_usuario = user_setor() # Pega o setor do financeiro
     try:
         novo_saldo = float(request.form["saldo_global"].replace(",", "."))
     except:
         flash("Saldo inválido.")
         return redirect(url_for("index"))
 
-    set_saldo_global(novo_saldo)
-    flash("Saldo Global atualizado com sucesso.")
+    set_saldo_global(setor_do_usuario, novo_saldo) # Atualiza o saldo do seu setor
+    flash(f"Saldo Global do setor '{setor_do_usuario}' atualizado com sucesso.")
     
-    # MODIFICADO: Captura a aba do formulário.
     active_tab = request.form.get('active_tab', 'tab1')
     return redirect(url_for("index", active_tab=active_tab))
 
+# ==========================================================
+# ROTA delete_file ATUALIZADA
+# Filtra por 'setor'
+# ==========================================================
 @app.route("/delete_file/<id>", methods=["POST"])
 def delete_file(id):
     filename = request.form.get("filename")
@@ -1191,9 +1240,10 @@ def delete_file(id):
         flash("Nenhum arquivo para excluir.")
         return redirect(url_for("index"))
 
+    setor_do_usuario = user_setor()
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
-    cursor.execute("SELECT arquivos, status, solicitante FROM rd WHERE id=%s", (id,))
+    cursor.execute("SELECT arquivos, status, solicitante FROM rd WHERE id=%s AND setor = %s", (id, setor_do_usuario))
     row = cursor.fetchone()
     if not row:
         conn.close()
@@ -1220,25 +1270,29 @@ def delete_file(id):
     delete_file_from_r2(filename)
     arq_list.remove(filename)
     new_str = ",".join(arq_list) if arq_list else None
-    cursor.execute("UPDATE rd SET arquivos=%s WHERE id=%s", (new_str, id))
+    cursor.execute("UPDATE rd SET arquivos=%s WHERE id=%s AND setor = %s", (new_str, id, setor_do_usuario))
     conn.commit()
     cursor.close()
     conn.close()
     flash("Arquivo excluído com sucesso.")
     
-    # MODIFICADO: Usa a lógica da aba ativa em vez de request.referrer
     active_tab = request.form.get('active_tab', 'tab1')
     return redirect(url_for("index", active_tab=active_tab))
 
+# ==========================================================
+# ROTA registrar_saldo_devolvido ATUALIZADA
+# Filtra por 'setor' e devolve saldo para o 'setor'
+# ==========================================================
 @app.route("/registrar_saldo_devolvido/<id>", methods=["POST"])
 def registrar_saldo_devolvido(id):
     if not is_financeiro():
         flash("Acesso negado.")
         return redirect(url_for("index"))
 
+    setor_do_usuario = user_setor()
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
-    cursor.execute("SELECT valor, valor_adicional, valor_despesa, data_saldo_devolvido, status FROM rd WHERE id=%s", (id,))
+    cursor.execute("SELECT valor, valor_adicional, valor_despesa, data_saldo_devolvido, status FROM rd WHERE id=%s AND setor = %s", (id, setor_do_usuario))
     row = cursor.fetchone()
     if not row:
         conn.close()
@@ -1253,19 +1307,19 @@ def registrar_saldo_devolvido(id):
         conn.close()
         flash("Ação permitida apenas para RDs em 'Saldos a Devolver'.")
         return redirect(url_for("index"))
+    
     total_cred = val_sol + (val_adic or 0)
-    if total_cred < (val_desp or 0):
-        conn.close()
-        flash("Despesa maior que o total de créditos.")
-        return redirect(url_for("index"))
     saldo_dev = total_cred - (val_desp or 0)
-    saldo = get_saldo_global()
-    set_saldo_global(saldo + saldo_dev)
+    
+    # Devolve saldo para o SETOR
+    saldo_setor = get_saldo_global(setor_do_usuario)
+    set_saldo_global(setor_do_usuario, saldo_setor + saldo_dev)
+    
     now = datetime.now().strftime("%Y-%m-%d")
     cursor.execute("""
     UPDATE rd SET data_saldo_devolvido=%s, status='Fechado'
-    WHERE id=%s
-    """, (now, id))
+    WHERE id=%s AND setor = %s
+    """, (now, id, setor_do_usuario))
 
     detalhe_devolvido = f"Valor devolvido ao saldo global: R$ {format_currency(saldo_dev)}"
     registrar_historico(conn, id, "Devolução de Saldo Registrada", detalhe_devolvido)
@@ -1275,68 +1329,58 @@ def registrar_saldo_devolvido(id):
     conn.close()
     flash(f"Saldo devolvido com sucesso. Valor= R${format_currency(saldo_dev)}")
     
-    # MODIFICADO: Captura a aba do formulário com um padrão inteligente.
     active_tab = request.form.get('active_tab', 'tab7')
     return redirect(url_for("index", active_tab=active_tab))
 
+# ==========================================================
+# ROTA export_excel ATUALIZADA
+# Exporta dados apenas do 'setor'
+# ==========================================================
 @app.route("/export_excel", methods=["GET"])
 def export_excel():
+    if "user_role" not in session:
+        return redirect(url_for("index"))
+        
+    setor_do_usuario = user_setor()
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
-    cursor.execute("SELECT * FROM rd ORDER BY id ASC")
+    cursor.execute("SELECT * FROM rd WHERE setor = %s ORDER BY id ASC", (setor_do_usuario,))
     rd_list = cursor.fetchall()
-    saldo_global = get_saldo_global()
+    saldo_global_setor = get_saldo_global(setor_do_usuario)
     output = io.BytesIO()
     wb = xlsxwriter.Workbook(output, {"in_memory": True})
-    ws = wb.add_worksheet("Relatorio")
+    ws = wb.add_worksheet(f"Relatorio {setor_do_usuario}")
 
     header = [
         "Número RD", "Data Solicitação", "Solicitante", "Funcionário", "Valor Solicitado",
         "Valor Adicional", "Data do Adicional", "Centro de Custo", "Unidade de Negócio",
         "Valor Gasto", "Saldo a Devolver", "Data de Fechamento", "Status", "Data Crédito Solicitado",
-        "Data Crédito Liberado", "Data Débito Despesa", "Pronto Para Fechamento", "Saldo Global"
+        "Data Crédito Liberado", "Data Débito Despesa", "Pronto Para Fechamento", f"Saldo Global ({setor_do_usuario})"
     ]
     for col, h in enumerate(header):
         ws.write(0, col, h)
 
     rowi = 1
     for rd_row in rd_list:
-        rd_id = rd_row[0]
-        rd_data = rd_row[3]
-        rd_solic = rd_row[1]
-        rd_func = rd_row[2]
-        rd_valor = rd_row[5]
-        rd_val_adic = rd_row[7]
-        rd_adic_data = rd_row[8]
-        rd_ccusto = rd_row[4]
-        rd_unidade_negocio = rd_row[18]
-        rd_desp = rd_row[9]
-        rd_saldo_dev = rd_row[10]
-        rd_data_fech = rd_row[11]
-        rd_status = rd_row[6]
-        rd_data_cred_solic = rd_row[22]
-        rd_data_cred_liber = rd_row[23]
-        rd_data_deb_desp = rd_row[24]
-        rd_pronto_fechamento = rd_row[35] if len(rd_row) > 35 else False
-
-        ws.write(rowi, 0, rd_id)
-        ws.write(rowi, 1, str(rd_data) if rd_data else "")
-        ws.write(rowi, 2, rd_solic)
-        ws.write(rowi, 3, rd_func)
-        ws.write(rowi, 4, float(rd_valor or 0))
-        ws.write(rowi, 5, float(rd_val_adic or 0))
-        ws.write(rowi, 6, str(rd_adic_data) if rd_adic_data else "")
-        ws.write(rowi, 7, rd_ccusto)
-        ws.write(rowi, 8, rd_unidade_negocio if rd_unidade_negocio else "")
-        ws.write(rowi, 9, float(rd_desp or 0))
-        ws.write(rowi, 10, float(rd_saldo_dev or 0))
-        ws.write(rowi, 11, str(rd_data_fech) if rd_data_fech else "")
-        ws.write(rowi, 12, rd_status)
-        ws.write(rowi, 13, str(rd_data_cred_solic) if rd_data_cred_solic else "")
-        ws.write(rowi, 14, str(rd_data_cred_liber) if rd_data_cred_liber else "")
-        ws.write(rowi, 15, str(rd_data_deb_desp) if rd_data_deb_desp else "")
-        ws.write(rowi, 16, "Sim" if rd_pronto_fechamento else "Não")
-        ws.write(rowi, 17, float(saldo_global))
+        # Mapeamento por nome de coluna para segurança
+        ws.write(rowi, 0, rd_row.get('id'))
+        ws.write(rowi, 1, str(rd_row.get('data', '')))
+        ws.write(rowi, 2, rd_row.get('solicitante'))
+        ws.write(rowi, 3, rd_row.get('funcionario'))
+        ws.write(rowi, 4, float(rd_row.get('valor', 0) or 0))
+        ws.write(rowi, 5, float(rd_row.get('valor_adicional', 0) or 0))
+        ws.write(rowi, 6, str(rd_row.get('adicional_data', '')))
+        ws.write(rowi, 7, rd_row.get('centro_custo'))
+        ws.write(rowi, 8, rd_row.get('unidade_negocio', ''))
+        ws.write(rowi, 9, float(rd_row.get('valor_despesa', 0) or 0))
+        ws.write(rowi, 10, float(rd_row.get('saldo_devolver', 0) or 0))
+        ws.write(rowi, 11, str(rd_row.get('data_fechamento', '')))
+        ws.write(rowi, 12, rd_row.get('status'))
+        ws.write(rowi, 13, str(rd_row.get('data_credito_solicitado', '')))
+        ws.write(rowi, 14, str(rd_row.get('data_credito_liberado', '')))
+        ws.write(rowi, 15, str(rd_row.get('data_debito_despesa', '')))
+        ws.write(rowi, 16, "Sim" if rd_row.get('pronto_fechamento') else "Não")
+        ws.write(rowi, 17, float(saldo_global_setor))
         rowi += 1
 
     wb.close()
@@ -1346,20 +1390,25 @@ def export_excel():
     return send_file(
         output,
         as_attachment=True,
-        download_name=f"Relatorio_RD_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+        download_name=f"Relatorio_RD_{setor_do_usuario}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
         mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
+# ==========================================================
+# ROTA export_historico ATUALIZADA
+# Exporta dados apenas do 'setor'
+# ==========================================================
 @app.route("/export_historico", methods=["GET"])
 def export_historico():
     if not is_financeiro():
         flash("Acesso negado.")
         return redirect(url_for("index"))
 
+    setor_do_usuario = user_setor()
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
     try:
-        cursor.execute("SELECT rd_id, solicitante, valor, data_exclusao, usuario_excluiu FROM historico_exclusao ORDER BY data_exclusao DESC")
+        cursor.execute("SELECT rd_id, solicitante, valor, data_exclusao, usuario_excluiu FROM historico_exclusao WHERE setor = %s ORDER BY data_exclusao DESC", (setor_do_usuario,))
         historico = cursor.fetchall()
     except psycopg2.Error as e:
         conn.close()
@@ -1369,11 +1418,11 @@ def export_historico():
 
     if not historico:
         conn.close()
-        flash("Nenhum registro de exclusão encontrado.")
+        flash(f"Nenhum registro de exclusão encontrado para o setor '{setor_do_usuario}'.")
         return redirect(url_for("index"))
 
     output = io.StringIO()
-    output.write("Histórico de Exclusões de RDs\n")
+    output.write(f"Histórico de Exclusões de RDs - Setor: {setor_do_usuario}\n")
     output.write("=" * 50 + "\n")
     for reg in historico:
         rd_id, solic, valor, data_exc, usuario = reg
@@ -1389,25 +1438,24 @@ def export_historico():
     return send_file(
         buffer,
         as_attachment=True,
-        download_name=f"Historico_Exclusoes_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
+        download_name=f"Historico_Exclusoes_{setor_do_usuario}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
         mimetype="text/plain"
     )
 
-
+# ==========================================================
+# ROTA historico_geral ATUALIZADA
+# Filtra por 'setor'
+# ==========================================================
 @app.route("/historico_geral")
 def historico_geral():
-    """
-    Exibe uma visão resumida do histórico por RD.
-    Mostra apenas a última ação de cada RD.
-    """
     if "user_role" not in session:
         flash("Acesso negado.")
         return redirect(url_for("index"))
 
+    setor_do_usuario = user_setor()
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
 
-    # ============ QUERY OTIMIZADA: ÚLTIMA AÇÃO + CONTAGEM EM UMA SÓ QUERY ============
     query = """
     WITH ultima_acao_por_rd AS (
         SELECT DISTINCT ON (rd_id)
@@ -1417,13 +1465,13 @@ def historico_geral():
             usuario as usuario_ultima_acao,
             detalhes as detalhes_ultima_acao
         FROM historico_acoes
-        WHERE rd_id IS NOT NULL
+        WHERE rd_id IS NOT NULL AND setor = %s
         ORDER BY rd_id, data_acao DESC
     ),
     contagem_por_rd AS (
         SELECT rd_id, COUNT(*) as total_movimentacoes
         FROM historico_acoes
-        WHERE rd_id IS NOT NULL
+        WHERE rd_id IS NOT NULL AND setor = %s
         GROUP BY rd_id
     )
     SELECT 
@@ -1441,39 +1489,34 @@ def historico_geral():
     """
     
     try:
-        cursor.execute(query)
+        cursor.execute(query, (setor_do_usuario, setor_do_usuario))
         resumo_rds = cursor.fetchall()
     except psycopg2.Error as e:
         logging.error(f"Erro ao consultar histórico resumido: {e}")
         conn.rollback()
         resumo_rds = []
 
-    # ============ ESTATÍSTICAS (queries separadas, sem rollback desnecessário) ============
     total_rds = len(resumo_rds)
     
-    # Total geral de ações
     total_acoes = 0
     try:
-        cursor.execute("SELECT COUNT(*) as total FROM historico_acoes WHERE rd_id IS NOT NULL")
+        cursor.execute("SELECT COUNT(*) as total FROM historico_acoes WHERE rd_id IS NOT NULL AND setor = %s", (setor_do_usuario,))
         total_acoes_row = cursor.fetchone()
         if total_acoes_row:
             total_acoes = total_acoes_row['total']
     except psycopg2.Error as e:
         logging.error(f"Erro ao contar ações: {e}")
-        total_acoes = 0
     
-    # Última ação do sistema
     ultima_acao = "N/A"
     try:
         cursor.execute(
-            "SELECT MAX(data_acao) as data_acao FROM historico_acoes WHERE rd_id IS NOT NULL"
+            "SELECT MAX(data_acao) as data_acao FROM historico_acoes WHERE rd_id IS NOT NULL AND setor = %s", (setor_do_usuario,)
         )
         ultima_acao_row = cursor.fetchone()
         if ultima_acao_row and ultima_acao_row['data_acao']:
             ultima_acao = ultima_acao_row['data_acao'].strftime('%d/%m/%Y %H:%M')
     except psycopg2.Error as e:
         logging.error(f"Erro ao buscar última ação: {e}")
-        ultima_acao = "N/A"
 
     conn.close()
 
@@ -1485,21 +1528,19 @@ def historico_geral():
         ultima_acao=ultima_acao
     )
 
-
+# ==========================================================
+# ROTA historico_geral_completo ATUALIZADA
+# Filtra por 'setor'
+# ==========================================================
 @app.route("/historico_geral_completo")
 def historico_geral_completo():
-    """
-    Exibe o histórico completo com todos os eventos de todas as RDs.
-    Com filtros avançados.
-    """
     if "user_role" not in session:
-        flash("Acesso negado.")
         return redirect(url_for("index"))
 
+    setor_do_usuario = user_setor()
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
 
-    # ============ CAPTURA DE FILTROS ============
     filtro_rd_id = request.args.get('rd_id', '').strip()
     filtro_usuario = request.args.get('usuario', '').strip()
     filtro_acao = request.args.get('acao', '').strip()
@@ -1507,61 +1548,41 @@ def historico_geral_completo():
     filtro_data_fim = request.args.get('data_fim', '').strip()
     filtro_periodo = request.args.get('periodo', '').strip()
 
-    # ============ MONTAGEM DA QUERY DINÂMICA ============
-    query = "SELECT * FROM historico_acoes WHERE 1=1"
-    params = []
+    # Filtro base por SETOR
+    query = "SELECT * FROM historico_acoes WHERE setor = %s"
+    params = [setor_do_usuario]
 
-    # Filtro por RD
     if filtro_rd_id:
         query += " AND rd_id = %s"
         params.append(filtro_rd_id)
-
-    # Filtro por Usuário
     if filtro_usuario:
         query += " AND usuario = %s"
         params.append(filtro_usuario)
-
-    # Filtro por Ação
     if filtro_acao:
         query += " AND acao = %s"
         params.append(filtro_acao)
 
-    # Filtro por Período Rápido
     if filtro_periodo:
         hoje = datetime.now().date()
-        if filtro_periodo == 'hoje':
-            data_inicio = hoje
-            data_fim = hoje
-        elif filtro_periodo == '7dias':
-            data_inicio = hoje - timedelta(days=7)
-            data_fim = hoje
-        elif filtro_periodo == '30dias':
-            data_inicio = hoje - timedelta(days=30)
-            data_fim = hoje
-        elif filtro_periodo == '90dias':
-            data_inicio = hoje - timedelta(days=90)
-            data_fim = hoje
-        else:
-            data_inicio = None
-            data_fim = None
+        data_inicio, data_fim = None, None
+        if filtro_periodo == 'hoje': data_inicio, data_fim = hoje, hoje
+        elif filtro_periodo == '7dias': data_inicio, data_fim = hoje - timedelta(days=7), hoje
+        elif filtro_periodo == '30dias': data_inicio, data_fim = hoje - timedelta(days=30), hoje
+        elif filtro_periodo == '90dias': data_inicio, data_fim = hoje - timedelta(days=90), hoje
         
         if data_inicio and data_fim:
             query += " AND DATE(data_acao) >= %s AND DATE(data_acao) <= %s"
             params.extend([data_inicio, data_fim])
     else:
-        # Filtro por Datas Específicas
         if filtro_data_inicio:
             query += " AND DATE(data_acao) >= %s"
             params.append(filtro_data_inicio)
-        
         if filtro_data_fim:
             query += " AND DATE(data_acao) <= %s"
             params.append(filtro_data_fim)
 
-    # Ordenação padrão
     query += " ORDER BY data_acao DESC"
 
-    # ============ EXECUÇÃO DA QUERY ============
     try:
         cursor.execute(query, params)
         historico_completo = cursor.fetchall()
@@ -1570,47 +1591,24 @@ def historico_geral_completo():
         conn.rollback()
         historico_completo = []
 
-    # ============ ESTATÍSTICAS ============
+    # Estatísticas baseadas nos resultados filtrados
     total_acoes = len(historico_completo)
-    
-    # Usuários únicos
     usuarios_unicos = set(evt['usuario'] for evt in historico_completo if evt['usuario'])
-    usuarios_unicos_count = len(usuarios_unicos)
-    
-    # RDs afetadas
     rds_afetadas = set(evt['rd_id'] for evt in historico_completo if evt['rd_id'])
-    rds_afetadas_count = len(rds_afetadas)
-
-    # Período exibido
+    periodo = "Sem dados"
     if historico_completo:
-        data_mais_recente = historico_completo[0]['data_acao'].strftime('%d/%m/%Y')
-        data_mais_antiga = historico_completo[-1]['data_acao'].strftime('%d/%m/%Y')
-        periodo = f"{data_mais_antiga} a {data_mais_recente}"
-    else:
-        periodo = "Sem dados"
+        periodo = f"{historico_completo[-1]['data_acao'].strftime('%d/%m/%Y')} a {historico_completo[0]['data_acao'].strftime('%d/%m/%Y')}"
 
-    # ============ LISTAS PARA DROPDOWNS ============
-    # Usuários disponíveis
+    # Listas para dropdowns (baseadas apenas no setor do usuário)
     try:
-        cursor.execute(
-            "SELECT DISTINCT usuario FROM historico_acoes WHERE usuario IS NOT NULL ORDER BY usuario"
-        )
+        cursor.execute("SELECT DISTINCT usuario FROM historico_acoes WHERE usuario IS NOT NULL AND setor = %s ORDER BY usuario", (setor_do_usuario,))
         usuarios_disponiveis = [row['usuario'] for row in cursor.fetchall()]
-    except psycopg2.Error as e:
-        logging.error(f"Erro ao buscar usuários: {e}")
-        conn.rollback()
-        usuarios_disponiveis = []
-
-    # Ações disponíveis
-    try:
-        cursor.execute(
-            "SELECT DISTINCT acao FROM historico_acoes WHERE acao IS NOT NULL ORDER BY acao"
-        )
+        cursor.execute("SELECT DISTINCT acao FROM historico_acoes WHERE acao IS NOT NULL AND setor = %s ORDER BY acao", (setor_do_usuario,))
         acoes_disponiveis = [row['acao'] for row in cursor.fetchall()]
     except psycopg2.Error as e:
-        logging.error(f"Erro ao buscar ações: {e}")
+        logging.error(f"Erro ao buscar filtros: {e}")
         conn.rollback()
-        acoes_disponiveis = []
+        usuarios_disponiveis, acoes_disponiveis = [], []
 
     conn.close()
 
@@ -1618,19 +1616,12 @@ def historico_geral_completo():
         "historico_geral_completo.html",
         historico=historico_completo,
         total_acoes=total_acoes,
-        usuarios_unicos=usuarios_unicos_count,
-        rds_afetadas=rds_afetadas_count,
+        usuarios_unicos=len(usuarios_unicos),
+        rds_afetadas=len(rds_afetadas),
         periodo=periodo,
-        # Filtros aplicados
-        filtro_rd_id=filtro_rd_id,
-        filtro_usuario=filtro_usuario,
-        filtro_acao=filtro_acao,
-        filtro_data_inicio=filtro_data_inicio,
-        filtro_data_fim=filtro_data_fim,
-        filtro_periodo=filtro_periodo,
-        # Opções dos dropdowns
-        usuarios_disponiveis=usuarios_disponiveis,
-        acoes_disponiveis=acoes_disponiveis
+        filtro_rd_id=filtro_rd_id, filtro_usuario=filtro_usuario, filtro_acao=filtro_acao,
+        filtro_data_inicio=filtro_data_inicio, filtro_data_fim=filtro_data_fim, filtro_periodo=filtro_periodo,
+        usuarios_disponiveis=usuarios_disponiveis, acoes_disponiveis=acoes_disponiveis
     )
 
 @app.route("/logout")
@@ -1641,10 +1632,23 @@ def logout():
 
 @app.route("/cadastro_funcionario", methods=["GET"])
 def cadastro_funcionario():
-    return render_template("cadastro_funcionario.html")
+    # Apenas redireciona, o formulário agora está no admin
+    if is_financeiro():
+        return redirect(url_for('admin_usuarios'))
+    return render_template("cadastro_funcionario.html") # Mantém para não quebrar links
 
+# ==========================================================
+# ROTA cadastrar_funcionario ATUALIZADA
+# Adiciona 'setor'
+# ==========================================================
 @app.route("/cadastrar_funcionario", methods=["POST"])
 def cadastrar_funcionario():
+    # Esta rota agora só deve ser usada pelo financeiro no admin
+    if not is_financeiro():
+        flash("Acesso negado.")
+        return redirect(url_for("index"))
+        
+    setor_do_usuario = user_setor() # O funcionário é cadastrado no setor do financeiro
     nome = request.form["nome"].strip()
     centro_custo = request.form["centroCusto"].strip()
     unidade_negocio = request.form["unidadeNegocio"].strip()
@@ -1652,41 +1656,56 @@ def cadastrar_funcionario():
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
     cursor.execute("""
-    INSERT INTO funcionarios (nome, centro_custo, unidade_negocio)
-    VALUES (%s, %s, %s)
-    """, (nome, centro_custo, unidade_negocio))
+    INSERT INTO funcionarios (nome, centro_custo, unidade_negocio, setor)
+    VALUES (%s, %s, %s, %s)
+    """, (nome, centro_custo, unidade_negocio, setor_do_usuario))
     conn.commit()
     cursor.close()
     conn.close()
     flash("Funcionário cadastrado com sucesso.")
-    return redirect(url_for("cadastro_funcionario"))
+    
+    # Redireciona de volta para a consulta de funcionários
+    return redirect(url_for("consulta_funcionario"))
 
+# ==========================================================
+# ROTA consulta_funcionario ATUALIZADA
+# Filtra por 'setor'
+# ==========================================================
 @app.route("/consulta_funcionario", methods=["GET"])
 def consulta_funcionario():
+    if "user_role" not in session:
+        return redirect(url_for("index"))
+        
+    setor_do_usuario = user_setor()
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
-    cursor.execute("SELECT * FROM funcionarios ORDER BY nome ASC")
+    cursor.execute("SELECT * FROM funcionarios WHERE setor = %s ORDER BY nome ASC", (setor_do_usuario,))
     funcionarios = cursor.fetchall()
     conn.close()
     return render_template("consulta_funcionario.html", funcionarios=funcionarios)
 
+# ==========================================================
+# ROTAS DE DIVERGENTES ATUALIZADAS
+# Filtram por 'setor'
+# ==========================================================
 @app.route("/marcar_divergente/<id>", methods=["GET", "POST"])
 def marcar_divergente(id):
     if "user_role" not in session or session["user_role"] not in ["gestor", "solicitante"]:
         flash("Ação não permitida.")
         return redirect(url_for("index"))
 
+    setor_do_usuario = user_setor()
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
-
-    cursor.execute("SELECT status FROM rd WHERE id = %s", (id,))
+    cursor.execute("SELECT status FROM rd WHERE id = %s AND setor = %s", (id, setor_do_usuario))
     rd = cursor.fetchone()
     if not rd:
         flash("RD não encontrada.")
         cursor.close()
         conn.close()
         return redirect(url_for("index"))
-
+    
+    # ... (resto da lógica é igual)
     if rd['status'] == 'Fechado':
         flash("Não é possível marcar uma RD já fechada como divergente.")
         cursor.close()
@@ -1703,8 +1722,8 @@ def marcar_divergente(id):
         UPDATE rd
         SET anexo_divergente = TRUE,
             motivo_divergente = %s
-        WHERE id = %s
-        """, (motivo_div, id))
+        WHERE id = %s AND setor = %s
+        """, (motivo_div, id, setor_do_usuario))
         
         detalhe_motivo = f"Motivo: {motivo_div}" if motivo_div else "Nenhum motivo informado."
         registrar_historico(conn, id, "Marcada como Divergente", detalhe_motivo)
@@ -1714,7 +1733,6 @@ def marcar_divergente(id):
         conn.close()
         flash("RD marcada como divergente.")
         
-        # MODIFICADO: Captura a aba do formulário.
         active_tab = request.form.get('active_tab', 'tab3')
         return redirect(url_for("index", active_tab=active_tab))
     
@@ -1724,9 +1742,10 @@ def anexos_divergentes():
         flash("Acesso negado.")
         return redirect(url_for("index"))
 
+    setor_do_usuario = user_setor()
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
-    cursor.execute("SELECT * FROM rd WHERE anexo_divergente = TRUE ORDER BY id")
+    cursor.execute("SELECT * FROM rd WHERE anexo_divergente = TRUE AND setor = %s ORDER BY id", (setor_do_usuario,))
     divergentes = cursor.fetchall()
     cursor.close()
     conn.close()
@@ -1735,14 +1754,16 @@ def anexos_divergentes():
 
 @app.route("/corrigir_divergente/<id>", methods=["GET", "POST"])
 def corrigir_divergente(id):
-    if "user_role" not in session or session["user_role"] != "supervisor":
+    if not is_supervisor():
         flash("Acesso negado.")
         return redirect(url_for("index"))
 
+    setor_do_usuario = user_setor()
+    
     if request.method == "GET":
         conn = get_pg_connection()
         cursor = conn.cursor(cursor_factory=DictCursor)
-        cursor.execute("SELECT * FROM rd WHERE id = %s", (id,))
+        cursor.execute("SELECT * FROM rd WHERE id = %s AND setor = %s", (id, setor_do_usuario))
         rd = cursor.fetchone()
         cursor.close()
         conn.close()
@@ -1754,8 +1775,13 @@ def corrigir_divergente(id):
         conn = get_pg_connection()
         cursor = conn.cursor(cursor_factory=DictCursor)
 
-        cursor.execute("SELECT arquivos FROM rd WHERE id = %s", (id,))
+        cursor.execute("SELECT arquivos FROM rd WHERE id = %s AND setor = %s", (id, setor_do_usuario))
         row = cursor.fetchone()
+        if not row:
+            flash("RD não encontrada.")
+            conn.close()
+            return redirect(url_for("anexos_divergentes"))
+            
         a_list = row[0].split(",") if (row and row[0]) else []
 
         if "arquivo" in request.files:
@@ -1766,15 +1792,15 @@ def corrigir_divergente(id):
                     a_list.append(fname)
         new_arq_str = ",".join(a_list) if a_list else None
 
-        cursor.execute("UPDATE rd SET arquivos = %s WHERE id = %s", (new_arq_str, id))
+        cursor.execute("UPDATE rd SET arquivos = %s WHERE id = %s AND setor = %s", (new_arq_str, id, setor_do_usuario))
         conn.commit()
 
         cursor.execute("""
         UPDATE rd
         SET anexo_divergente = FALSE,
             motivo_divergente = NULL
-        WHERE id = %s
-        """, (id,))
+        WHERE id = %s AND setor = %s
+        """, (id, setor_do_usuario))
         
         registrar_historico(conn, id, "Divergência Corrigida")
         
@@ -1787,13 +1813,14 @@ def corrigir_divergente(id):
     
 @app.route("/marcar_pronto_fechamento/<id>", methods=["POST"])
 def marcar_pronto_fechamento(id):
-    if user_role() != "supervisor":
+    if not is_supervisor():
         flash("Acesso negado.")
         return redirect(url_for("index"))
 
+    setor_do_usuario = user_setor()
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
-    cursor.execute("SELECT pronto_fechamento FROM rd WHERE id=%s", (id,))
+    cursor.execute("SELECT pronto_fechamento FROM rd WHERE id=%s AND setor = %s", (id, setor_do_usuario))
     row = cursor.fetchone()
     if not row:
         flash("RD não encontrada.")
@@ -1801,21 +1828,133 @@ def marcar_pronto_fechamento(id):
         return redirect(url_for("index"))
 
     novo_valor = not row["pronto_fechamento"]
-    cursor.execute("UPDATE rd SET pronto_fechamento=%s WHERE id=%s", (novo_valor, id))
+    cursor.execute("UPDATE rd SET pronto_fechamento=%s WHERE id=%s AND setor = %s", (novo_valor, id, setor_do_usuario))
+    
+    if novo_valor:
+        registrar_historico(conn, id, "Marcada como Pronta para Fechamento")
+        flash("RD marcada como pronta para fechamento.")
+    else:
+        registrar_historico(conn, id, "Desmarcada como Pronta para Fechamento")
+        flash("RD desmarcada como pronta para fechamento.")
+        
     conn.commit()
     cursor.close()
     conn.close()
-
-    if novo_valor:
-        flash("RD marcada como pronta para fechamento.")
-    else:
-        flash("RD desmarcada como pronta para fechamento.")
-        
-    # MODIFICADO: Captura a aba do formulário com um padrão inteligente.
+    
     active_tab = request.form.get('active_tab', 'tab3')
     return redirect(url_for("index", active_tab=active_tab))
 
 
+# ==========================================================
+# NOVAS ROTAS DE ADMINISTRAÇÃO (FINANCEIRO)
+# ==========================================================
+
+@app.route("/admin")
+def admin_hub():
+    """Página principal de administração para o financeiro."""
+    if not is_financeiro():
+        flash("Acesso negado.")
+        return redirect(url_for("index"))
+        
+    setor_do_usuario = user_setor()
+    conn = get_pg_connection()
+    cursor = conn.cursor(cursor_factory=DictCursor)
+    
+    # Lista setores (da tabela de saldos)
+    cursor.execute("SELECT * FROM saldo_global_por_setor ORDER BY setor")
+    setores = cursor.fetchall()
+    
+    # Lista usuários (do setor do financeiro)
+    cursor.execute("SELECT * FROM usuarios WHERE setor = %s ORDER BY username", (setor_do_usuario,))
+    usuarios_setor = cursor.fetchall()
+    
+    conn.close()
+    
+    return render_template(
+        "admin.html", 
+        user_role=user_role(),
+        setores=setores,
+        usuarios_setor=usuarios_setor,
+        setor_atual=setor_do_usuario
+    )
+
+@app.route("/admin/add_setor", methods=["POST"])
+def add_setor():
+    """Adiciona um novo setor (ex: Comercial) com saldo zerado."""
+    if not is_financeiro():
+        flash("Acesso negado.")
+        return redirect(url_for("index"))
+        
+    nome_setor = request.form.get("nome_setor", "").strip().lower()
+    
+    if not nome_setor:
+        flash("Nome do setor não pode ser vazio.")
+        return redirect(url_for("admin_hub"))
+        
+    conn = get_pg_connection()
+    cursor = conn.cursor()
+    try:
+        # Adiciona o novo setor com saldo 0
+        cursor.execute(
+            "INSERT INTO saldo_global_por_setor (setor, saldo) VALUES (%s, 0)",
+            (nome_setor,)
+        )
+        conn.commit()
+        flash(f"Setor '{nome_setor}' criado com sucesso (base zerada).")
+    except psycopg2.IntegrityError:
+        conn.rollback()
+        flash(f"Erro: Setor '{nome_setor}' já existe.")
+    except Exception as e:
+        conn.rollback()
+        flash(f"Erro ao criar setor: {e}")
+    finally:
+        cursor.close()
+        conn.close()
+        
+    return redirect(url_for("admin_hub"))
+
+@app.route("/admin/add_usuario", methods=["POST"])
+def add_usuario():
+    """Adiciona um novo usuário (gestor, solicitante) a um setor."""
+    if not is_financeiro():
+        flash("Acesso negado.")
+        return redirect(url_for("index"))
+
+    username = request.form.get("username", "").strip()
+    password = request.form.get("password", "").strip()
+    role = request.form.get("role", "").strip()
+    setor = request.form.get("setor", "").strip() # Setor vem do dropdown
+
+    if not all([username, password, role, setor]):
+        flash("Todos os campos são obrigatórios para criar um usuário.")
+        return redirect(url_for("admin_hub"))
+        
+    # Gera o hash da senha
+    password_hash = generate_password_hash(password)
+    
+    conn = get_pg_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute(
+            "INSERT INTO usuarios (username, password_hash, role, setor) VALUES (%s, %s, %s, %s)",
+            (username, password_hash, role, setor)
+        )
+        conn.commit()
+        flash(f"Usuário '{username}' ({role} / {setor}) criado com sucesso.")
+    except psycopg2.IntegrityError:
+        conn.rollback()
+        flash(f"Erro: Usuário '{username}' já existe.")
+    except Exception as e:
+        conn.rollback()
+        flash(f"Erro ao criar usuário: {e}")
+    finally:
+        cursor.close()
+        conn.close()
+        
+    return redirect(url_for("admin_hub"))
+
+
+# ==========================================================
 if __name__ == "__main__":
     init_db()
     app.run(debug=True)
