@@ -339,7 +339,7 @@ def index():
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "").strip()
 
-        if username == "gestor" and password == "115289":
+        if username == "gestor" and password == "337146":
             session["user_role"] = "gestor"
             flash("Login como gestor bem-sucedido.")
         elif username == "financeiro" and password == "351073":
