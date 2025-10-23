@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard de Métricas</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+        referrerpolicy="no-referrer" />
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --primary-light: #3b82f6;
+            --primary-dark: #1d4ed8;
+            --secondary-color: #f59e0b;
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+            --warning-color: #f59e0b;
+            --background-color: #f1f5f9; /* Fundo mais claro */
+            --surface-color: #ffffff;
+            --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --border-color: #e2e8f0;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --header-height: 70px;
+            --border-radius: 12px;
+            --border-radius-sm: 8px;
+            --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--background-color);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        /* Header (mesmo estilo) */
+        .top-bar {
+            background: var(--surface-color);
+            height: var(--header-height);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .header-brand { display: flex; align-items: center; gap: 1rem; }
+        .logo { height: 50px; width: auto; }
+        .brand-text { font-size: 1.5rem; font-weight: 700; color: var(--primary-color); }
+        .header-actions { display: flex; align-items: center; gap: 1.5rem; }
+        .user-info { display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 1rem; background: var(--background-color); border-radius: var(--border-radius-sm); font-weight: 500; color: var(--text-primary); }
+        .saldo-info { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem 1rem; background: linear-gradient(135deg, var(--success-color), #059669); color: white; border-radius: var(--border-radius-sm); font-weight: 600; box-shadow: var(--card-shadow); }
+        .top-bar a { color: var(--danger-color); text-decoration: none; font-weight: 500; padding: 0.5rem 1rem; border-radius: var(--border-radius-sm); transition: var(--transition); }
+        .top-bar a:hover { background: var(--danger-color); color: white; }
+        .btn-back { color: var(--primary-color); background: rgba(37, 99, 235, 0.1); }
+        .btn-back:hover { background: var(--primary-color); color: white; }
+
+        /* Container Principal */
+        .container {
+            max-width: 1600px; /* Mais largo para o dashboard */
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        /* Barra de Filtros */
+        .filter-bar {
+            background: var(--surface-color);
+            padding: 1.5rem;
+            border-radius: var(--border-radius);
+            box-shadow: var(--card-shadow);
+            margin-bottom: 2rem;
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
+        .filter-bar form {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+        }
+        .filter-bar label {
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+        .filter-bar input[type="date"] {
+            padding: 0.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-sm);
+        }
+        .btn-filter {
+            padding: 0.5rem 1.5rem;
+            border: none;
+            border-radius: var(--border-radius-sm);
+            font-weight: 500;
+            cursor: pointer;
+            background: var(--primary-color);
+            color: white;
+            transition: var(--transition);
+        }
+        .btn-filter:hover {
+            background: var(--primary-dark);
+        }
+
+        /* Grid de KPIs */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .kpi-card {
+            background: var(--surface-color);
+            border-radius: var(--border-radius);
+            box-shadow: var(--card-shadow);
+            padding: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+        .kpi-icon {
+            font-size: 2.5rem;
+            padding: 1.25rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+        .kpi-icon.icon-gasto { background: var(--success-color); }
+        .kpi-icon.icon-pendente { background: var(--warning-color); }
+        .kpi-icon.icon-devolver { background: var(--danger-color); }
+        .kpi-icon.icon-tempo { background: var(--primary-color); }
+        
+        .kpi-info h3 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin: 0 0 0.25rem 0;
+        }
+        .kpi-info p {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+        /* Grid do Dashboard (Gráficos) */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        .chart-card {
+            background: var(--surface-color);
+            border-radius: var(--border-radius);
+            box-shadow: var(--card-shadow);
+            padding: 2rem;
+            border: 1px solid var(--border-color);
+        }
+        .chart-card h2 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        /* Grid de Ações */
+        .action-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+        }
+        .action-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .action-table th, .action-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .action-table th {
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+        .action-table td {
+            font-size: 0.875rem;
+        }
+        .action-table tr:last-child td {
+            border-bottom: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="top-bar">
+        <div class="header-brand">
+            <img src="https://pub-1e6f8559bc2b413c889fbf4860462599.r2.dev/logo_animado.gif" alt="Logo Tecsul" class="logo">
+            <div class="brand-text">Gerenciamento de RDs</div>
+        </div>
+        <div class="header-actions">
+            <a href="{{ url_for('index') }}" class="btn-back" style="text-decoration: none; padding: 0.5rem 1rem; border-radius: var(--border-radius-sm);">
+                <i class="fas fa-arrow-left"></i>
+                Voltar
+            </a>
+            <div class="user-info">
+                <i class="fas fa-user-circle"></i>
+                <span>{{ user_role }}</span>
+            </div>
+            {% if saldo_global is defined and saldo_global is not none %}
+            <div class="saldo-info">
+                <i class="fas fa-wallet"></i>
+                <span>Saldo Global: R${{ format_currency(saldo_global) }}</span>
+            </div>
+            {% endif %}
+            <a href="{{ url_for('logout') }}">
+                <i class="fas fa-sign-out-alt"></i>
+                Sair
+            </a>
+        </div>
+    </div>
+
+    <div class="container">
+        
+        <div class="filter-bar">
+            <form action="{{ url_for('dashboard') }}" method="GET">
+                <label for="data_inicio">De:</label>
+                <input type="date" id="data_inicio" name="data_inicio" value="{{ filtro_data_inicio }}">
+                <label for="data_fim">Até:</label>
+                <input type="date" id="data_fim" name="data_fim" value="{{ filtro_data_fim }}">
+                <button type="submit" class="btn-filter">
+                    <i class="fas fa-filter"></i>
+                    Filtrar
+                </button>
+            </form>
+        </div>
+
+        <div class="kpi-grid" id="kpiContainer">
+            </div>
+
+        <div class="dashboard-grid">
+            <div class="chart-card">
+                <h2><i class="fas fa-chart-line"></i> Evolução de Gastos (Total)</h2>
+                <canvas id="evolucaoMensalChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <h2><i class="fas fa-building"></i> Gasto por Centro de Custo (Período)</h2>
+                <canvas id="gastoPorCCChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <h2><i class="fas fa-tasks"></i> Distribuição de RDs por Status (Geral)</h2>
+                <canvas id="statusDistChart" style="max-height: 350px;"></canvas>
+            </div>
+            <div class="chart-card">
+                <h2><i class="fas fa-user-friends"></i> Top 5 Solicitantes por Gasto (Período)</h2>
+                <canvas id="topSolicitantesChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="action-grid">
+            <div class="chart-card">
+                <h2><i class="fas fa-exclamation-triangle"></i> Atenção: Top 5 RDs Pendentes mais Antigas</h2>
+                <table class="action-table">
+                    <thead>
+                        <tr>
+                            <th>RD ID</th>
+                            <th>Solicitante</th>
+                            <th>Data Solicitação</th>
+                            <th>Valor (R$)</th>
+                            <th>Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for rd in pendentes_antigas %}
+                        <tr>
+                            <td>{{ rd.id }}</td>
+                            <td>{{ rd.solicitante }}</td>
+                            <td>{{ rd.data.strftime('%d/%m/%Y') }}</td>
+                            <td>{{ "%.2f"|format(rd.valor) }}</td>
+                            <td>
+                                <a href="{{ url_for('index', active_tab='tab1') }}" style="color: var(--primary-color); text-decoration: none; font-weight: 500;">
+                                    Ver <i class="fas fa-external-link-alt fa-xs"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: var(--success-color); font-weight: 500;">
+                                <i class="fas fa-check-circle"></i> Nenhuma RD pendente. Ótimo trabalho!
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Pega os dados JSON injetados pelo Flask
+        const chartData = JSON.parse('{{ chart_data_json | safe }}');
+        const kpis = chartData.kpis;
+
+        // Função para formatar moeda
+        function formatCurrency(value) {
+            return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+        
+        // --- 1. Inserir KPIs Dinamicamente ---
+        const kpiContainer = document.getElementById('kpiContainer');
+        kpiContainer.innerHTML = `
+            <div class="kpi-card">
+                <div class="kpi-icon icon-gasto"><i class="fas fa-dollar-sign"></i></div>
+                <div class="kpi-info">
+                    <h3>${formatCurrency(kpis.gasto_total)}</h3>
+                    <p>Gasto Total (no período)</p>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon icon-pendente"><i class="fas fa-hourglass-half"></i></div>
+                <div class="kpi-info">
+                    <h3>${formatCurrency(kpis.valor_pendente)}</h3>
+                    <p>Pendente de Aprovação (Gestor)</p>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon icon-devolver"><i class="fas fa-hand-holding-usd"></i></div>
+                <div class="kpi-info">
+                    <h3>${kpis.saldos_devolver} RD(s)</h3>
+                    <p>Aguardando Devolução (Financeiro)</p>
+                </div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-icon icon-tempo"><i class="fas fa-tachometer-alt"></i></div>
+                <div class="kpi-info">
+                    <h3>${kpis.tempo_medio} dias</h3>
+                    <p>Aprovação (Pedido -> Liberação)</p>
+                </div>
+            </div>
+        `;
+
+        // Cores padrão para gráficos
+        const chartColors = [
+            'rgba(37, 99, 235, 0.8)',  // Azul
+            'rgba(245, 158, 11, 0.8)', // Amarelo
+            'rgba(16, 185, 129, 0.8)', // Verde
+            'rgba(239, 68, 68, 0.8)',  // Vermelho
+            'rgba(139, 92, 246, 0.8)', // Roxo
+            'rgba(236, 72, 153, 0.8)', // Rosa
+            'rgba(22, 163, 74, 0.8)',  // Verde Escuro
+            'rgba(14, 165, 233, 0.8)'  // Ciano
+        ];
+        
+        // --- 2. Iniciar Gráficos ---
+
+        // Gráfico 1: Evolução Mensal (Gráfico de Linha)
+        const ctx1 = document.getElementById('evolucaoMensalChart').getContext('2d');
+        new Chart(ctx1, {
+            type: 'line',
+            data: {
+                labels: chartData.evolucao_mensal.labels,
+                datasets: [{
+                    label: 'Total Gasto (R$)',
+                    data: chartData.evolucao_mensal.data,
+                    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                    borderColor: 'rgba(37, 99, 235, 1)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { callback: (val) => 'R$ ' + val.toLocaleString('pt-BR') }
+                    }
+                }
+            }
+        });
+
+        // Gráfico 2: Gasto por Centro de Custo (Gráfico de Barras)
+        const ctx2 = document.getElementById('gastoPorCCChart').getContext('2d');
+        new Chart(ctx2, {
+            type: 'bar',
+            data: {
+                labels: chartData.gasto_por_cc.labels,
+                datasets: [{
+                    label: 'Total Gasto (R$)',
+                    data: chartData.gasto_por_cc.data,
+                    backgroundColor: chartColors,
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { callback: (val) => 'R$ ' + val.toLocaleString('pt-BR') }
+                    }
+                }
+            }
+        });
+
+        // Gráfico 3: Distribuição por Status (Gráfico de Rosca/Doughnut)
+        const ctx3 = document.getElementById('statusDistChart').getContext('2d');
+        new Chart(ctx3, {
+            type: 'doughnut',
+            data: {
+                labels: chartData.status_dist.labels,
+                datasets: [{
+                    label: 'Total de RDs',
+                    data: chartData.status_dist.data,
+                    backgroundColor: chartColors,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'right' }
+                }
+            }
+        });
+        
+        // Gráfico 4: Top Solicitantes (Gráfico de Barras Horizontais)
+        const ctx4 = document.getElementById('topSolicitantesChart').getContext('2d');
+        new Chart(ctx4, {
+            type: 'bar', // Tipo 'bar'
+            data: {
+                labels: chartData.top_solicitantes.labels,
+                datasets: [{
+                    label: 'Total Gasto (R$)',
+                    data: chartData.top_solicitantes.data,
+                    backgroundColor: chartColors,
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                indexAxis: 'y', // Isso torna o gráfico horizontal
+                responsive: true,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { // Eixo X agora é o valor
+                        beginAtZero: true,
+                        ticks: { callback: (val) => 'R$ ' + val.toLocaleString('pt-BR') }
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html>
