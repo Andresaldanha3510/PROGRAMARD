@@ -2,13 +2,15 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 import psycopg2
 from psycopg2.extras import DictCursor
 import os
-from datetime import datetime
 from dotenv import load_dotenv
 load_dotenv()
 
 # ============ Config. Cloudflare R2 ============
 import boto3
 from botocore.client import Config
+import json
+from decimal import Decimal
+from datetime import datetime, timedelta
 
 # Ajuste se necessário
 R2_ACCESS_KEY = "97060093e2382cb9b485900551b6e470"
@@ -87,6 +89,8 @@ def get_pg_connection():
         logging.error(f"Erro ao conectar ao PostgreSQL: {e}")
         import sys
         sys.exit(1)
+
+
 
 def init_db():
     conn = get_pg_connection()
@@ -917,6 +921,207 @@ def fechamento_submit(id):
     # MODIFICADO: Captura a aba do formulário com um padrão inteligente.
     active_tab = request.form.get('active_tab', 'tab3')
     return redirect(url_for("index", active_tab=active_tab))
+
+def decimal_default(obj):
+    if isinstance(obj, Decimal):
+        return float(obj)
+    raise TypeError
+
+def get_date_range(req_args):
+    """Obtém o intervalo de datas do request ou usa os últimos 30 dias como padrão."""
+    # Padrão: Últimos 30 dias
+    data_fim_dt = datetime.now()
+    data_inicio_dt = data_fim_dt - timedelta(days=30)
+    
+    # Sobrepõe com o filtro se existir
+    data_inicio = req_args.get('data_inicio')
+    data_fim = req_args.get('data_fim')
+    
+    try:
+        if data_inicio:
+            data_inicio_dt = datetime.strptime(data_inicio, '%Y-%m-%d')
+        if data_fim:
+            data_fim_dt = datetime.strptime(data_fim, '%Y-%m-%d')
+    except ValueError:
+        # Se a data for inválida, ignora e usa o padrão
+        pass
+        
+    # Retorna como string e como datetime
+    return (
+        data_inicio_dt.strftime('%Y-%m-%d'), 
+        data_fim_dt.strftime('%Y-%m-%d')
+    )
+
+@app.route("/dashboard")
+def dashboard():
+    if "user_role" not in session:
+        flash("Acesso negado.")
+        return redirect(url_for("index"))
+
+    conn = get_pg_connection()
+    cursor = conn.cursor(cursor_factory=DictCursor)
+    
+    # 1. Obter o filtro de data (padrão: últimos 30 dias)
+    data_inicio, data_fim = get_date_range(request.args)
+    
+    params = (data_inicio, data_fim)
+    
+    # ==================================
+    # 1. KPIs (Key Performance Indicators)
+    # ==================================
+    
+    # KPI 1: Total Gasto no Período
+    cursor.execute("""
+        SELECT SUM(valor_despesa) as total_gasto
+        FROM rd
+        WHERE data_fechamento BETWEEN %s AND %s
+    """, params)
+    kpi_gasto_total = cursor.fetchone()['total_gasto'] or 0
+    
+    # KPI 2: Valor Pendente de Aprovação (Gestor)
+    # Este é um "estado atual", não depende do filtro de data
+    cursor.execute("""
+        SELECT SUM(valor) as valor_pendente
+        FROM rd
+        WHERE status = 'Pendente'
+    """)
+    kpi_valor_pendente = cursor.fetchone()['valor_pendente'] or 0
+    
+    # KPI 3: RDs Aguardando Devolução (Financeiro)
+    # Este é um "estado atual"
+    cursor.execute("""
+        SELECT COUNT(id) as count_saldos
+        FROM rd
+        WHERE status = 'Saldos a Devolver'
+    """)
+    kpi_saldos_devolver = cursor.fetchone()['count_saldos'] or 0
+    
+    # ==============================================================
+    # CORREÇÃO APLICADA AQUI
+    # ==============================================================
+    # KPI 4: Tempo Médio de Aprovação (do Pedido à Liberação) no período
+    # (Corrigido: A subtração de datas (DATE - DATE) já retorna um INT de dias)
+    cursor.execute("""
+        SELECT 
+            AVG(liberado_data - data_credito_solicitado) as tempo_medio
+        FROM rd
+        WHERE data_credito_solicitado IS NOT NULL
+          AND liberado_data IS NOT NULL
+          AND liberado_data BETWEEN %s AND %s
+    """, params)
+    # ==============================================================
+    # FIM DA CORREÇÃO
+    # ==============================================================
+    
+    kpi_tempo_medio_result = cursor.fetchone()['tempo_medio']
+    # O resultado de AVG(INT) pode ser Decimal. Convertemos para float.
+    kpi_tempo_medio = round(float(kpi_tempo_medio_result or 0), 1) 
+    
+    # ==================================
+    # 2. Gráficos
+    # ==================================
+    
+    # Gráfico 1: Evolução de Gastos Mensais
+    cursor.execute("""
+        SELECT 
+            to_char(date_trunc('month', data_fechamento), 'YYYY-MM') as mes_ano,
+            SUM(valor_despesa) as total_gasto
+        FROM rd
+        WHERE data_fechamento IS NOT NULL
+        GROUP BY 1
+        ORDER BY 1 ASC
+    """)
+    evolucao_mensal = cursor.fetchall()
+    
+    # Gráfico 2: Gasto por Centro de Custo (no período)
+    cursor.execute("""
+        SELECT centro_custo, SUM(valor_despesa) as total_gasto
+        FROM rd
+        WHERE status IN ('Fechado', 'Saldos a Devolver') 
+          AND valor_despesa IS NOT NULL
+          AND data_fechamento BETWEEN %s AND %s
+        GROUP BY centro_custo
+        HAVING SUM(valor_despesa) > 0
+        ORDER BY total_gasto DESC
+    """, params)
+    gasto_por_cc = cursor.fetchall()
+    
+    # Gráfico 3: Distribuição de RDs por Status (Geral)
+    cursor.execute("""
+        SELECT status, COUNT(id) as total_rds
+        FROM rd
+        GROUP BY status
+        ORDER BY total_rds DESC
+    """)
+    status_dist = cursor.fetchall()
+
+    # Gráfico 4: Top 5 Solicitantes por Valor Gasto (no período)
+    cursor.execute("""
+        SELECT solicitante, SUM(valor_despesa) as total_gasto
+        FROM rd
+        WHERE status IN ('Fechado', 'Saldos a Devolver') 
+          AND valor_despesa IS NOT NULL
+          AND data_fechamento BETWEEN %s AND %s
+        GROUP BY solicitante
+        HAVING SUM(valor_despesa) > 0
+        ORDER BY total_gasto DESC
+        LIMIT 5
+    """, params)
+    top_solicitantes = cursor.fetchall()
+    
+    # ==================================
+    # 3. Tabela de Ações
+    # ==================================
+    
+    # Top 5 RDs Pendentes mais Antigas (Estado Atual)
+    cursor.execute("""
+        SELECT id, solicitante, data, valor
+        FROM rd
+        WHERE status = 'Pendente'
+        ORDER BY data ASC
+        LIMIT 5
+    """)
+    pendentes_antigas = cursor.fetchall()
+    
+    conn.close()
+    
+    # Formatar dados para Chart.js
+    chart_data = {
+        "kpis": {
+            "gasto_total": kpi_gasto_total,
+            "valor_pendente": kpi_valor_pendente,
+            "saldos_devolver": kpi_saldos_devolver,
+            "tempo_medio": kpi_tempo_medio
+        },
+        "evolucao_mensal": {
+            "labels": [row['mes_ano'] for row in evolucao_mensal],
+            "data": [row['total_gasto'] for row in evolucao_mensal]
+        },
+        "gasto_por_cc": {
+            "labels": [row['centro_custo'] for row in gasto_por_cc],
+            "data": [row['total_gasto'] for row in gasto_por_cc]
+        },
+        "status_dist": {
+            "labels": [row['status'] for row in status_dist],
+            "data": [row['total_rds'] for row in status_dist]
+        },
+        "top_solicitantes": {
+            "labels": [row['solicitante'] for row in top_solicitantes],
+            "data": [row['total_gasto'] for row in top_solicitantes]
+        }
+    }
+
+    chart_data_json = json.dumps(chart_data, default=decimal_default)
+
+    return render_template(
+        "dashboard.html",
+        user_role=session.get("user_role"),
+        saldo_global=get_saldo_global() if is_financeiro() else None, 
+        chart_data_json=chart_data_json, # Passa a estrutura COMPLETA
+        pendentes_antigas=pendentes_antigas, 
+        filtro_data_inicio=data_inicio, 
+        filtro_data_fim=data_fim
+    )
 
 @app.route("/reject_fechamento/<id>", methods=["POST"])
 def reject_fechamento(id):
