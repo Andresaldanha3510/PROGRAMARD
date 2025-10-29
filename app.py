@@ -662,6 +662,7 @@ def edit_submit(id):
     active_tab = request.form.get('active_tab', 'tab1')
     return redirect(url_for("index", active_tab=active_tab))
 
+
 @app.route("/approve/<id>", methods=["POST"])
 def approve(id):
     conn = get_pg_connection()
@@ -700,15 +701,29 @@ def approve(id):
             registrar_historico(conn, id, "Reembolso Aprovado e Fechado")
         else:
             new_st = "Liberado"
-            total_credit = val + (val_adic or 0)
-            novo_credito = total_credit - (valor_liberado_anterior or 0)
-            saldo_atual = get_saldo_global()
-            novo_saldo = saldo_atual - novo_credito
+            
+            # ================== INÍCIO DA CORREÇÃO ==================
+            # Garantir que todos os valores sejam Decimal
+            dec_val = Decimal(str(val or 0))
+            dec_val_adic = Decimal(str(val_adic or 0))
+            dec_valor_liberado_anterior = Decimal(str(valor_liberado_anterior or 0))
+
+            total_credit = dec_val + dec_val_adic
+            novo_credito = total_credit - dec_valor_liberado_anterior
+            
+            saldo_atual = get_saldo_global() # Já retorna Decimal
+            
+            # Agora a operação é Decimal - Decimal
+            novo_saldo = saldo_atual - novo_credito 
+            # ================== FIM DA CORREÇÃO ==================
+            
             set_saldo_global(novo_saldo)
+            
             cursor.execute("""
             UPDATE rd SET status=%s, liberado_data=%s, valor_liberado=%s, data_credito_liberado=%s
             WHERE id=%s
-            """, (new_st, now, total_credit, now, id))
+            """, (new_st, now, total_credit, now, id)) # total_credit é Decimal
+            
             detalhe_liberado = f"Valor liberado: R$ {format_currency(total_credit)}"
             registrar_historico(conn, id, "Crédito Liberado pelo Financeiro", detalhe_liberado)
 
@@ -766,8 +781,12 @@ def delete_rd(id):
         return redirect(url_for("index"))
 
     if rd_status == "Liberado" and rd_liber and rd_liber > 0:
-        saldo = get_saldo_global()
-        set_saldo_global(saldo + rd_liber)
+        
+        # ================== INÍCIO DA CORREÇÃO ==================
+        saldo = get_saldo_global() # Já é Decimal
+        dec_rd_liber = Decimal(str(rd_liber or 0)) # Força ser Decimal
+        set_saldo_global(saldo + dec_rd_liber) # Decimal + Decimal
+        # ================== FIM DA CORREÇÃO ==================
 
     cursor.execute("SELECT arquivos FROM rd WHERE id=%s", (id,))
     arq_str = cursor.fetchone()[0]
@@ -805,7 +824,9 @@ def adicional_submit(id):
         conn.close()
 
     try:
-        val_adi = Decimal(request.form["valor_adicional"].replace(",", "."))
+        # ================== INÍCIO DA CORREÇÃO (1/2) ==================
+        dec_val_adi = Decimal(request.form["valor_adicional"].replace(",", "."))
+        # ================== FIM DA CORREÇÃO (1/2) ==================
     except (ValueError, TypeError):
         flash("Valor adicional inválido.")
         return redirect(url_for("index"))
@@ -825,16 +846,23 @@ def adicional_submit(id):
         flash("Não é possível solicitar adicional agora.")
         return redirect(url_for("index"))
 
-    novo_total = (val_adic_atual or 0) + val_adi
+    # ================== INÍCIO DA CORREÇÃO (2/2) ==================
+    dec_val_adic_atual = Decimal(str(val_adic_atual or 0))
+    dec_val_sol = Decimal(str(val_sol or 0))
+    dec_val_desp = Decimal(str(val_desp or 0))
+
+    novo_total = dec_val_adic_atual + dec_val_adi # Decimal + Decimal
+    
     if add_ind:
         partes = [x.strip() for x in add_ind.split(",")]
         idx = len(partes) + 1
-        add_ind = add_ind + f", Adicional {idx}:{val_adi:.2f}"
+        add_ind = add_ind + f", Adicional {idx}:{dec_val_adi:.2f}"
     else:
-        add_ind = f"Adicional 1:{val_adi:.2f}"
+        add_ind = f"Adicional 1:{dec_val_adi:.2f}"
 
-    total_cred = val_sol + novo_total
-    saldo_dev = total_cred - (val_desp or 0)
+    total_cred = dec_val_sol + novo_total # Decimal + Decimal
+    saldo_dev = total_cred - dec_val_desp # Decimal - Decimal
+    # ================== FIM DA CORREÇÃO (2/2) ==================
 
     data_add = datetime.now().strftime("%Y-%m-%d")
     cursor.execute("""
@@ -843,7 +871,7 @@ def adicional_submit(id):
     WHERE id=%s
     """, (novo_total, data_add, add_ind, saldo_dev, id))
     
-    detalhe_adicional = f"Valor adicional solicitado: R$ {format_currency(val_adi)}"
+    detalhe_adicional = f"Valor adicional solicitado: R$ {format_currency(dec_val_adi)}"
     registrar_historico(conn, id, "Solicitação de Crédito Adicional", detalhe_adicional)
 
     conn.commit()
@@ -875,7 +903,9 @@ def fechamento_submit(id):
         conn.close()
 
     try:
-        val_desp = Decimal(request.form["valor_despesa"].replace(",", "."))
+        # ================== INÍCIO DA CORREÇÃO (1/2) ==================
+        dec_val_desp = Decimal(request.form["valor_despesa"].replace(",", "."))
+        # ================== FIM DA CORREÇÃO (1/2) ==================
     except (ValueError, TypeError):
         flash("Valor da despesa inválido.")
         return redirect(url_for("index"))
@@ -895,22 +925,28 @@ def fechamento_submit(id):
         flash("Não é possível fechar esta RD agora.")
         return redirect(url_for("index"))
 
-    total_cred = val_sol + (val_adic or 0)
-    if total_cred < val_desp:
+    # ================== INÍCIO DA CORREÇÃO (2/2) ==================
+    dec_val_sol = Decimal(str(val_sol or 0))
+    dec_val_adic = Decimal(str(val_adic or 0))
+    
+    total_cred = dec_val_sol + dec_val_adic # Decimal + Decimal
+    
+    if total_cred < dec_val_desp: # Decimal < Decimal
+    # ================== FIM DA CORREÇÃO (2/2) ==================
         conn.close()
         flash("Valor da despesa maior que o total de créditos solicitados.")
         return redirect(url_for("index"))
 
-    saldo_dev = total_cred - val_desp
+    saldo_dev = total_cred - dec_val_desp # Decimal - Decimal
     data_fech = datetime.now().strftime("%Y-%m-%d")
     cursor.execute("""
     UPDATE rd
     SET valor_despesa=%s, saldo_devolver=%s, data_fechamento=%s,
         status='Fechamento Solicitado', data_debito_despesa=%s
     WHERE id=%s
-    """, (val_desp, saldo_dev, data_fech, data_fech, id))
+    """, (dec_val_desp, saldo_dev, data_fech, data_fech, id))
 
-    detalhe_gasto = f"Valor gasto informado: R$ {format_currency(val_desp)}"
+    detalhe_gasto = f"Valor gasto informado: R$ {format_currency(dec_val_desp)}"
     registrar_historico(conn, id, "Solicitação de Fechamento", detalhe_gasto)
     
     conn.commit()
