@@ -448,7 +448,7 @@ def add_rd():
     unidade_negocio = request.form.get("unidade_negocio", "").strip()
 
     try:
-        valor = float(request.form["valor"].replace(",", "."))
+        valor = Decimal(request.form["valor"].replace(",", "."))
     except (ValueError, TypeError):
         flash("Valor inválido.")
         return redirect(url_for("index"))
@@ -616,9 +616,9 @@ def edit_submit(id):
         logging.debug(f"Valor bruto: {valor_raw}, Valor Adicional bruto: {valor_adicional_raw}, Valor Despesa bruto: {valor_despesa_raw}")
 
         try:
-            valor_novo = float(valor_raw.replace(",", "."))
-            valor_adicional_novo = float(valor_adicional_raw.replace(",", ".")) if valor_adicional_raw else 0.0
-            valor_despesa_novo = float(valor_despesa_raw.replace(",", ".")) if valor_despesa_raw else valor_despesa_antigo
+            valor_novo = Decimal(valor_raw.replace(",", "."))
+            valor_adicional_novo = Decimal(valor_adicional_raw.replace(",", ".")) if valor_adicional_raw else Decimal('0.0')
+            valor_despesa_novo = Decimal(valor_despesa_raw.replace(",", ".")) if valor_despesa_raw else valor_despesa_antigo
         except ValueError as e:
             logging.error(f"Erro ao converter valores: {e}")
             flash("Valor, Valor Adicional ou Valor Despesa inválido.")
@@ -805,7 +805,7 @@ def adicional_submit(id):
         conn.close()
 
     try:
-        val_adi = float(request.form["valor_adicional"].replace(",", "."))
+        val_adi = Decimal(request.form["valor_adicional"].replace(",", "."))
     except (ValueError, TypeError):
         flash("Valor adicional inválido.")
         return redirect(url_for("index"))
@@ -875,7 +875,7 @@ def fechamento_submit(id):
         conn.close()
 
     try:
-        val_desp = float(request.form["valor_despesa"].replace(",", "."))
+        val_desp = Decimal(request.form["valor_despesa"].replace(",", "."))
     except (ValueError, TypeError):
         flash("Valor da despesa inválido.")
         return redirect(url_for("index"))
@@ -1172,7 +1172,7 @@ def edit_saldo():
         return redirect(url_for("index"))
 
     try:
-        novo_saldo = float(request.form["saldo_global"].replace(",", "."))
+        novo_saldo = Decimal(request.form["saldo_global"].replace(",", "."))
     except:
         flash("Saldo inválido.")
         return redirect(url_for("index"))
@@ -1244,7 +1244,9 @@ def registrar_saldo_devolvido(id):
         conn.close()
         flash("RD não encontrada.")
         return redirect(url_for("index"))
+        
     val_sol, val_adic, val_desp, data_sal_dev, status = row
+    
     if data_sal_dev:
         conn.close()
         flash("Saldo já registrado antes.")
@@ -1253,14 +1255,32 @@ def registrar_saldo_devolvido(id):
         conn.close()
         flash("Ação permitida apenas para RDs em 'Saldos a Devolver'.")
         return redirect(url_for("index"))
-    total_cred = val_sol + (val_adic or 0)
-    if total_cred < (val_desp or 0):
+
+    # ================== INÍCIO DA CORREÇÃO ==================
+    # Garantir que todos os valores sejam Decimal para evitar o TypeError
+    # Usar str() na conversão previne erros de precisão de float para Decimal
+    
+    dec_val_sol = Decimal(str(val_sol or 0))
+    dec_val_adic = Decimal(str(val_adic or 0))
+    dec_val_desp = Decimal(str(val_desp or 0))
+    
+    total_cred = dec_val_sol + dec_val_adic
+    
+    if total_cred < dec_val_desp:
+    # ================== FIM DA CORREÇÃO ==================
         conn.close()
         flash("Despesa maior que o total de créditos.")
         return redirect(url_for("index"))
-    saldo_dev = total_cred - (val_desp or 0)
-    saldo = get_saldo_global()
-    set_saldo_global(saldo + saldo_dev)
+        
+    # ================== MUDANÇA AQUI ==================
+    saldo_dev = total_cred - dec_val_desp # Esta operação agora é Decimal
+    
+    saldo = get_saldo_global() # Esta função já retorna Decimal
+    
+    # Esta linha (antiga 1263) agora soma Decimal + Decimal
+    set_saldo_global(saldo + saldo_dev) 
+    # ================== FIM DA MUDANÇA ==================
+
     now = datetime.now().strftime("%Y-%m-%d")
     cursor.execute("""
     UPDATE rd SET data_saldo_devolvido=%s, status='Fechado'
