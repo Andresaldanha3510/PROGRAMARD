@@ -1488,14 +1488,14 @@ def edit_submit(id):
         valor_despesa_raw = request.form.get("valor_despesa", "").strip()
 
         try:
-            valor_novo = float(valor_raw.replace(",", "."))
+            valor_novo = Decimal(valor_raw.replace(",", "."))
             valor_adicional_novo = (
-                float(valor_adicional_raw.replace(",", "."))
+                Decimal(valor_adicional_raw.replace(",", "."))
                 if valor_adicional_raw
                 else Decimal('0.00')
             )
             valor_despesa_novo = (
-                float(valor_despesa_raw.replace(",", "."))
+                Decimal(valor_despesa_raw.replace(",", "."))
                 if valor_despesa_raw
                 else valor_despesa_antigo
             )
