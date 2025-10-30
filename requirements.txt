@@ -49,3 +49,4 @@ Werkzeug==3.1.2
 wsproto==1.2.0
 XlsxWriter==3.2.0
 gunicorn
+google-generativeai==0.8.5
