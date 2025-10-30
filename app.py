@@ -110,11 +110,11 @@ app.secret_key = secret_key
 logging.debug("SECRET_KEY carregado corretamente.")
 
 # ============ Config. BD ============
-PG_HOST = "localhost"
-PG_PORT = os.getenv("PG_PORT", "5432")  # A porta padrão do Postgres local
-PG_DB = "rd_testes_local"  # O banco que você criou no Passo 1
-PG_USER = "postgres"  # Seu usuário do Postgres local (ajuste se for outro)
-PG_PASSWORD = "351073"  # Sua senha do Postgres local (ajuste com a sua senha)
+PG_HOST = os.getenv("PG_HOST", "dpg-ctjqnsdds78s73erdqi0-a.oregon-postgres.render.com")
+PG_PORT = os.getenv("PG_PORT", "5432")
+PG_DB   = os.getenv("PG_DB", "programard_db")
+PG_USER = os.getenv("PG_USER", "programard_db_user")
+PG_PASSWORD = os.getenv("PG_PASSWORD", "hU9wJmIfgiyCg02KFQ3a4AropKSMopXr")
 
 LISTA_CATEGORIAS_DESPESA_IA = [
     "HOTEL",
