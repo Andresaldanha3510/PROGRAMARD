@@ -14,6 +14,7 @@ from psycopg2.extras import DictCursor
 import os
 from dotenv import load_dotenv
 
+
 # ==========================================================
 # 1. IMPORTAÇÕES ADICIONADAS
 # ==========================================================
@@ -1878,7 +1879,7 @@ def approve(id):
 
                 # Chamadas de saldo ATUALIZADAS
                 saldo_atual = get_saldo_global(empresa_id_logada)
-                novo_saldo = saldo_atual - novo_credito
+                novo_saldo = saldo_atual - Decimal(novo_credito)
                 set_saldo_global(novo_saldo, empresa_id_logada)
 
                 cursor.execute(
