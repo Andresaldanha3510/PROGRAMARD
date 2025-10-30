@@ -585,7 +585,7 @@ def get_saldo_global(empresa_id):
     if saldo_row:
         return saldo_row[0]
     logging.warning(f"Nenhum saldo global encontrado para empresa_id {empresa_id}")
-    return 0
+    return Decimal('0.00')
 
 
 def set_saldo_global(novo_saldo, empresa_id):
@@ -1209,7 +1209,7 @@ def add_rd():
         return redirect(url_for("index"))
 
     try:
-        valor = float(request.form["valor"].replace(",", "."))
+        valor = Decimal(request.form["valor"].replace(",", "."))
     except (ValueError, TypeError):
         flash("Valor inválido.")
         return redirect(url_for("index"))
@@ -1492,7 +1492,7 @@ def edit_submit(id):
             valor_adicional_novo = (
                 float(valor_adicional_raw.replace(",", "."))
                 if valor_adicional_raw
-                else 0.0
+                else Decimal('0.00')
             )
             valor_despesa_novo = (
                 float(valor_despesa_raw.replace(",", "."))
@@ -2509,7 +2509,7 @@ def edit_saldo():
     empresa_id_logada = session["empresa_id"]
 
     try:
-        novo_saldo = float(request.form["saldo_global"].replace(",", "."))
+        novo_saldo = Decimal(request.form["saldo_global"].replace(",", "."))
     except:
         flash("Saldo inválido.")
         return redirect(url_for("index"))
