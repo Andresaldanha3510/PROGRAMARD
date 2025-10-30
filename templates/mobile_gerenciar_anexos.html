@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Anexos RD #{{ rd.id }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --primary-color: #3498db;
+      --danger-color: #e74c3c;
+      --text-primary: #2c3e50;
+      --text-muted: #7f8c8d;
+      --border-color: #e0e0e0;
+      --background-color: #f2f3f5;
+    }
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--background-color);
+      color: var(--text-primary);
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 1rem;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem 0;
+    }
+    .header h1 {
+      font-size: 1.5rem;
+      margin: 0;
+    }
+    .btn-back {
+      background-color: #fff;
+      color: var(--text-primary);
+      padding: 0.5rem 0.8rem;
+      text-decoration: none;
+      border-radius: 5px;
+      font-weight: 600;
+      font-size: 0.8rem;
+      border: 1px solid var(--border-color);
+    }
+    .card {
+      background: #fff;
+      border-radius: 8px;
+      margin-bottom: 1.5rem;
+      border: 1px solid var(--border-color);
+      padding: 1.5rem;
+    }
+    .form-upload input[type="file"] {
+      display: block;
+      width: 100%;
+      margin-bottom: 1rem;
+      font-size: 1rem;
+    }
+    .btn-submit {
+      background-color: var(--primary-color);
+      color: white;
+      padding: 0.8rem 1.2rem;
+      text-decoration: none;
+      border-radius: 5px;
+      font-weight: 600;
+      font-size: 1rem;
+      border: none;
+      cursor: pointer;
+      width: 100%;
+    }
+    .anexo-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .anexo-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .anexo-item:last-child {
+      border-bottom: none;
+    }
+    .anexo-name {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      word-break: break-all;
+    }
+    .btn-delete {
+      background: none;
+      border: none;
+      color: var(--danger-color);
+      font-size: 1.1rem;
+      cursor: pointer;
+      padding: 0.5rem;
+    }
+    .notification {
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border-radius: 5px;
+      font-weight: 600;
+    }
+    .notification.success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    .notification.warning {
+      background-color: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeeba;
+    }
+    .notification.error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <a href="{{ url_for('mobile_dashboard') }}" class="btn-back"><i class="fas fa-chevron-left"></i> Voltar</a>
+      <h1>Anexos RD #{{ rd.id }}</h1>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=True) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="notification {{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="card">
+      <h3><i class="fas fa-camera"></i> Adicionar Anexo</h3>
+      <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 1rem;">
+        Ao clicar abaixo, o seu telemóvel irá perguntar se quer usar a câmara ou a galeria de fotos.
+      </p>
+      <form action="{{ url_for('mobile_upload_anexo', rd_id=rd.id) }}" method="POST" enctype="multipart/form-data" class="form-upload">
+        <input type="file" name="arquivo" accept="image/*" multiple required>
+        <button type="submit" class="btn-submit">
+          <i class="fas fa-upload"></i> Enviar Foto(s)
+        </button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3><i class="fas fa-paperclip"></i> Anexos Atuais</h3>
+      {% if anexos_list %}
+        <ul class="anexo-list">
+          {% for filename in anexos_list %}
+          <li class="anexo-item">
+            <span class="anexo-name"><i class="fas fa-image"></i> {{ filename | replace(rd.id + '_', '') | replace(filename.split('_')[1] + '_', '') }}</span>
+            <form action="{{ url_for('mobile_delete_anexo', rd_id=rd.id) }}" method="POST" onsubmit="return confirm('Tem a certeza que quer apagar este anexo?');">
+              <input type="hidden" name="filename" value="{{ filename }}">
+              <button type="submit" class="btn-delete" title="Apagar anexo">
+                <i class="fas fa-trash-alt"></i>
+              </button>
+            </form>
+          </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p style="text-align: center; color: var(--text-muted); padding: 1rem 0;">Nenhum anexo enviado ainda.</p>
+      {% endif %}
+    </div>
+
+  </div>
+</body>
+</html>

@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Gerenciamento de Usuários</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" referrerpolicy="no-referrer" />
+  
+  <style>
+    :root {
+      --primary-color: #2563eb;
+      --primary-light: #3b82f6;
+      --primary-dark: #1d4ed8;
+      --secondary-color: #f59e0b;
+      --success-color: #10b981;
+      --danger-color: #ef4444;
+      --warning-color: #f59e0b;
+      --info-color: #0ea5e9;
+      --background-color: #d1d5db;
+      --surface-color: #ffffff;
+      --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      --card-shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      --text-primary: #1e293b;
+      --text-secondary: #64748b;
+      --text-muted: #94a3b8;
+      --border-color: #e2e8f0;
+      --header-height: 70px;
+      --sidebar-width: 280px;
+      --border-radius: 12px;
+      --border-radius-sm: 8px;
+      --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--background-color);
+      color: var(--text-primary);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+    .top-bar {
+      background: var(--surface-color);
+      height: var(--header-height);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    .header-brand { display: flex; align-items: center; gap: 1rem; }
+    .logo { height: 50px; width: auto; }
+    .brand-text { font-size: 1.5rem; font-weight: 700; color: var(--primary-color); }
+    .header-actions { display: flex; align-items: center; gap: 1.5rem; }
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.5rem 1rem;
+      background: var(--background-color);
+      border-radius: var(--border-radius-sm);
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+    .top-bar a {
+      color: var(--danger-color);
+      text-decoration: none;
+      font-weight: 500;
+      padding: 0.5rem 1rem;
+      border-radius: var(--border-radius-sm);
+      transition: var(--transition);
+    }
+    .top-bar a:hover { background: var(--danger-color); color: white; }
+    .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+    .form-group { margin-bottom: 1.5rem; }
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      font-size: 0.875rem;
+    }
+    .form-group input, .form-group textarea, .form-group select {
+      width: 100%;
+      padding: 0.875rem 1rem;
+      border: 2px solid #e2e8f0;
+      border-radius: var(--border-radius-sm);
+      font-size: 0.875rem;
+      transition: var(--transition);
+      background: #ffffff;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1), 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    .card {
+      background: var(--surface-color);
+      border-radius: var(--border-radius);
+      box-shadow: var(--card-shadow);
+      border: 1px solid var(--border-color);
+    }
+    .card:hover { box-shadow: var(--card-shadow-hover); }
+    .card-header {
+      padding: 1.5rem 2rem 1rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+    .card-title { font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin: 0; }
+    .card-body { padding: 2rem; }
+    .main-form {
+      background: var(--surface-color);
+      border-radius: var(--border-radius);
+      padding: 2rem;
+      box-shadow: var(--card-shadow);
+      border: 1px solid var(--border-color);
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: var(--border-radius-sm);
+      font-weight: 500;
+      font-size: 0.875rem;
+      text-decoration: none;
+      cursor: pointer;
+      transition: var(--transition);
+      white-space: nowrap;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+      color: white;
+      box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);
+    }
+    .btn-primary:hover { transform: translateY(-1px); }
+    .btn-secondary {
+      background: linear-gradient(135deg, #64748b, #475569);
+      color: white;
+    }
+    .btn-secondary:hover { transform: translateY(-1px); }
+    .btn-delete-rd {
+      background: linear-gradient(135deg, var(--danger-color), #dc2626);
+      color: white;
+      padding: 0.5rem 1rem;
+      font-size: 0.75rem;
+    }
+    .btn-delete-rd:hover { transform: translateY(-1px); }
+    .table-container {
+      background: var(--surface-color);
+      border-radius: var(--border-radius);
+      overflow-x: auto;
+      box-shadow: var(--card-shadow);
+      border: 1px solid var(--border-color);
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    th {
+      background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+      color: white;
+      padding: 1rem;
+      text-align: left;
+      font-weight: 600;
+      border-bottom: 2px solid var(--primary-dark);
+    }
+    td {
+      padding: 1rem;
+      border-bottom: 1px solid #cbd5e1;
+      vertical-align: middle;
+      background: #fdfdfe;
+    }
+    tbody tr:hover td { background: rgba(59, 130, 246, 0.08) !important; }
+    tr:last-child td { border-bottom: none; }
+    .notifications-container {
+      position: fixed;
+      top: 90px;
+      right: 20px;
+      z-index: 9999;
+      max-width: 400px;
+      width: 100%;
+    }
+    .notification {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1rem 1.25rem;
+      margin-bottom: 0.75rem;
+      border-radius: var(--border-radius);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      font-weight: 500;
+      animation: slideInRight 0.3s ease-out;
+      cursor: pointer;
+    }
+    @keyframes slideInRight {
+      from { opacity: 0; transform: translateX(100%); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes slideOutRight {
+      from { opacity: 1; transform: translateX(0); }
+      to { opacity: 0; transform: translateX(100%); }
+    }
+    .notification.removing { animation: slideOutRight 0.3s ease-in forwards; }
+    .notification-success { background: linear-gradient(135deg, #dcfce7, #bbf7d0); border: 1px solid #86efac; color: #14532d; }
+    .notification-error { background: linear-gradient(135deg, #fef2f2, #fee2e2); border: 1px solid #fecaca; color: #991b1b; }
+    .notification-info { background: linear-gradient(135deg, #eff6ff, #dbeafe); border: 1px solid #93c5fd; color: #1e40af; }
+    .notification-warning { background: linear-gradient(135deg, #fffbeb, #fef3c7); border: 1px solid #fcd34d; color: #92400e; }
+    .notification-icon { font-size: 1.25rem; flex-shrink: 0; }
+    .notification-content { flex: 1; }
+    .notification-close {
+      background: none;
+      border: none;
+      color: inherit;
+      cursor: pointer;
+      padding: 0.25rem;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.7;
+    }
+    .notification-close:hover { opacity: 1; background: rgba(0, 0, 0, 0.1); }
+    .mb-3 { margin-bottom: 1rem; }
+    .mb-4 { margin-bottom: 1.5rem; }
+    .mb-5 { margin-bottom: 2rem; }
+    .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem; }
+    .admin-layout-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 2rem;
+      margin-top: 2rem;
+    }
+    @media (min-width: 992px) {
+      .admin-layout-grid {
+        grid-template-columns: 4fr 6fr; 
+        align-items: start;
+      }
+    }
+    .admin-layout-grid .main-form,
+    .admin-layout-grid .card {
+      margin-bottom: 0;
+    }
+    /* Responsividade da tabela */
+    @media (max-width: 768px) {
+      .table-container { overflow-x: hidden; }
+      table, thead, tbody, th, td, tr { display: block; }
+      thead { display: none; }
+      tr { border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); margin-bottom: 1rem; padding: 1rem; background: var(--surface-color); }
+      td { border: none; position: relative; padding: 0.5rem 0; padding-left: 50%; text-align: left; }
+      td::before {
+        content: attr(data-label) ": ";
+        position: absolute;
+        left: 0;
+        width: 45%;
+        padding: 0 1rem;
+        white-space: nowrap;
+        font-weight: 600;
+        color: var(--text-secondary);
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="notifications-container" id="notificationsContainer">
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        {% for message in messages %}
+          <div class="notification" data-message="{{ message }}">
+            <div class="notification-icon">
+              <i class="fas fa-info-circle"></i>
+            </div>
+            <div class="notification-content">{{ message }}</div>
+            <button class="notification-close" onclick="closeNotification(this.parentElement); event.stopPropagation();">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+  </div>
+
+  {% if user_role is defined %}
+  <div class="top-bar">
+    <div class="header-brand">
+      <img src="https://pub-1e6f8559bc2b413c889fbf4860462599.r2.dev/logo_animado.gif" alt="Logo Tecsul" class="logo">
+      <div class="brand-text">Gerenciamento de RDs</div>
+    </div>
+    <div class="header-actions">
+      <div class="user-info">
+        <i class="fas fa-user-circle"></i>
+        <span>{{ user_role }}</span>
+      </div>
+      <a href="{{ url_for('logout') }}">
+        <i class="fas fa-sign-out-alt"></i>
+        Sair
+      </a>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="container">
+    
+    <div class="card mb-4">
+      <div class="card-body">
+        <a href="{{ url_for('index') }}" class="btn btn-secondary mb-3">
+          <i class="fas fa-arrow-left"></i>
+          Voltar para RDs
+        </a>
+        <h2 class="card-title">Gerenciar Usuários (Visão Global)</h2>
+        <p>Aqui você pode criar e gerenciar usuários para todas as empresas.</p>
+      </div>
+    </div>
+
+    <div class="admin-layout-grid">
+      
+      <div class="main-form">
+        <h3><i class="fas fa-user-plus"></i> Cadastrar Novo Usuário</h3>
+        <form action="{{ url_for('admin_usuarios') }}" method="POST">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="username">Nome de Usuário:</label>
+              <input type="text" id="username" name="username" required>
+            </div>
+            <div class="form-group">
+              <label for="password">Senha:</label>
+              <input type="password" id="password" name="password" required>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="role">Tipo de Usuário (Perfil):</label>
+              <select id="role" name="role" required>
+                <option value="">Selecione um perfil</option>
+                <option value="solicitante">Solicitante</option>
+                <option value="gestor">Gestor</option>
+                <option value="financeiro">Financeiro</option>
+                <option value="supervisor">Supervisor</option>
+                <option value="funcionario">Funcionário</option> </select>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="empresa_id">Empresa:</label>
+              <select id="empresa_id" name="empresa_id" required>
+                <option value="">Selecione a empresa</option>
+                {% for empresa in empresas %}
+                  <option value="{{ empresa.id }}">{{ empresa.nome }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            </div>
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-plus-circle"></i>
+            Cadastrar Usuário
+          </button>
+        </form>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title"><i class="fas fa-users"></i> Usuários Cadastrados (Todas as Empresas)</h3>
+        </div>
+        <div class="card-body">
+          <div class="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th><i class="fas fa-user"></i> Usuário</th>
+                  <th><i class="fas fa-shield-alt"></i> Perfil</th>
+                  <th><i class="fas fa-building"></i> Empresa</th>
+                  <th><i class="fas fa-cogs"></i> Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for user in usuarios %}
+                <tr>
+                  <td data-label="Usuário">{{ user.username }}</td>
+                  <td data-label="Perfil">{{ user.role }}</td>
+                  <td data-label="Empresa">{{ user.empresa_nome }}</td>
+                  <td data-label="Ações">
+                    {% if user.username != session.username %} 
+                    <form action="{{ url_for('admin_excluir_usuario', user_id=user.id) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja excluir este usuário?');">
+                      <button type="submit" class="btn btn-delete-rd">
+                        <i class="fas fa-trash-alt"></i>
+                        Excluir
+                      </button>
+                    </form>
+                    {% else %}
+                      (Usuário atual)
+                    {% endif %}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div> </div> <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  
+  <script>
+    // Sistema de Notificações
+    function closeNotification(element) {
+      if (!element) return;
+      element.style.animation = 'slideOutRight 0.3s ease-in forwards';
+      setTimeout(() => {
+        if (element && element.parentNode) {
+          element.parentNode.removeChild(element);
+        }
+      }, 300);
+    }
+    function createAutoCloseTimer(notification, delay) {
+      setTimeout(() => {
+        if (notification && notification.parentNode) {
+          closeNotification(notification);
+        }
+      }, delay);
+    }
+    function initNotifications() {
+      const notifications = document.querySelectorAll('.notification[data-message]');
+      notifications.forEach((notification, index) => {
+        const message = notification.getAttribute('data-message');
+        const lowerMessage = message.toLowerCase();
+        let type = 'info', icon = 'info-circle', autoCloseTime = 6000;
+        
+        if (lowerMessage.includes('sucesso') || lowerMessage.includes('criado com sucesso') || lowerMessage.includes('excluído com sucesso')) {
+          type = 'success'; icon = 'check-circle'; autoCloseTime = 4000;
+        } else if (lowerMessage.includes('erro') || lowerMessage.includes('falha') || lowerMessage.includes('inválido') || lowerMessage.includes('nome de usuário já existe')) {
+          type = 'error'; icon = 'exclamation-circle'; autoCloseTime = 8000;
+        } else if (lowerMessage.includes('atenção') || lowerMessage.includes('aviso')) {
+          type = 'warning'; icon = 'exclamation-triangle';
+        }
+        
+        notification.classList.add(`notification-${type}`);
+        const iconElement = notification.querySelector('.notification-icon i');
+        if (iconElement) iconElement.className = `fas fa-${icon}`;
+        
+        notification.addEventListener('click', function(e) {
+          if (!e.target.closest('.notification-close')) closeNotification(this);
+        });
+        createAutoCloseTimer(notification, autoCloseTime + (index * 500));
+      });
+    }
+    $(document).ready(initNotifications);
+  </script>
+</body>
+</html>

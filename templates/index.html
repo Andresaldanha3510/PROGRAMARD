@@ -1,36 +1,218 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8">
   <title>Gerenciamento de RDs</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    referrerpolicy="no-referrer" />
   <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css" />
   <style>
     :root {
+      /* Paleta de Cores Refinada (Claro, Cinza, Azul) */
       --primary-color: #2563eb;
+      /* Azul principal */
       --primary-light: #3b82f6;
       --primary-dark: #1d4ed8;
       --secondary-color: #f59e0b;
-      --success-color: #10b981;
+      --success-color: #009688;
       --danger-color: #ef4444;
       --warning-color: #f59e0b;
       --info-color: #0ea5e9;
-      --background-color: #d1d5db;
+
+      .actions-dropdown .btn,
+      .actions-dropdown .btn .fas {
+        color: var(--text-primary);
+      }
+
+      /* Cor específica para Aprovar */
+      .actions-dropdown .btn-approve,
+      .actions-dropdown .btn-approve .fas {
+        color: var(--success-color) !important;
+        /* !important para garantir a sobreposição */
+      }
+
+      /* Cor específica para Editar/Aviso */
+      .actions-dropdown .btn-edit,
+      .actions-dropdown .btn-edit .fas,
+      .actions-dropdown .btn-warning,
+      .actions-dropdown .btn-warning .fas {
+        color: var(--warning-color) !important;
+      }
+
+      /* Cor específica para Excluir/Perigo */
+      .actions-dropdown .btn-delete-rd,
+      .actions-dropdown .btn-delete-rd .fas,
+      .actions-dropdown .btn-danger,
+      .actions-dropdown .btn-danger .fas {
+        color: var(--danger-color) !important;
+      }
+
+      /* Cor específica para Outras Ações (Adicional, Fechamento, etc.) */
+      .actions-dropdown .btn-additional,
+      .actions-dropdown .btn-additional .fas,
+      .actions-dropdown .btn-fechamento,
+      .actions-dropdown .btn-fechamento .fas,
+      .actions-dropdown .btn-blue,
+      .actions-dropdown .btn-blue .fas,
+      .actions-dropdown .btn-pronto-fechamento,
+      .actions-dropdown .btn-pronto-fechamento .fas {
+        color: var(--primary-color) !important;
+      }
+
+      .alerta-gasto-icon {
+        color: var(--warning-color);
+        /* Pega a cor de aviso do seu tema */
+        font-size: 0.9rem;
+        margin-left: 0.5rem;
+        /* Animação de pulso para chamar atenção */
+        animation: pulseWarning 1.5s infinite;
+      }
+
+      @keyframes pulseWarning {
+
+        0%,
+        100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+
+        50% {
+          opacity: 0.7;
+          transform: scale(1.1);
+        }
+      }
+
+      /* Fundo mais claro para um visual "clean" */
+      --background-color: #f1f5f9;
+      /* Cinza (Slate 100) */
       --surface-color: #ffffff;
-      --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-      --card-shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-      --text-primary: #1e293b;
-      --text-secondary: #64748b;
-      --text-muted: #94a3b8;
+      /* Cards e superfícies brancos */
       --border-color: #e2e8f0;
+      /* Cinza (Slate 200) */
+
+      --text-primary: #0c1016;
+      /* Cinza (Slate 800) */
+      --text-secondary: #1a2738;
+      --text-muted: #071220;
+
+      --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05),
+      0 2px 4px -1px rgba(0, 0, 0, 0.05);
+      --card-shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.07),
+      0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
       --header-height: 70px;
-      --sidebar-width: 280px;
+      --sidebar-width: 260px;
+      --sidebar-width-collapsed: 80px;
+
       --border-radius: 12px;
       --border-radius-sm: 8px;
       --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
+
+    /* Controle de Visibilidade Desktop vs Mobile */
+    .view-desktop {
+      display: block;
+    }
+
+    /* Mostra por padrão */
+    .view-mobile {
+      display: none;
+    }
+
+    /* Esconde por padrão */
+
+    @media (max-width: 768px) {
+
+      /* Em telas pequenas (celular) */
+      .view-desktop {
+        display: none;
+      }
+
+      /* Esconde a visão desktop */
+      .view-mobile {
+        display: block;
+      }
+
+      /* Mostra a visão mobile */
+
+      /* Esconde a tabela original em mobile para evitar duplicidade */
+      .tab-content>.table-container {
+        display: none;
+      }
+    }
+
+    @media (min-width: 1025px) {
+
+      /* 1. Estado Padrão (Colapsado) */
+      .sidebar {
+        width: var(--sidebar-width-collapsed);
+      }
+
+      .main-content {
+        margin-left: var(--sidebar-width-collapsed);
+      }
+
+      /* Esconde textos e elementos desnecessários */
+      .sidebar .sidebar-header .brand-text,
+      .sidebar .sidebar-nav-link span,
+      /* ... (resto do código CSS que você já tem) ... */
+      .sidebar .sidebar-nav-link .nav-icon {
+        width: 20px;
+        /* Garante que o ícone mantenha o espaço */
+      }
+    }
+
+    /* Estilo para a lista simples de RDs do funcionário (se já não existir) */
+    .simple-rd-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      margin-top: 1rem;
+      /* Espaçamento */
+    }
+
+    .simple-rd-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1.25rem 1.5rem;
+      background: var(--surface-color);
+      border-radius: var(--border-radius-sm);
+      box-shadow: var(--card-shadow);
+      text-decoration: none;
+      color: var(--text-primary);
+      font-weight: 600;
+      transition: var(--transition);
+    }
+
+    .simple-rd-item:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--card-shadow-hover);
+      color: var(--primary-color);
+    }
+
+    .simple-rd-item span {
+      font-size: 1rem;
+      display: flex;
+      /* Para alinhar ícone e texto */
+      align-items: center;
+      gap: 0.5rem;
+      /* Espaço entre ícone e texto */
+    }
+
+    .simple-rd-item strong {
+      font-size: 1.1rem;
+      color: var(--success-color);
+    }
+
+    .simple-rd-item.recusado strong {
+      color: var(--danger-color);
+      /* Cor para RDs recusadas */
+    }
+
 
     * {
       margin: 0;
@@ -42,14 +224,155 @@
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       background: var(--background-color);
       color: var(--text-primary);
-      line-height: 1.6;
+
+      min-height: 100vh;
+      /* Previne rolagem horizontal com o sidebar */
+      overflow-x: hidden;
+    }
+
+    body:not(.login-page) {
+      /* Define a imagem de fundo usando o caminho do Flask */
+      background-image: url("{{ url_for('static', filename='tecsul.jpg') }}");
+
+      /* Ajusta a imagem de fundo */
+      background-size: cover;
+      /* Cobre toda a tela */
+      background-position: center center;
+      /* Centraliza a imagem */
+      background-repeat: no-repeat;
+      /* Não deixa a imagem repetir */
+      background-attachment: fixed;
+      /* Deixa a imagem fixa durante a rolagem */
+
+      /* Redefine as variáveis de cor para o modo logado
+      */
+
+
+      /* Torna os cards, o menu lateral e outros elementos de superfície
+        ligeiramente transparentes (ex: 92% brancos)
+      */
+      --surface-color: #cbd5e1;
+    }
+
+    /* === NOVOS ESTILOS: LAYOUT PRINCIPAL (Sidebar + Conteúdo) === */
+
+    .sidebar {
+      width: var(--sidebar-width);
+      height: 100vh;
+      position: fixed;
+      top: 0;
+      left: 0;
+      background: var(--surface-color);
+      border-right: 1px solid var(--border-color);
+      padding: 1rem;
+      transition: var(--transition);
+      z-index: 1001;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.5rem;
+      height: var(--header-height);
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 1rem;
+      cursor: pointer;
+      /* */
+    }
+
+    .sidebar-header .logo {
+      height: 45px;
+      width: auto;
+    }
+
+    .sidebar-header .brand-text {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--primary-color);
+      white-space: nowrap;
+    }
+
+    .sidebar-nav {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .sidebar-nav-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .sidebar-nav-item {
+      margin-bottom: 0.5rem;
+    }
+
+    .sidebar-nav-link {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.875rem 1rem;
+      border-radius: var(--border-radius-sm);
+      text-decoration: none;
+      font-weight: 500;
+      color: #000000;
+      transition: var(--transition);
+      white-space: nowrap;
+      font-size: 0.850rem;
+    }
+
+    .sidebar-nav-link .nav-icon {
+      font-size: 1.125rem;
+      width: 20px;
+      text-align: center;
+    }
+
+    .sidebar-nav-link:hover {
+      background: rgba(37, 99, 235, 0.08);
+      color: var(--primary-color);
+    }
+
+    .sidebar-nav-link.active {
+      background: var(--primary-color);
+      color: white;
+      box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);
+    }
+
+    /* Badge no Menu */
+    .sidebar-nav-link .badge {
+      margin-left: auto;
+      background: var(--danger-color);
+    }
+
+    .sidebar-nav-link.btn-animated .badge {
+      animation: pulse 2s infinite;
+    }
+
+    /* Estilo do botão de Saldo Global no menu */
+    .sidebar-nav-button {
+      width: 100%;
+      background: linear-gradient(135deg, var(--success-color), #059669);
+      color: white;
+      margin-top: 1rem;
+    }
+
+    /* Main Content Area */
+    .main-content {
+      margin-left: var(--sidebar-width);
+      width: calc(100% - var(--sidebar-width));
+      transition: var(--transition);
       min-height: 100vh;
     }
 
-    /* Header Styles */
+    /* Header Styles (Agora dentro do Main Content) */
     .top-bar {
-      background: var(--surface-color);
-      height: var(--header-height);
+      background: rgba(255, 255, 255, 0.8);
+      /* Efeito de vidro */
+      backdrop-filter: blur(10px);
+
       border-bottom: 1px solid var(--border-color);
       display: flex;
       align-items: center;
@@ -57,95 +380,69 @@
       padding: 0 2rem;
       position: sticky;
       top: 0;
-      z-index: 100;
-      backdrop-filter: blur(10px);
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      z-index: 1000;
     }
 
-    .header-brand {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-    }
-
-    .logo {
-      height: 50px;
-      width: auto;
-    }
-
-    .brand-text {
+    .sidebar-toggle {
+      display: none;
+      /* Oculto por padrão, aparece em mobile */
       font-size: 1.5rem;
-      font-weight: 700;
-      color: var(--primary-color);
+      color: var(--text-primary);
+      cursor: pointer;
     }
 
     .header-actions {
       display: flex;
       align-items: center;
       gap: 1.5rem;
+      margin-left: auto;
+      /* Empurra para a direita */
     }
 
-    .user-info {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      padding: 0.5rem 1rem;
-      background: var(--background-color);
-      border-radius: var(--border-radius-sm);
-      font-weight: 500;
-      color: var(--text-primary);
-    }
-
-    .saldo-info {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.5rem 1rem;
-      background: linear-gradient(135deg, var(--success-color), #059669);
-      color: white;
-      border-radius: var(--border-radius-sm);
-      font-weight: 600;
-      box-shadow: var(--card-shadow);
-    }
-
-    .top-bar a {
-      color: var(--danger-color);
-      text-decoration: none;
-      font-weight: 500;
-      padding: 0.5rem 1rem;
-      border-radius: var(--border-radius-sm);
-      transition: var(--transition);
-    }
-
-    .top-bar a:hover {
-      background: var(--danger-color);
-      color: white;
-    }
-
-    /* Container Styles */
-    .container {
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 2rem;
-      min-height: calc(100vh - var(--header-height) - 60px);
-    }
-
-    .login-container {
+    body.login-page {
       display: flex;
       align-items: center;
       justify-content: center;
       min-height: 100vh;
-      background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+
+      /* === LINHAS ALTERADAS/ADICIONADAS === */
+      background-image: url("{{ url_for('static', filename='tecsul.jpg') }}");
+      background-size: cover;
+      background-position: center center;
+      background-repeat: no-repeat;
+      background-attachment: fixed;
+      /* === FIM DA ALTERAÇÃO === */
     }
 
+    body.login-page .main-content {
+      margin-left: 0;
+      width: auto;
+      min-height: auto;
+    }
+
+    .login-container {
+      width: 100%;
+    }
+
+    /* Container de conteúdo principal */
+    .container {
+      max-width: 1600px;
+      /* Aumentado para layouts maiores */
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    /* ================================================================ */
+
     .login-card {
-      background: var(--surface-color);
+      background: #c1bfbf;
       padding: 3rem;
       border-radius: var(--border-radius);
       box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
       width: 100%;
       max-width: 420px;
-      backdrop-filter: blur(10px);
+      margin: 0 auto;
+      /* Centraliza o card de login */
     }
 
     .login-card h2 {
@@ -169,18 +466,17 @@
       font-size: 0.875rem;
     }
 
-    /* Enhanced contrast for input fields */
     .form-group input,
     .form-group textarea,
     .form-group select {
       width: 100%;
       padding: 0.875rem 1rem;
-      border: 2px solid #e2e8f0;
+      border: 1px solid var(--border-color);
       border-radius: var(--border-radius-sm);
       font-size: 0.875rem;
       transition: var(--transition);
-      background: #ffffff; /* Fundo branco puro para destaque */
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      background: #ffffff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     }
 
     .form-group input:focus,
@@ -188,9 +484,7 @@
     .form-group select:focus {
       outline: none;
       border-color: var(--primary-color);
-      ring: 2px;
-      ring-color: rgba(37, 99, 235, 0.2);
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1), 0 1px 3px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
     }
 
     /* Card Styles */
@@ -231,14 +525,14 @@
       margin-bottom: 2rem;
     }
 
-    /* Action Bar */
+    /* Action Bar (Agora para botões de criar RD) */
     .action-bar {
       display: flex;
       flex-wrap: wrap;
       gap: 1rem;
-      margin: 2rem 0;
-      padding: 1.5rem;
-      background: var(--surface-color);
+      margin-bottom: 2rem;
+
+
       border-radius: var(--border-radius);
       box-shadow: var(--card-shadow);
       justify-content: center;
@@ -248,6 +542,7 @@
     .btn {
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 0.5rem;
       padding: 0.75rem 1.5rem;
       border: none;
@@ -266,9 +561,20 @@
       box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);
     }
 
-    .btn-primary:hover {
+    .action-bar .btn {
+      /* Define o degradê cinza, usando as variáveis de texto (slate-500 e slate-400) */
+
+      color: white;
+      /* Mantém o texto branco para contraste */
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      /* Sombra preta sutil */
+    }
+
+    .action-bar .btn:hover {
+      /* Define um degradê levemente mais escuro para o hover */
+      background: linear-gradient(135deg, #5a6a7e, #8a9cb0);
       transform: translateY(-1px);
-      box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.4);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
     }
 
     .btn-secondary {
@@ -296,13 +602,40 @@
       color: white;
     }
 
-    .btn-approve { background: linear-gradient(135deg, var(--success-color), #059669); color: white; }
-    .btn-additional { background: linear-gradient(135deg, var(--secondary-color), #d97706); color: white; }
-    .btn-fechamento { background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; }
-    .btn-edit { background: linear-gradient(135deg, var(--warning-color), #d97706); color: white; }
-    .btn-blue { background: linear-gradient(135deg, var(--info-color), #0284c7); color: white; }
-    .btn-history { background: linear-gradient(135deg, var(--info-color), #0284c7); color: white; }
-    .btn-pronto-fechamento { background: linear-gradient(135deg, var(--success-color), #059669); color: white; }
+    .btn-approve {
+      background: linear-gradient(135deg, var(--success-color), #059669);
+      color: white;
+    }
+
+    .btn-additional {
+      background: linear-gradient(135deg, var(--secondary-color), #d97706);
+      color: white;
+    }
+
+    .btn-fechamento {
+      background: linear-gradient(135deg, #8b5cf6, #7c3aed);
+      color: white;
+    }
+
+    .btn-edit {
+      background: linear-gradient(135deg, var(--warning-color), #d97706);
+      color: white;
+    }
+
+    .btn-blue {
+      background: linear-gradient(135deg, var(--info-color), #0284c7);
+      color: white;
+    }
+
+    .btn-history {
+      background: linear-gradient(135deg, var(--info-color), #0284c7);
+      color: white;
+    }
+
+    .btn-pronto-fechamento {
+      background: linear-gradient(135deg, var(--success-color), #059669);
+      color: white;
+    }
 
     .btn-delete-rd {
       background: linear-gradient(135deg, var(--danger-color), #dc2626);
@@ -334,8 +667,15 @@
     }
 
     @keyframes pulse {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.05); }
+
+      0%,
+      100% {
+        transform: scale(1);
+      }
+
+      50% {
+        transform: scale(1.05);
+      }
     }
 
     /* Badge Styles */
@@ -367,39 +707,39 @@
       flex-wrap: wrap;
       gap: 0.5rem;
       margin-bottom: 2rem;
-      background: var(--surface-color);
-      padding: 1rem;
       border-radius: var(--border-radius);
       box-shadow: var(--card-shadow);
-      justify-content: space-between; /* Distribui os botões uniformemente */
+      justify-content: space-between;
     }
 
     .tab-labels label {
       display: flex;
       align-items: center;
       gap: 0.5rem;
-      background: var(--background-color);
+      background: var(--success-color);
       border: 1px solid var(--border-color);
       border-radius: var(--border-radius-sm);
       cursor: pointer;
       transition: var(--transition);
       font-weight: 500;
-      color: var(--text-secondary);
-      flex: 1; /* Faz cada botão ocupar espaço igual */
-      justify-content: center; /* Centraliza o conteúdo dentro de cada botão */
+      color: #f3f6f9;
+      flex: 1;
+      justify-content: center;
       text-align: center;
-      min-width: 0; /* Permite que o flex funcione corretamente */
+      min-width: 0;
+      padding: 0.75rem 0.5rem;
+      /* Adicionado padding */
     }
 
     .tab-labels label:hover {
       background: var(--primary-light);
-      color: white;
+      color: rgb(182, 178, 178);
       border-color: var(--primary-light);
     }
 
-    input[type="radio"]:checked + label {
+    input[type="radio"]:checked+label {
       background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
-      color: white;
+      color: rgb(226, 221, 221);
       border-color: var(--primary-color);
       box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);
     }
@@ -408,13 +748,13 @@
       display: none;
     }
 
-    #tab1:checked ~ .content #content1,
-    #tab2:checked ~ .content #content2,
-    #tab3:checked ~ .content #content3,
-    #tab4:checked ~ .content #content4,
-    #tab5:checked ~ .content #content5,
-    #tab6:checked ~ .content #content6,
-    #tab7:checked ~ .content #content7 {
+    #tab1:checked~.content #content1,
+    #tab2:checked~.content #content2,
+    #tab3:checked~.content #content3,
+    #tab4:checked~.content #content4,
+    #tab5:checked~.content #content5,
+    #tab6:checked~.content #content6,
+    #tab7:checked~.content #content7 {
       display: block;
     }
 
@@ -434,7 +774,7 @@
     }
 
     th {
-      background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+      background: linear-gradient(122deg, #009688, #009688);
       color: white;
       padding: 1rem;
       text-align: left;
@@ -443,21 +783,19 @@
       border-bottom: 2px solid var(--primary-dark);
     }
 
-    /* ========== CONFIGURAÇÕES DAS LINHAS DA TABELA - CORES MELHORADAS ========== */
-    
     td {
       padding: 1rem;
-      border-right: 1px solid #cbd5e1;
-      border-bottom: 1px solid #cbd5e1;
+      border-right: 1px solid #051f3f69;
+      border-bottom: 1px solid #2e537f8c;
       vertical-align: middle;
-      background: #fdfdfe; /* Fundo levemente azulado muito sutil */
+      background: transparent;
     }
 
     tbody tr:hover td {
-      background: rgba(59, 130, 246, 0.08) !important; /* Hover azul mais visível mas suave */
+      background: rgba(59, 130, 246, 0.08) !important;
     }
 
-    /* Special styling for pronto-fechamento rows - cores mais suaves */
+    /* Special styling for pronto-fechamento rows */
     .pronto-fechamento td {
       background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(5, 150, 105, 0.18)) !important;
       border-right: 1px solid #cbd5e1 !important;
@@ -475,21 +813,11 @@
       border-bottom: none;
     }
 
-    /* Last column no right border */
-    td:last-child, th:last-child {
+    td:last-child,
+    th:last-child {
       border-right: none;
     }
 
-    /* Special styling for pronto-fechamento rows with better identification */
-    .pronto-fechamento td {
-      background: linear-gradient(135deg, rgba(34, 197, 94, 0.3), rgba(22, 163, 74, 0.4)) !important;
-      border-right: 1px solid #cbd5e1 !important; /* Bordas normais da tabela */
-      border-bottom: 1px solid #cbd5e1 !important; /* Bordas normais da tabela */
-      position: relative;
-      /* Removida animação da linha */
-    }
-
-    /* Add a visual badge for pronto fechamento */
     .pronto-fechamento td:first-child::before {
       content: "✓ PRONTO";
       position: absolute;
@@ -501,60 +829,154 @@
       font-weight: 700;
       padding: 2px 8px;
       border-radius: 12px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-      z-index: 1; /* Z-index menor para não interferir com tooltip */
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      z-index: 1;
       animation: pulseReady 1.5s ease-in-out infinite;
-      pointer-events: none; /* Permite que eventos de mouse passem através */
+      pointer-events: none;
     }
 
     @keyframes pulseReady {
-      0%, 100% { transform: scale(1); opacity: 1; }
-      50% { transform: scale(1.05); opacity: 0.9; }
-    }
 
-    .pronto-fechamento:hover td {
-      background: linear-gradient(135deg, rgba(34, 197, 94, 0.4), rgba(22, 163, 74, 0.5)) !important;
-      border-right: 1px solid #cbd5e1 !important; /* Mantém bordas normais no hover */
-      border-bottom: 1px solid #cbd5e1 !important; /* Mantém bordas normais no hover */
-      /* Removida animação da linha no hover */
-    }
-
-    /* Animação de pulso verde */
-    @keyframes pulseGreen {
-      0% {
-        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
-        transform: scale(1);
-      }
-      50% {
-        box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.1);
-        transform: scale(1.002);
-      }
+      0%,
       100% {
-        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
         transform: scale(1);
+        opacity: 1;
       }
-    }
 
-    @keyframes pulseGreenFast {
-      0% {
-        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.6);
-        transform: scale(1);
-      }
       50% {
-        box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.2);
-        transform: scale(1.004);
-      }
-      100% {
-        box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
-        transform: scale(1);
+        transform: scale(1.05);
+        opacity: 0.9;
       }
     }
 
-    /* Remove any conflicting styling */
-    .pronto-fechamento {
-      border: none !important;
-      outline: none !important;
+    /* === MUDANÇA: MENU DE AÇÕES DROPDOWN (Estilo e Correção) === */
+    .actions-menu {
+      position: relative;
+      display: inline-block;
     }
+
+    .actions-toggle {
+      background: var(--background-color);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      padding: 0.5rem 1rem;
+      border-radius: var(--border-radius-sm);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .actions-toggle:hover {
+      background: var(--primary-color);
+      color: white;
+      border-color: var(--primary-color);
+    }
+
+    .actions-dropdown {
+      display: none;
+      position: fixed;
+      background: var(--surface-color);
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius);
+      /* MUDANÇA: Borda mais suave */
+      box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.1), 0 5px 15px -5px rgba(0, 0, 0, 0.05);
+      /* MUDANÇA: Sombra mais suave */
+      z-index: 1050;
+      min-width: auto;
+      padding: 0.5rem;
+      animation: fadeIn-down 0.1s ease-out;
+      /* MUDANÇA: Renomeado */
+    }
+
+    @keyframes fadeIn-down {
+
+      /* MUDANÇA: Renomeado */
+      from {
+        opacity: 0;
+        transform: translateY(-5px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .actions-dropdown.show {
+      display: block;
+    }
+
+    /* --- INÍCIO: MUDANÇA - Lógica Drop-up --- */
+    @keyframes fadeIn-up {
+      from {
+        opacity: 0;
+        transform: translateY(5px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Novo: Estilo para quando o menu abre para cima */
+    .actions-dropdown.drop-up {
+
+      animation: fadeIn-up 0.1s ease-out;
+    }
+
+    /* --- FIM: MUDANÇA - Lógica Drop-up --- */
+
+    .actions-dropdown .action-form,
+    .actions-dropdown .action-link,
+    .actions-dropdown .action-button {
+      display: block;
+      width: 100%;
+      text-align: left;
+      margin: 0;
+    }
+
+    .actions-dropdown .btn {
+      background: none;
+      color: var(--text-primary);
+      box-shadow: none;
+      font-weight: 500;
+      width: 100%;
+      justify-content: flex-start;
+      padding: 0.65rem 1rem;
+      margin: 0.25rem 0;
+    }
+
+    .actions-dropdown .btn:hover {
+      background: var(--background-color);
+      color: var(--primary-color);
+      transform: none;
+    }
+
+    /* Cores específicas para botões no dropdown */
+    .actions-dropdown .btn-approve:hover {
+      background: #dcfce7;
+      color: #16a34a;
+    }
+
+    .actions-dropdown .btn-edit:hover {
+      background: #fef3c7;
+      color: #d97706;
+    }
+
+    .actions-dropdown .btn-delete-rd:hover {
+      background: #fee2e2;
+      color: #dc2626;
+    }
+
+    .actions-dropdown .btn-additional:hover,
+    .actions-dropdown .btn-fechamento:hover,
+    .actions-dropdown .btn-blue:hover,
+    .actions-dropdown .btn-pronto-fechamento:hover {
+      background: #dbeafe;
+      color: #2563eb;
+    }
+
+    /* ========================================= */
 
     /* Tooltip Styles */
     .valor-tooltip-wrapper {
@@ -581,8 +1003,8 @@
       width: 350px;
       max-height: 300px;
       overflow-y: auto;
-      background: linear-gradient(135deg, #1e293b, #334155); /* Fundo escuro com gradiente */
-      color: #f1f5f9; /* Texto claro */
+      background: linear-gradient(135deg, #1e293b, #334155);
+      color: #f1f5f9;
       border: 1px solid #475569;
       border-radius: var(--border-radius);
       padding: 1.5rem;
@@ -593,7 +1015,7 @@
       transition: opacity 0.3s ease, visibility 0.3s ease;
     }
 
-    .valor-tooltip-wrapper:hover .valor-tooltip {
+    .valor-tooltip-wrapper.show-tooltip .valor-tooltip {
       visibility: visible;
       opacity: 1;
     }
@@ -602,23 +1024,23 @@
       margin: 0 0 1rem 0;
       font-size: 1.125rem;
       font-weight: 600;
-      color: #60a5fa; /* Azul claro para o título */
+      color: #60a5fa;
     }
 
     .valor-tooltip p {
       margin: 0.5rem 0;
-      color: #f1f5f9; /* Texto claro */
+      color: #f1f5f9;
     }
 
     .valor-tooltip hr {
       border: none;
       height: 1px;
-      background: #475569; /* Linha divisória mais clara */
+      background: #475569;
       margin: 1rem 0;
     }
 
     .valor-tooltip p strong {
-      color: #fbbf24; /* Amarelo para destaques */
+      color: #fbbf24;
       font-weight: 600;
     }
 
@@ -626,31 +1048,58 @@
     .modal {
       display: none;
       position: fixed;
-      z-index: 9999;
+      z-index: 9998;
+      /* Abaixo das notificações */
       left: 0;
       top: 0;
       width: 100%;
       height: 100%;
       background: rgba(0, 0, 0, 0.5);
       backdrop-filter: blur(4px);
+      /* Transparência com blur */
+      align-items: center;
+      justify-content: center;
+      animation: modalFadeIn 0.3s ease-out;
+    }
+
+    .modal.show {
+      display: flex;
+    }
+
+    @keyframes modalFadeIn {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
     }
 
     .modal-content {
       background: var(--surface-color);
-      margin: 5% auto;
-      padding: 2rem;
+      padding: 2.5rem;
       border-radius: var(--border-radius);
+      width: 90%;
       max-width: 600px;
       position: relative;
       box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
       animation: modalSlideIn 0.3s ease-out;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    /* Modal maior para o formulário de solicitação */
+    .modal-content.modal-lg {
+      max-width: 800px;
     }
 
     @keyframes modalSlideIn {
       from {
         opacity: 0;
-        transform: translateY(-50px) scale(0.9);
+        transform: translateY(-50px) scale(0.95);
       }
+
       to {
         opacity: 1;
         transform: translateY(0) scale(1);
@@ -671,6 +1120,7 @@
       justify-content: center;
       border-radius: 50%;
       transition: var(--transition);
+      z-index: 10;
     }
 
     .close-btn:hover {
@@ -678,17 +1128,21 @@
       color: white;
     }
 
+    .modal-content h2,
     .modal-content h3 {
       margin-top: 0;
       margin-bottom: 1.5rem;
       color: var(--text-primary);
       font-weight: 600;
+      padding-right: 2rem;
+      /* Espaço para o botão de fechar */
     }
 
     /* Alert Messages */
     .notifications-container {
       position: fixed;
       top: 90px;
+      /* Abaixo do top-bar */
       right: 20px;
       z-index: 9999;
       max-width: 400px;
@@ -698,7 +1152,7 @@
     .notification {
       display: flex;
       align-items: center;
-      gap: 0.75rem;
+      gap: 1rem;
       padding: 1rem 1.25rem;
       margin-bottom: 0.75rem;
       border-radius: var(--border-radius);
@@ -707,6 +1161,7 @@
       animation: slideInRight 0.3s ease-out;
       cursor: pointer;
       transition: var(--transition);
+      border: 1px solid transparent;
     }
 
     .notification:hover {
@@ -718,6 +1173,7 @@
         opacity: 0;
         transform: translateX(100%);
       }
+
       to {
         opacity: 1;
         transform: translateX(0);
@@ -729,6 +1185,7 @@
         opacity: 1;
         transform: translateX(0);
       }
+
       to {
         opacity: 0;
         transform: translateX(100%);
@@ -739,27 +1196,28 @@
       animation: slideOutRight 0.3s ease-in forwards;
     }
 
+    /* Novas classes de notificação (baseadas em categoria) */
     .notification-success {
       background: linear-gradient(135deg, #dcfce7, #bbf7d0);
-      border: 1px solid #86efac;
+      border-color: #86efac;
       color: #14532d;
     }
 
     .notification-error {
       background: linear-gradient(135deg, #fef2f2, #fee2e2);
-      border: 1px solid #fecaca;
+      border-color: #fecaca;
       color: #991b1b;
     }
 
     .notification-info {
       background: linear-gradient(135deg, #eff6ff, #dbeafe);
-      border: 1px solid #93c5fd;
+      border-color: #93c5fd;
       color: #1e40af;
     }
 
     .notification-warning {
       background: linear-gradient(135deg, #fffbeb, #fef3c7);
-      border: 1px solid #fcd34d;
+      border-color: #fcd34d;
       color: #92400e;
     }
 
@@ -792,7 +1250,7 @@
       background: rgba(0, 0, 0, 0.1);
     }
 
-    /* Legacy error message for fallback */
+    /* Legado, para fallback */
     .error-message {
       background: linear-gradient(135deg, #fef2f2, #fee2e2);
       border: 1px solid #fecaca;
@@ -802,15 +1260,6 @@
       margin: 1rem 0;
       font-weight: 500;
       list-style: none;
-    }
-
-    @media (max-width: 768px) {
-      .notifications-container {
-        top: 70px;
-        left: 10px;
-        right: 10px;
-        max-width: none;
-      }
     }
 
     /* Observation Toggle */
@@ -861,13 +1310,92 @@
     footer {
       text-align: center;
       color: var(--text-muted);
-      padding: 2rem;
+
       border-top: 1px solid var(--border-color);
       background: var(--surface-color);
       margin-top: 4rem;
     }
 
+    /* DataTables Customization */
+    .dataTables_wrapper {
+
+      border-radius: var(--border-radius);
+      overflow: hidden;
+      padding: 1.5rem;
+    }
+
+    .dataTables_length,
+    .dataTables_filter,
+    .dataTables_info,
+    .dataTables_paginate {
+      color: var(--text-primary) !important;
+      margin-bottom: 1rem;
+    }
+
+    .dataTables_length select,
+    .dataTables_filter input {
+      border: 1px solid var(--border-color) !important;
+      border-radius: var(--border-radius-sm) !important;
+      background-color: #dfdddd;
+      padding: 0.5rem !important;
+    }
+
+    .dataTables_paginate .paginate_button {
+      border-radius: var(--border-radius-sm) !important;
+    }
+
+    .dataTables_paginate .paginate_button.current {
+      background: var(--primary-color) !important;
+      color: white !important;
+      border: 1px solid var(--primary-color) !important;
+    }
+
+    /* Form Row (para Modais) */
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1rem;
+    }
+
     /* Responsive Design */
+    @media (max-width: 1024px) {
+      .sidebar {
+        /* Esconde o menu por padrão em telas menores */
+        transform: translateX(calc(-1 * var(--sidebar-width)));
+        z-index: 9997;
+      }
+
+      .sidebar.show {
+        transform: translateX(0);
+        box-shadow: 0 0 50px rgba(0, 0, 0, 0.1);
+      }
+
+      .main-content {
+        margin-left: 0;
+        width: 100%;
+      }
+
+      .sidebar-toggle {
+        display: block;
+      }
+
+      /* Overlay para fechar o menu */
+      .sidebar-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.4);
+        z-index: 9996;
+      }
+
+      .sidebar-overlay.show {
+        display: block;
+      }
+    }
+
     @media (max-width: 768px) {
       .container {
         padding: 1rem;
@@ -875,15 +1403,22 @@
 
       .top-bar {
         padding: 0 1rem;
-        flex-wrap: wrap;
-        height: auto;
-        min-height: var(--header-height);
       }
 
       .header-actions {
-        width: 100%;
-        justify-content: space-between;
-        margin-top: 1rem;
+        gap: 0.5rem;
+      }
+
+      .user-info,
+      .saldo-info {
+        padding: 0.5rem;
+        font-size: 0.8rem;
+      }
+
+      .user-info span,
+      .saldo-info span {
+        display: none;
+        /* Esconde o texto, mostra só o ícone */
       }
 
       .tab-labels {
@@ -900,7 +1435,12 @@
         justify-content: center;
       }
 
-      table, thead, tbody, th, td, tr {
+      /* Tabela Responsiva (Estilo Cartão) */
+      table,
+      thead,
+      tbody,
+      th,
+      tr {
         display: block;
       }
 
@@ -916,186 +1456,304 @@
         margin-bottom: 1rem;
         padding: 1rem;
         background: var(--surface-color);
+        box-shadow: var(--card-shadow);
       }
 
       td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
         border: none;
         position: relative;
-        padding: 0.5rem 0;
-        padding-left: 50%;
-        text-align: left;
+        padding: 0.75rem 0;
+        text-align: right;
+        border-bottom: 1px dashed var(--border-color);
+      }
+
+      tr td:last-child {
+        border-bottom: none;
       }
 
       td::before {
         content: attr(data-label) ": ";
-        position: absolute;
-        left: 0;
-        width: 45%;
-        padding-right: 10px;
-        white-space: nowrap;
         font-weight: 600;
         color: var(--text-secondary);
+        text-align: left;
+        padding-right: 10px;
+        white-space: nowrap;
+      }
+
+      /* Ajuste para menu de ações em mobile */
+      td[data-label="Ações"] {
+        justify-content: center;
+      }
+
+      td[data-label="Ações"]::before {
+        display: none;
+      }
+
+      .actions-dropdown {
+        position: fixed;
+        /* Posição fixa para centralizar */
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 90%;
+        max-width: 300px;
+      }
+
+      .notifications-container {
+        top: 70px;
+        left: 10px;
+        right: 10px;
+        max-width: none;
       }
     }
 
-    /* DataTables Customization */
-    .dataTables_wrapper {
-      background: var(--surface-color);
-      border-radius: var(--border-radius);
-      overflow: hidden;
+    /* === NOVOS ESTILOS PARA O MODAL IA === */
+    /* Spinner de Carregamento (se Font Awesome não for suficiente) */
+    .spinner-border {
+      display: inline-block;
+      width: 2rem;
+      height: 2rem;
+      vertical-align: text-bottom;
+      border: .25em solid currentColor;
+      border-right-color: transparent;
+      border-radius: 50%;
+      animation: spinner-border .75s linear infinite;
     }
 
-    .dataTables_length,
-    .dataTables_filter,
-    .dataTables_info,
-    .dataTables_paginate {
-      color: var(--text-primary) !important;
-    }
-
-    .dataTables_length select,
-    .dataTables_filter input {
-      border: 1px solid var(--border-color) !important;
-      border-radius: var(--border-radius-sm) !important;
-      padding: 0.5rem !important;
-    }
-
-    /* Header Brand Animation */
-    .header-brand {
-      animation: slideInFromLeft 0.8s ease-out;
-    }
-
-    @keyframes slideInFromLeft {
-      from {
-        opacity: 0;
-        transform: translateX(-30px);
-      }
+    @keyframes spinner-border {
       to {
-        opacity: 1;
-        transform: translateX(0);
+        transform: rotate(360deg);
       }
     }
 
-    /* Loading States */
-    .btn:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-      transform: none !important;
+    /* Lista de Gastos Totais (Simples) */
+    .list-group {
+      list-style: none;
+      padding-left: 0;
+      margin-bottom: 1.5rem;
     }
 
-    /* Enhanced Form Styling */
-    .form-row {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 1rem;
-    }
-
-    /* Enhanced Card Actions */
-    .card-actions {
+    .list-group-item {
       display: flex;
-      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.75rem 1.25rem;
+      background-color: var(--surface-color);
+      border: 1px solid var(--border-color);
+      margin-bottom: -1px;
+    }
+
+    .list-group-item:first-child {
+      border-top-left-radius: var(--border-radius-sm);
+      border-top-right-radius: var(--border-radius-sm);
+    }
+
+    .list-group-item:last-child {
+      margin-bottom: 0;
+      border-bottom-left-radius: var(--border-radius-sm);
+      border-bottom-right-radius: var(--border-radius-sm);
+    }
+
+    .list-group-item .badge {
+      background: var(--primary-color);
+    }
+
+    /* Card de Análise por Arquivo (baseado no .file-item que você já tem) */
+    .analise-file-card {
+      display: flex;
+      flex-direction: column;
       gap: 0.5rem;
-      margin-top: 1rem;
+      padding: 1rem;
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius-sm);
+      margin-bottom: 0.75rem;
+      background: var(--background-color);
+      /* Um pouco mais escuro que a superfície do modal */
     }
-
-    .card-actions .btn {
-      font-size: 0.8rem;
-      padding: 0.5rem 1rem;
-    }
-
-    /* Improved spacing */
-    .mb-1 { margin-bottom: 0.25rem; }
-    .mb-2 { margin-bottom: 0.5rem; }
-    .mb-3 { margin-bottom: 1rem; }
-    .mb-4 { margin-bottom: 1.5rem; }
-    .mb-5 { margin-bottom: 2rem; }
-
-    .mt-1 { margin-top: 0.25rem; }
-    .mt-2 { margin-top: 0.5rem; }
-    .mt-3 { margin-top: 1rem; }
-    .mt-4 { margin-top: 1.5rem; }
-    .mt-5 { margin-top: 2rem; }
   </style>
 </head>
-<body>
+
+<body class="{% if user_role is not defined %}login-page{% endif %}">
+
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
   {% if user_role is defined %}
-  <div class="top-bar">
-    <div class="header-brand">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
       <img src="https://pub-1e6f8559bc2b413c889fbf4860462599.r2.dev/logo_animado.gif" alt="Logo Tecsul" class="logo">
-      <div class="brand-text">Gerenciamento de RDs</div>
+      <div class="brand-text">TECSUL RD´s</div>
     </div>
-    <div class="header-actions">
-      <div class="user-info">
-        <i class="fas fa-user-circle"></i>
-        <span>{{ user_role }}</span>
-      </div>
-      {% if saldo_global is defined and saldo_global is not none %}
-      <div class="saldo-info">
-        <i class="fas fa-wallet"></i>
-        <span>Saldo Global: R${{ format_currency(saldo_global) }}</span>
-      </div>
-      {% endif %}
-      <a href="{{ url_for('logout') }}">
-        <i class="fas fa-sign-out-alt"></i>
-        Sair
-      </a>
-    </div>
-  </div>
+    <nav class="sidebar-nav">
+      <ul class="sidebar-nav-list">
+        <li class="sidebar-nav-item">
+          <a href="{{ url_for('index') }}" class="sidebar-nav-link active">
+            <i class="fas fa-home nav-icon"></i>
+            <span>Dashboard (RDs)</span>
+          </a>
+        </li>
+
+        {% if user_role != 'funcionario' %}
+        <li class="sidebar-nav-item">
+          <a href="{{ url_for('cadastro_funcionario') }}" class="sidebar-nav-link">
+            <i class="fas fa-user-plus nav-icon"></i>
+            <span>Cadastro Funcionários</span>
+          </a>
+        </li>
+        <li class="sidebar-nav-item">
+          <a href="{{ url_for('consulta_funcionario') }}" class="sidebar-nav-link">
+            <i class="fas fa-search nav-icon"></i>
+            <span>Consulta Funcionários</span>
+          </a>
+        </li>
+        {% if is_financeiro() %}
+        <li class="sidebar-nav-item">
+          <a href="{{ url_for('admin_usuarios') }}" class="sidebar-nav-link">
+            <i class="fas fa-user-cog nav-icon"></i>
+            <span>Gerenciar Usuários</span>
+          </a>
+        </li>
+        {% endif %}
+        <li class="sidebar-nav-item">
+          <a href="{{ url_for('historico_geral') }}" class="sidebar-nav-link">
+            <i class="fas fa-history nav-icon"></i>
+            <span>Histórico Geral</span>
+          </a>
+        </li>
+        <li class="sidebar-nav-item">
+          <a href="{{ url_for('dashboard') }}" class="sidebar-nav-link">
+            <i class="fas fa-chart-line nav-icon"></i>
+            <span>Métricas</span>
+          </a>
+        </li>
+        <li class="sidebar-nav-item">
+          <a href="{{ url_for('anexos_divergentes') }}"
+            class="sidebar-nav-link {% if divergentes_count > 0 %}btn-animated{% endif %}">
+            <i class="fas fa-paperclip nav-icon"></i>
+            <span>Anexos Divergentes</span>
+            {% if divergentes_count > 0 %}
+            <span class="badge">{{ divergentes_count }}</span>
+            {% endif %}
+          </a>
+        </li>
+        {% if user_role == 'financeiro' %}
+        <li class="sidebar-nav-item">
+          <a href="{{ url_for('export_historico') }}" class="sidebar-nav-link">
+            <i class="fas fa-file-invoice-dollar nav-icon"></i>
+            <span>Hist. de Movimentações</span>
+          </a>
+        </li>
+        {% endif %}
+        <li class="sidebar-nav-item">
+          <a href="{{ url_for('export_excel') }}" class="sidebar-nav-link">
+            <i class="fas fa-file-excel nav-icon"></i>
+            <span>Exportar Excel</span>
+          </a>
+        </li>
+
+        {% if user_role == 'financeiro' %}
+        <li class="sidebar-nav-item">
+          <button type="button" class="btn btn-success sidebar-nav-button" id="btn-saldo-global">
+            <i class="fas fa-wallet"></i>
+            <span>Editar Saldo Global</span>
+          </button>
+        </li>
+        {% endif %}
+        {% endif %}
+      </ul>
+    </nav>
+  </aside>
   {% endif %}
 
-  {% if user_role is not defined %}
-  <div class="login-container">
-    <div class="login-card">
-      <h2><i class="fas fa-shield-alt"></i> Acessar o Sistema</h2>
-      <form action="/" method="POST">
-        {% if error %}<p class="error-message">{{ error }}</p>{% endif %}
-        
-        <div class="form-group">
-          <label for="username">
-            <i class="fas fa-user"></i>
-            Usuário:
-          </label>
-          <input type="text" id="username" name="username" required>
-        </div>
+  <div class="main-content">
+    {% if user_role is defined %}
+    <header class="top-bar">
+      <div class="sidebar-toggle" id="sidebarToggle">
+        <i class="fas fa-bars"></i>
+      </div>
 
-        <div class="form-group">
-          <label for="password">
-            <i class="fas fa-lock"></i>
-            Senha:
-          </label>
-          <input type="password" id="password" name="password" required>
+      <div class="header-actions">
+        <div class="user-info">
+          <i class="fas fa-user-circle"></i>
+          <span>{{ user_role }}</span>
         </div>
-        
-        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
-          <i class="fas fa-sign-in-alt"></i>
-          Entrar
-        </button>
-      </form>
-    </div>
-  </div>
-  {% else %}
+        {% if saldo_global is defined and saldo_global is not none %}
+        <div class="saldo-info">
+          <i class="fas fa-wallet"></i>
+          <span>Saldo Global: R${{ format_currency(saldo_global) }}</span>
+        </div>
+        {% endif %}
+        <a href="{{ url_for('logout') }}" title="Sair">
+          <i class="fas fa-sign-out-alt"></i>
+          <span class="d-none d-md-inline">Sair</span>
+        </a>
+      </div>
+    </header>
+    {% endif %}
 
-  <!-- Notifications Container -->
-  <div class="notifications-container" id="notificationsContainer">
-    {% with messages = get_flashed_messages() %}
-      {% if messages %}
-        {% for message in messages %}
-          <div class="notification" data-message="{{ message }}">
-            <div class="notification-icon">
-              <i class="fas fa-info-circle"></i>
-            </div>
-            <div class="notification-content">{{ message }}</div>
-            <button class="notification-close" onclick="closeNotification(this.parentElement); event.stopPropagation();">
-              <i class="fas fa-times"></i>
-            </button>
+    {% if user_role is not defined %}
+    <div class="login-container">
+      <div class="login-card">
+        <h2><i class="fas fa-shield-alt"></i> Acessar o Sistema</h2>
+        <form action="/" method="POST">
+          {% with messages = get_flashed_messages(with_categories=True) %}
+          {% if messages %}
+          {% for category, message in messages %}
+          {% if category == 'error' %}
+          <p class="error-message">{{ message }}</p>
+          {% endif %}
+          {% endfor %}
+          {% endif %}
+          {% endwith %}
+
+          <div class="form-group">
+            <label for="username">
+              <i class="fas fa-user"></i>
+              Usuário:
+            </label>
+            <input type="text" id="username" name="username" required>
           </div>
-        {% endfor %}
+
+          <div class="form-group">
+            <label for="password">
+              <i class="fas fa-lock"></i>
+              Senha:
+            </label>
+            <input type="password" id="password" name="password" required>
+          </div>
+
+          <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1rem;">
+            <i class="fas fa-sign-in-alt"></i>
+            Entrar
+          </button>
+        </form>
+      </div>
+    </div>
+    {% else %}
+
+    <div class="notifications-container" id="notificationsContainer">
+      {% with messages = get_flashed_messages(with_categories=True) %}
+      {% if messages %}
+      {% for category, message in messages %}
+      <div class="notification" data-category="{{ category }}" data-message="{{ message }}">
+        <div class="notification-icon">
+          <i class="fas fa-info-circle"></i>
+        </div>
+        <div class="notification-content">{{ message }}</div>
+        <button class="notification-close">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      {% endfor %}
       {% endif %}
-    {% endwith %}
-  </div>
+      {% endwith %}
+    </div>
 
-  <div class="container">
+    <div class="container">
 
-    {% if adicional_id %}
+      {% if adicional_id %}
       <div class="main-form">
         <h2><i class="fas fa-plus-circle"></i> Solicitar Crédito Adicional para RD #{{ adicional_id }}</h2>
         <form action="/adicional_submit/{{ adicional_id }}" method="POST" enctype="multipart/form-data">
@@ -1113,7 +1771,7 @@
           </button>
         </form>
       </div>
-    {% elif fechamento_id %}
+      {% elif fechamento_id %}
       <div class="main-form">
         <h2><i class="fas fa-lock"></i> Fechamento da RD #{{ fechamento_id }}</h2>
         <form action="/fechamento_submit/{{ fechamento_id }}" method="POST" enctype="multipart/form-data">
@@ -1123,7 +1781,7 @@
           </div>
           <div class="form-group">
             <label for="arquivo">Anexar Arquivos Finais (opcional):</label>
-            <input type="file" id="arquivo" name="arquivo" multiple>
+            <input type="file" id="arquivo" name="arquivo" multiple accept="image/*" capture="environment">
           </div>
           <button type="submit" class="btn btn-primary">
             <i class="fas fa-check-circle"></i>
@@ -1131,150 +1789,74 @@
           </button>
         </form>
       </div>
-    {% else %}
+      {% else %}
       {% if can_add %}
-        <div class="action-bar">
-          <button type="button" id="btn-alelo" class="btn btn-primary">
-            <i class="fas fa-credit-card"></i>
-            Solicitação RD Alelo
-          </button>
-          <button type="button" id="btn-reembolso" class="btn btn-secondary">
-            <i class="fas fa-receipt"></i>
-            Solicitação RD Reembolso
-          </button>
-        </div>
-        <form id="form-solicitacao" action="/add" method="POST" enctype="multipart/form-data" class="main-form" style="display:none;">
-          <div class="form-row">
-            <div class="form-group">
-              <label id="lbl-solicitante" for="solicitante">Solicitante:</label>
-              <input type="text" id="solicitante" name="solicitante" required>
-            </div>
-            <div class="form-group">
-              <label for="funcionario">Funcionário:</label>
-              <input type="text" id="funcionario" name="funcionario" required>
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label for="data">Data:</label>
-              <input type="date" id="data" name="data" required>
-            </div>
-            <div class="form-group">
-              <label for="centro_custo">Centro de Custo:</label>
-              <input type="text" id="centro_custo" name="centro_custo" required>
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label for="unidade_negocio">Unidade de Negócio:</label>
-              <input type="text" id="unidade_negocio" name="unidade_negocio" placeholder="Cód. Filial">
-            </div>
-            <div class="form-group">
-              <label for="valor">Valor (R$):</label>
-              <input type="number" id="valor" name="valor" step="0.01" required>
-            </div>
-          </div>
-          <div class="form-group">
-            <label for="observacao">Observação:</label>
-            <textarea id="observacao" name="observacao" rows="3"></textarea>
-          </div>
-          <div class="form-group">
-            <label for="arquivo">Anexar Arquivos:</label>
-            <input type="file" id="arquivo" name="arquivo" multiple>
-          </div>
-          <input type="hidden" name="tipo" id="rd-tipo" value="">
-          <button type="submit" class="btn btn-primary">
-            <i class="fas fa-plus-circle"></i>
-            Enviar Solicitação
-          </button>
-        </form>
-      {% endif %}
-      
-      {% if user_role == 'financeiro' %}
-        <div class="main-form">
-          <h2><i class="fas fa-wallet"></i> Editar Saldo Global</h2>
-          <form action="{{ url_for('edit_saldo') }}" method="POST">
-            <div class="form-group">
-              <label for="saldo_global">Saldo Global (R$):</label>
-              <input type="number" id="saldo_global" name="saldo_global" step="0.01" value="{{ saldo_global }}" required>
-            </div>
-            <button type="submit" class="btn btn-success">
-              <i class="fas fa-sync-alt"></i>
-              Atualizar Saldo
-            </button>
-          </form>
-        </div>
-      {% endif %}
-
       <div class="action-bar">
-        <a href="{{ url_for('cadastro_funcionario') }}" class="btn btn-success">
-          <i class="fas fa-user-plus"></i>
-          Cadastro Funcionários
-        </a>
-        <a href="{{ url_for('historico_geral') }}" class="btn btn-history">
-          <i class="fas fa-history"></i>
-          Histórico Geral
-        </a>
-        <a href="{{ url_for('dashboard') }}" class="btn btn-primary">
-         <i class="fas fa-chart-line"></i>
-          Dashboard de Métricas
-        </a>
-        <a href="{{ url_for('consulta_funcionario') }}" class="btn btn-success">
-          <i class="fas fa-search"></i>
-          Consulta Funcionários
-        </a>
-        <a href="{{ url_for('anexos_divergentes') }}" class="btn btn-blue {% if divergentes_count > 0 %}btn-animated{% endif %}">
-          <i class="fas fa-paperclip"></i>
-          Anexos Divergentes
-          {% if divergentes_count > 0 %}
-            <span class="badge">{{ divergentes_count }}</span>
-          {% endif %}
-        </a>
-        {% if user_role == 'financeiro' %}
-          <a href="{{ url_for('export_historico') }}" class="btn btn-success">
-            <i class="fas fa-history"></i>
-            Histórico de Movimentação
-          </a>
-        {% endif %}
-        <a href="{{ url_for('export_excel') }}" class="btn btn-success">
-          <i class="fas fa-file-excel"></i>
-          Exportar para Excel
-        </a>
+        <button type="button" id="btn-alelo" class="btn btn-primary">
+          <i class="fas fa-credit-card"></i>
+          Solicitação RD Alelo
+        </button>
+        <button type="button" id="btn-reembolso" class="btn btn-secondary">
+          <i class="fas fa-receipt"></i>
+          Solicitação RD Reembolso
+        </button>
       </div>
+      {% endif %}
 
       {% macro mostrar_valores(rd) %}
-        {% set valor_inicial = rd[5] if rd[5] else 0 %}
-        {% set total_adicionais = rd[7] if rd[7] else 0 %}
-        {% set valor_despesa = rd[9] if rd[9] else 0 %}
-        {% set valor_total = valor_inicial + total_adicionais %}
-        {% set saldo_devolver = valor_total - valor_despesa %}
-        {% set adicionais_para_exibir = rd[19].split(',') if rd[19] else [] %}
+      {% set valor_inicial = rd[5] if rd[5] else 0 %}
+      {% set total_adicionais = rd[7] if rd[7] else 0 %}
+      {% set valor_despesa = rd[9] if rd[9] else 0 %}
+      {% set valor_total = valor_inicial + total_adicionais %}
+      {% set saldo_devolver = valor_total - valor_despesa %}
+      {% set adicionais_para_exibir = rd[19].split(',') if rd[19] else [] %}
 
-        <div class="valor-tooltip-wrapper" data-rd-id="{{ rd[0] }}">
-          <span class="valor-total">R${{ format_currency(valor_total) }}</span>
-          <div class="valor-tooltip" data-tooltip>
-            <h3>RD #{{ rd[0] }}</h3>
-            <p><strong>Valor Solicitado:</strong> R${{ format_currency(valor_inicial) }} em {{ rd[28] if rd[28] else '-' }}</p>
-            <p><strong>Valores Adicionais:</strong>
-              {% if adicionais_para_exibir %}
-                <ul>
-                  {% for adicional in adicionais_para_exibir %}
-                    {% set partes = adicional.split(':') %}
-                    {% set numero_adicional = partes[0].split(' ')[1] if partes|length > 0 and ' ' in partes[0] else 'N/A' %}
-                    {% set valor_adicional_display = (partes[1]|float) if partes|length > 1 else 0 %}
-                    <li>Adicional {{ numero_adicional }}: R${{ format_currency(valor_adicional_display) }} em {{ rd[8] if rd[8] else '-' }}</li>
-                  {% endfor %}
-                </ul>
-              {% else %}
-                Nenhum
-              {% endif %}
-            </p>
-            <p><strong>Valor Gasto (Despesa):</strong> R${{ format_currency(valor_despesa) }} em {{ rd[30] if rd[30] else '-' }}</p>
-            <hr>
-            <p><strong>Total da RD:</strong> R${{ format_currency(valor_total) }}</p>
-            <p><strong>Saldo a Devolver:</strong> R${{ format_currency(saldo_devolver) }}</p>
-          </div>
+      <div class="valor-tooltip-wrapper" data-rd-id="{{ rd[0] }}">
+        <span class="valor-total" role="button" tabindex="0">R${{ format_currency(valor_total) }}</span>
+        <div class="valor-tooltip" data-tooltip>
+          <h3>RD #{{ rd[0] }}</h3>
+          <p><strong>Valor Solicitado:</strong> R${{ format_currency(valor_inicial) }} em {{ rd[28] if rd[28] else '-'
+            }}
+          </p>
+          <p><strong>Valores Adicionais:</strong>
+
+            {# CASO 1: RD Nova e Correta (com lista de adicionais) #}
+            {% if adicionais_para_exibir %}
+          <ul>
+            {% for adicional in adicionais_para_exibir %}
+            {% set partes = adicional.split(':') %}
+            {% set numero_adicional = partes[0].split(' ')[1] if partes|length > 0 and ' ' in partes[0] else 'N/A' %}
+            {% set valor_adicional_display = (partes[1]|float) if partes|length > 1 else 0 %}
+            {# CORREÇÃO DE DATA: Pega a data da string (partes[2]) #}
+            {% set data_adicional = partes[2] if partes|length > 2 else '-' %}
+
+            {# CORREÇÃO DE DATA: Usa a data_adicional #}
+            <li>Adicional {{ numero_adicional }}: R${{ format_currency(valor_adicional_display) }} em {{ data_adicional
+              }}</li>
+            {% endfor %}
+          </ul>
+
+          {# CASO 2: RD Antiga/Quebrada (Ex: #403.25) #}
+          {% elif total_adicionais > 0 %}
+          <ul>
+            <li>
+              <strong style="color: #f59e0b;">(Dados antigos) Total Adicional: R${{ format_currency(total_adicionais)
+                }}</strong>
+            </li>
+          </ul>
+
+          {# CASO 3: RD sem adicionais #}
+          {% else %}
+          Nenhum
+          {% endif %}
+          </p>
+          <p><strong>Valor Gasto (Despesa):</strong> R${{ format_currency(valor_despesa) }} em {{ rd[30] if rd[30] else
+            '-' }}</p>
+          <hr>
+          <p><strong>Total da RD:</strong> R${{ format_currency(valor_total) }}</p>
+          <p><strong>Saldo a Devolver:</strong> R${{ format_currency(saldo_devolver) }}</p>
         </div>
+      </div>
       {% endmacro %}
 
       <div class="tabs">
@@ -1285,47 +1867,51 @@
         <input type="radio" name="tab-control" id="tab5">
         <input type="radio" name="tab-control" id="tab6">
         <input type="radio" name="tab-control" id="tab7">
-        
+
         <div class="tab-labels">
           <label for="tab1">
             <i class="fas fa-clock"></i>
-            Pendentes 
+            Pendentes
             {% if pendentes|length > 0 %}<span class="badge">{{ pendentes|length }}</span>{% endif %}
           </label>
           <label for="tab2">
             <i class="fas fa-check"></i>
-            Aprovados 
+            Aprovados
             {% if aprovados|length > 0 %}<span class="badge">{{ aprovados|length }}</span>{% endif %}
           </label>
           <label for="tab3">
             <i class="fas fa-unlock"></i>
-            Liberados 
+            Liberados
             {% if liberados|length > 0 %}<span class="badge">{{ liberados|length }}</span>{% endif %}
           </label>
+
           <label for="tab4">
             <i class="fas fa-hourglass-half"></i>
-            Fechamento Solicitado 
-            {% if fechamento_solicitado|length > 0 %}<span class="badge">{{ fechamento_solicitado|length }}</span>{% endif %}
+            Fechamento Solicitado
+            {% if fechamento_solicitado|length > 0 %}<span class="badge">{{ fechamento_solicitado|length }}</span>{%
+            endif
+            %}
           </label>
           <label for="tab5">
             <i class="fas fa-times-circle"></i>
-            Fechamento Recusado 
-            {% if fechamento_recusado|length > 0 %}<span class="badge">{{ fechamento_recusado|length }}</span>{% endif %}
+            Fechamento Recusado
+            {% if fechamento_recusado|length > 0 %}<span class="badge">{{ fechamento_recusado|length }}</span>{% endif
+            %}
           </label>
+
           <label for="tab6">
             <i class="fas fa-check-circle"></i>
-            Fechados 
+            Fechados
             {% if fechados|length > 0 %}<span class="badge">{{ fechados|length }}</span>{% endif %}
           </label>
           <label for="tab7" class="{% if saldos_a_devolver|length > 0 %}btn-animated{% endif %}">
             <i class="fas fa-money-bill-wave"></i>
-            Saldo a Devolver 
+            Saldo a Devolver
             {% if saldos_a_devolver|length > 0 %}<span class="badge">{{ saldos_a_devolver|length }}</span>{% endif %}
           </label>
         </div>
 
         <div class="content">
-          <!-- Pendentes -->
           <div class="tab-content" id="content1">
             <div class="table-container">
               <table id="tabela-pendentes" class="display">
@@ -1340,7 +1926,7 @@
                     <th><i class="fas fa-comment"></i> Observação</th>
                     <th><i class="fas fa-paperclip"></i> Arquivos</th>
                     <th><i class="fas fa-dollar-sign"></i> Valores</th>
-                    <th><i class="fas fa-cogs"></i> Ações</th>
+                    <th><i class="fas fa-cogs"></i> ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1356,54 +1942,60 @@
                     <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td>
                     <td data-label="Observação">
                       {% if rd[16] %}
-                        {% set obs = rd[16] %}
-                        {% if obs|length > 50 %}
-                          <span class="observation-short">{{ obs[:50] }}...</span>
-                          <button class="toggle-observation">+</button>
-                          <div class="observation-full">{{ obs }}</div>
-                        {% else %}
-                          {{ obs }}
-                        {% endif %}
+                      {% set obs = rd[16] %}
+                      {% if obs|length > 50 %}
+                      <span class="observation-short">{{ obs[:50] }}...</span>
+                      <button class="toggle-observation">+</button>
+                      <div class="observation-full">{{ obs }}</div>
                       {% else %}
-                        -
+                      {{ obs }}
+                      {% endif %}
+                      {% else %}
+                      -
                       {% endif %}
                     </td>
                     <td data-label="Arquivos">
                       {% if rd[12] %}
-                        <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}">
-                          <i class="fas fa-paperclip"></i>
-                          Anexos
-                        </button>
+                      <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}"
+                        data-rd-id="{{ rd[0] }}">
+                        <i class="fas fa-paperclip"></i>
+                        Anexos
+                      </button>
                       {% else %}
-                        -
+                      -
                       {% endif %}
                     </td>
                     <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
                     <td data-label="Ações">
-                      <div class="card-actions">
-                        {% if can_approve_func(status) %}
+                      <div class="actions-menu">
+                        <button class="actions-toggle">
+                          Ações <i class="fas fa-caret-down"></i>
+                        </button>
+                        <div class="actions-dropdown">
+                          {% if can_approve_func(status) %}
                           <form action="/approve/{{ rd_id }}" method="POST" class="action-form">
                             <button type="submit" class="btn btn-approve">
                               <i class="fas fa-check"></i>
                               Aprovar
                             </button>
                           </form>
-                        {% endif %}
-                        {% if can_edit_func(status) %}
-                          <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit">
-                            <i class="fas fa-edit"></i>
-                            Editar
-                          </a>
-                        {% endif %}
-                        {% if can_delete_func(status, rd[1]) %}
-                          <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
-                            <button type="submit" class="btn btn-delete-rd">
-                              <i class="fas fa-trash-alt"></i>
-                              Excluir
-                            </button>
-                          </form>
-                        {% endif %}
-                      </div>
+                          {% endif %}
+                          <div class="actions-dropdown">
+                            {% if can_edit_func(status) %}
+                            <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit action-link">
+                              <i class="fas fa-edit"></i> Editar
+                            </a>
+                            {% endif %}
+                            {% if can_delete_func(status, rd[1]) %}
+                            <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
+                              <button type="submit" class="btn btn-delete-rd">
+                                <i class="fas fa-trash-alt"></i>
+                                Excluir
+                              </button>
+                            </form>
+                            {% endif %}
+                          </div>
+                        </div>
                     </td>
                   </tr>
                   {% endfor %}
@@ -1412,7 +2004,6 @@
             </div>
           </div>
 
-          <!-- Aprovados -->
           <div class="tab-content" id="content2">
             <div class="table-container">
               <table id="tabela-aprovados" class="display">
@@ -1424,7 +2015,7 @@
                     <th><i class="fas fa-calendar"></i> Data</th>
                     <th><i class="fas fa-building"></i> Centro de Custo</th>
                     <th><i class="fas fa-industry"></i> Unidade de Negócio</th>
-                    <th><i class="fas fa-comment"></i> Observação</th>
+                    <th><i class="fas fa-comment"></i> Observações</th>
                     <th><i class="fas fa-paperclip"></i> Arquivos</th>
                     <th><i class="fas fa-dollar-sign"></i> Valores</th>
                     <th><i class="fas fa-cogs"></i> Ações</th>
@@ -1443,53 +2034,59 @@
                     <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td>
                     <td data-label="Observação">
                       {% if rd[16] %}
-                        {% set obs = rd[16] %}
-                        {% if obs|length > 50 %}
-                          <span class="observation-short">{{ obs[:50] }}...</span>
-                          <button class="toggle-observation">+</button>
-                          <div class="observation-full">{{ obs }}</div>
-                        {% else %}
-                          {{ obs }}
-                        {% endif %}
+                      {% set obs = rd[16] %}
+                      {% if obs|length > 50 %}
+                      <span class="observation-short">{{ obs[:50] }}...</span>
+                      <button class="toggle-observation">+</button>
+                      <div class="observation-full">{{ obs }}</div>
                       {% else %}
-                        -
+                      {{ obs }}
+                      {% endif %}
+                      {% else %}
+                      -
                       {% endif %}
                     </td>
                     <td data-label="Arquivos">
                       {% if rd[12] %}
-                        <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}">
-                          <i class="fas fa-paperclip"></i>
-                          Anexos
-                        </button>
+                      <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}"
+                        data-rd-id="{{ rd[0] }}">
+                        <i class="fas fa-paperclip"></i>
+                        Anexos
+                      </button>
                       {% else %}
-                        -
+                      -
                       {% endif %}
                     </td>
                     <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
                     <td data-label="Ações">
-                      <div class="card-actions">
-                        {% if can_approve_func(status) %}
+                      <div class="actions-menu">
+                        <button class="actions-toggle">
+                          Ações <i class="fas fa-caret-down"></i>
+                        </button>
+                        <div class="actions-dropdown">
+                          {% if can_approve_func(status) %}
                           <form action="/approve/{{ rd_id }}" method="POST" class="action-form">
                             <button type="submit" class="btn btn-approve">
                               <i class="fas fa-check"></i>
                               Liberar
                             </button>
                           </form>
-                        {% endif %}
-                        {% if can_edit_func(status) %}
-                          <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit">
+                          {% endif %}
+                          {% if can_edit_func(status) %}
+                          <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit action-link">
                             <i class="fas fa-edit"></i>
                             Editar
                           </a>
-                        {% endif %}
-                        {% if can_delete_func(status, rd[1]) %}
+                          {% endif %}
+                          {% if can_delete_func(status, rd[1]) %}
                           <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
                             <button type="submit" class="btn btn-delete-rd">
                               <i class="fas fa-trash-alt"></i>
                               Excluir
                             </button>
                           </form>
-                        {% endif %}
+                          {% endif %}
+                        </div>
                       </div>
                     </td>
                   </tr>
@@ -1499,121 +2096,129 @@
             </div>
           </div>
 
-          <!-- Liberados -->
           <div class="tab-content" id="content3">
-            <div class="table-container">
-              <table id="tabela-liberados" class="display">
-                <thead>
-                  <tr>
-                    <th><i class="fas fa-hashtag"></i> ID</th>
-                    <th><i class="fas fa-user"></i> Solicitante</th>
-                    <th><i class="fas fa-user-tie"></i> Funcionário</th>
-                    <th><i class="fas fa-calendar"></i> Data</th>
-                    <th><i class="fas fa-building"></i> Centro de Custo</th>
-                    <th><i class="fas fa-industry"></i> Unidade de Negócio</th>
-                    <th><i class="fas fa-comment"></i> Observação</th>
-                    <th><i class="fas fa-paperclip"></i> Arquivos</th>
-                    <th><i class="fas fa-dollar-sign"></i> Valores</th>
-                    <th><i class="fas fa-cogs"></i> Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for rd in liberados %}
-                  {% set rd_id = rd[0] %}
-                  {% set status = rd[6] %}
-                  {% set pronto_fechamento = rd.pronto_fechamento %}
-                  <tr class="{{ 'pronto-fechamento' if rd.pronto_fechamento else '' }}">
-                    <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
-                    <td data-label="Solicitante">{{ rd[1] }}</td>
-                    <td data-label="Funcionário">{{ rd[2] }}</td>
-                    <td data-label="Data">{{ rd[3] }}</td>
-                    <td data-label="Centro de Custo">{{ rd[4] }}</td>
-                    <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td>
-                    <td data-label="Observação">
-                      {% if rd[16] %}
+
+            <div class="view-mobile">
+              <div class="simple-rd-list">
+                {% if liberados %}
+                {% for rd in liberados %}
+                <a href="{{ url_for('index', fechamento=rd.id) }}" class="simple-rd-item">
+                  <span><i class="fas fa-receipt"></i> RD #{{ rd.id }} ({{ rd.funcionario }})</span>
+                  <strong>R$ {{ format_currency(rd.valor_liberado) }}</strong>
+                </a>
+                {% endfor %}
+                {% else %}
+                <p>Nenhuma RD liberada aguardando prestação de contas.</p>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="view-desktop">
+              <div class="table-container">
+                <table id="tabela-liberados" class="display">
+                  <thead>
+                    <tr>
+                      <th><i class="fas fa-hashtag"></i> ID</th>
+                      <th><i class="fas fa-user"></i> Solicitante</th>
+                      <th><i class="fas fa-user-tie"></i> Funcionário</th>
+                      <th><i class="fas fa-calendar"></i> Data</th>
+                      <th><i class="fas fa-building"></i> Centro de Custo</th>
+                      <th><i class="fas fa-industry"></i> Unidade de Negócio</th>
+                      <th><i class="fas fa-comment"></i> Observações</th>
+                      <th><i class="fas fa-paperclip"></i> Arquivos</th>
+                      <th><i class="fas fa-dollar-sign"></i> Valores</th>
+                      <th><i class="fas fa-cogs"></i> Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for rd in liberados %}
+                    {% set rd_id = rd[0] %}
+                    {% set status = rd[6] %}
+                    {% set pronto_fechamento = rd.pronto_fechamento %}
+                    <tr class="{{ 'pronto-fechamento' if rd.pronto_fechamento else '' }}">
+                      <td data-label="ID">{{ rd_id }}<br><small>({{ rd.get('empresa_id', '?') }})</small></td>
+                      <td data-label="Solicitante">{{ rd[1] }}</td>
+                      <td data-label="Funcionário">{{ rd[2] }}</td>
+                      <td data-label="Data">{{ rd[3] }}</td>
+                      <td data-label="Centro de Custo">{{ rd[4] }}</td>
+                      <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td>
+                      <td data-label="Observação">
+                        {% if rd[16] %}
                         {% set obs = rd[16] %}
                         {% if obs|length > 50 %}
-                          <span class="observation-short">{{ obs[:50] }}...</span>
-                          <button class="toggle-observation">+</button>
-                          <div class="observation-full">{{ obs }}</div>
+                        <span class="observation-short">{{ obs[:50] }}...</span>
+                        <button class="toggle-observation">+</button>
+                        <div class="observation-full">{{ obs }}</div>
                         {% else %}
-                          {{ obs }}
+                        {{ obs }}
                         {% endif %}
-                      {% else %}
+                        {% else %}
                         -
-                      {% endif %}
-                    </td>
-                    <td data-label="Arquivos">
-                      {% if rd[12] %}
-                        <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}">
-                          <i class="fas fa-paperclip"></i>
-                          Anexos
+                        {% endif %}
+                      </td>
+                      <td data-label="Arquivos">
+                        {% if rd[12] %}
+                        <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}"
+                          data-rd-id="{{ rd[0] }}">
+                          <i class="fas fa-paperclip"></i> Anexos
                         </button>
-                      {% else %}
-                        -
-                      {% endif %}
-                    </td>
-                    <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
-                    <td data-label="Ações">
-                      <div class="card-actions">
-                        {% if can_edit_func(status) %}
-                          <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit">
-                            <i class="fas fa-edit"></i>
-                            Editar
-                          </a>
-                        {% endif %}
-                        {% if can_delete_func(status, rd[1]) %}
-                          <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
-                            <button type="submit" class="btn btn-delete-rd">
-                              <i class="fas fa-trash-alt"></i>
-                              Excluir
-                            </button>
-                          </form>
-                        {% endif %}
-                        {% if can_request_additional(status) %}
-                          <form action="/" method="GET" class="action-form">
-                            <input type="hidden" name="adicional" value="{{ rd_id }}">
-                            <button type="submit" class="btn btn-additional">
-                              <i class="fas fa-plus"></i>
-                              Adicional
-                            </button>
-                          </form>
-                        {% endif %}
-                        {% if can_close(status) %}
-                          <form action="/" method="GET" class="action-form">
-                            <input type="hidden" name="fechamento" value="{{ rd_id }}">
-                            <button type="submit" class="btn btn-fechamento">
-                              <i class="fas fa-lock"></i>
-                              Fechamento
-                            </button>
-                          </form>
-                        {% endif %}
-                        {% if user_role in ['gestor', 'solicitante'] %}
-                          <form action="{{ url_for('marcar_divergente', id=rd_id) }}" method="GET">
-                            <button type="submit" class="btn btn-blue btn-animated">
-                              <i class="fas fa-exclamation-circle"></i>
-                              Anexo Divergente
-                            </button>
-                          </form>
-                        {% endif %}
-                        {% if user_role == 'supervisor' and status == 'Liberado' %}
-                          <form action="{{ url_for('marcar_pronto_fechamento', id=rd_id) }}" method="POST" class="action-form">
-                            <button type="submit" class="btn {{ 'btn-blue btn-animated' if pronto_fechamento else 'btn-pronto-fechamento' }}">
-                              <i class="fas {{ 'fa-undo' if pronto_fechamento else 'fa-check-circle' }}"></i>
-                              {{ 'Desfazer' if pronto_fechamento else 'Pronto para Fechamento' }}
-                            </button>
-                          </form>
-                        {% endif %}
-                      </div>
-                    </td>
-                  </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
+                        {% else %} - {% endif %}
+                      </td>
+                      <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
+                      <td data-label="Ações">
+                        <div class="actions-menu">
+                          <button class="actions-toggle">Ações <i class="fas fa-caret-down"></i></button>
+                          <div class="actions-dropdown">
+                            {% if can_edit_func(status) %}
+                            <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit action-link"><i
+                                class="fas fa-edit"></i> Editar</a>
+                            {% endif %}
+                            {% if can_delete_func(status, rd[1]) %}
+                            <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
+                              <button type="submit" class="btn btn-delete-rd"><i class="fas fa-trash-alt"></i>
+                                Excluir</button>
+                            </form>
+                            {% endif %}
+                            {% if can_request_additional(status) %}
+                            <form action="/" method="GET" class="action-form">
+                              <input type="hidden" name="adicional" value="{{ rd_id }}">
+                              <button type="submit" class="btn btn-additional"><i class="fas fa-plus"></i>
+                                Adicional</button>
+                            </form>
+                            {% endif %}
+                            {% if can_close(status) %}
+                            <form action="/" method="GET" class="action-form">
+                              <input type="hidden" name="fechamento" value="{{ rd_id }}">
+                              <button type="submit" class="btn btn-fechamento"><i class="fas fa-lock"></i>
+                                Fechamento</button>
+                            </form>
+                            {% endif %}
+                            {% if user_role in ['gestor', 'solicitante'] %}
+                            <a href="{{ url_for('marcar_divergente', id=rd_id) }}"
+                              class="btn btn-blue btn-animated action-link"><i class="fas fa-exclamation-circle"></i>
+                              Anexo Divergente</a>
+                            {% endif %}
+                            {% if user_role == 'supervisor' and status == 'Liberado' %}
+                            <form action="{{ url_for('marcar_pronto_fechamento', id=rd_id) }}" method="POST"
+                              class="action-form">
+                              <button type="submit"
+                                class="btn {{ 'btn-blue btn-animated' if pronto_fechamento else 'btn-pronto-fechamento' }}">
+                                <i class="fas {{ 'fa-undo' if pronto_fechamento else 'fa-check-circle' }}"></i> {{
+                                'Desfazer' if pronto_fechamento else 'Pronto p/ Fechar' }}
+                              </button>
+                            </form>
+                            {% endif %}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
 
-          <!-- Fechamento Solicitado -->
+          </div>
           <div class="tab-content" id="content4">
             <div class="table-container">
               <table id="tabela-fechamento-solicitado" class="display">
@@ -1628,7 +2233,7 @@
                     <th><i class="fas fa-comment"></i> Observação</th>
                     <th><i class="fas fa-paperclip"></i> Arquivos</th>
                     <th><i class="fas fa-dollar-sign"></i> Valores</th>
-                    <th><i class="fas fa-cogs"></i> Ações</th>
+                    <th><i class="fas fa-cogs"></i> ações</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1644,196 +2249,57 @@
                     <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td>
                     <td data-label="Observação">
                       {% if rd[16] %}
-                        {% set obs = rd[16] %}
-                        {% if obs|length > 50 %}
-                          <span class="observation-short">{{ obs[:50] }}...</span>
-                          <button class="toggle-observation">+</button>
-                          <div class="observation-full">{{ obs }}</div>
-                        {% else %}
-                          {{ obs }}
-                        {% endif %}
+                      {% set obs = rd[16] %}
+                      {% if obs|length > 50 %}
+                      <span class="observation-short">{{ obs[:50] }}...</span>
+                      <button class="toggle-observation">+</button>
+                      <div class="observation-full">{{ obs }}</div>
                       {% else %}
-                        -
+                      {{ obs }}
+                      {% endif %}
+                      {% else %}
+                      -
                       {% endif %}
                     </td>
                     <td data-label="Arquivos">
                       {% if rd[12] %}
-                        <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}">
-                          <i class="fas fa-paperclip"></i>
-                          Anexos
-                        </button>
+                      <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}"
+                        data-rd-id="{{ rd[0] }}">
+                        <i class="fas fa-paperclip"></i>
+                        Anexos
+                      </button>
                       {% else %}
-                        -
+                      -
                       {% endif %}
                     </td>
                     <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
                     <td data-label="Ações">
-                      <div class="card-actions">
-                        {% if can_approve_func(status) %}
+                      <div class="actions-menu">
+                        <button class="actions-toggle">
+                          Ações <i class="fas fa-caret-down"></i>
+                        </button>
+                        <div class="actions-dropdown">
+
+                          <button type="button" class="btn btn-blue action-button"
+                            onclick="openAnaliseIAModal('{{ rd_id }}')">
+                            <i class="fas fa-magic"></i> Análise de Gastos IA
+                          </button>
+                          {% if can_approve_func(status) %}
                           <form action="/approve/{{ rd_id }}" method="POST" class="action-form">
                             <button type="submit" class="btn btn-approve">
                               <i class="fas fa-check"></i>
                               Fechar
                             </button>
                           </form>
-                        {% endif %}
-                        {% if is_gestor() and status == 'Fechamento Solicitado' %}
-                          <button type="button" class="btn btn-danger btn-recusar" data-rd-id="{{ rd_id }}">
+                          {% endif %}
+                          {% if is_gestor() and status == 'Fechamento Solicitado' %}
+                          <button type="button" class="btn btn-danger action-button btn-recusar"
+                            data-rd-id="{{ rd_id }}">
                             <i class="fas fa-times"></i>
                             Recusar
                           </button>
-                        {% endif %}
-                      </div>
-                    </td>
-                  </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- Fechamento Recusado -->
-          <div class="tab-content" id="content5">
-            <div class="table-container">
-              <table id="tabela-fechamento-recusado" class="display">
-                <thead>
-                  <tr>
-                    <th><i class="fas fa-hashtag"></i> ID</th>
-                    <th><i class="fas fa-user"></i> Solicitante</th>
-                    <th><i class="fas fa-user-tie"></i> Funcionário</th>
-                    <th><i class="fas fa-calendar"></i> Data</th>
-                    <th><i class="fas fa-building"></i> Centro de Custo</th>
-                    <th><i class="fas fa-industry"></i> Unidade de Negócio</th>
-                    <th><i class="fas fa-comment"></i> Observação</th>
-                    <th><i class="fas fa-exclamation-triangle"></i> Motivo da Recusa</th>
-                    <th><i class="fas fa-paperclip"></i> Arquivos</th>
-                    <th><i class="fas fa-dollar-sign"></i> Valores</th>
-                    <th><i class="fas fa-cogs"></i> Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for rd in fechamento_recusado %}
-                  {% set rd_id = rd[0] %}
-                  <tr>
-                    <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
-                    <td data-label="Solicitante">{{ rd[1] }}</td>
-                    <td data-label="Funcionário">{{ rd[2] }}</td>
-                    <td data-label="Data">{{ rd[3] }}</td>
-                    <td data-label="Centro de Custo">{{ rd[4] }}</td>
-                    <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td>
-                    <td data-label="Observação">
-                      {% if rd[16] %}
-                        {% set obs = rd[16] %}
-                        {% if obs|length > 50 %}
-                          <span class="observation-short">{{ obs[:50] }}...</span>
-                          <button class="toggle-observation">+</button>
-                          <div class="observation-full">{{ obs }}</div>
-                        {% else %}
-                          {{ obs }}
-                        {% endif %}
-                      {% else %}
-                        -
-                      {% endif %}
-                    </td>
-                    <td data-label="Motivo da Recusa">{{ rd[20] }}</td>
-                    <td data-label="Arquivos">
-                      {% if rd[12] %}
-                        <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}">
-                          <i class="fas fa-paperclip"></i>
-                          Anexos
-                        </button>
-                      {% else %}
-                        -
-                      {% endif %}
-                    </td>
-                    <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
-                    <td data-label="Ações">
-                      <div class="card-actions">
-                        {% if is_solicitante() %}
-                          <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit">
-                            <i class="fas fa-edit"></i>
-                            Corrigir e reenviar
-                          </a>
-                        {% endif %}
-                      </div>
-                    </td>
-                  </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- Fechados -->
-          <div class="tab-content" id="content6">
-            <div class="table-container">
-              <table id="tabela-fechados" class="display">
-                <thead>
-                  <tr>
-                    <th><i class="fas fa-hashtag"></i> ID</th>
-                    <th><i class="fas fa-user"></i> Solicitante</th>
-                    <th><i class="fas fa-user-tie"></i> Funcionário</th>
-                    <th><i class="fas fa-calendar"></i> Data</th>
-                    <th><i class="fas fa-building"></i> Centro de Custo</th>
-                    <th><i class="fas fa-industry"></i> Unidade de Negócio</th>
-                    <th><i class="fas fa-comment"></i> Observação</th>
-                    <th><i class="fas fa-paperclip"></i> Arquivos</th>
-                    <th><i class="fas fa-dollar-sign"></i> Valores</th>
-                    <th><i class="fas fa-cogs"></i> Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for rd in fechados %}
-                  {% set rd_id = rd[0] %}
-                  <tr>
-                    <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
-                    <td data-label="Solicitante">{{ rd[1] }}</td>
-                    <td data-label="Funcionário">{{ rd[2] }}</td>
-                    <td data-label="Data">{{ rd[3] }}</td>
-                    <td data-label="Centro de Custo">{{ rd[4] }}</td>
-                    <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td>
-                    <td data-label="Observação">
-                      {% if rd[16] %}
-                        {% set obs = rd[16] %}
-                        {% if obs|length > 50 %}
-                          <span class="observation-short">{{ obs[:50] }}...</span>
-                          <button class="toggle-observation">+</button>
-                          <div class="observation-full">{{ obs }}</div>
-                        {% else %}
-                          {{ obs }}
-                        {% endif %}
-                      {% else %}
-                        -
-                      {% endif %}
-                    </td>
-                    <td data-label="Arquivos">
-                      {% if rd[12] %}
-                        <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}">
-                          <i class="fas fa-paperclip"></i>
-                          Anexos
-                        </button>
-                      {% else %}
-                        -
-                      {% endif %}
-                    </td>
-                    <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
-                    <td data-label="Ações">
-                      <div class="card-actions">
-                        {% if is_financeiro() %}
-                          {% if not rd[21] %}
-                            <form action="/registrar_saldo_devolvido/{{ rd_id }}" method="POST" class="action-form">
-                              <button type="submit" class="btn btn-warning">
-                                <i class="fas fa-money-bill-wave"></i>
-                                Saldo Devolvido
-                              </button>
-                            </form>
-                          {% else %}
-                            <span style="color: var(--success-color); font-weight: 600;">
-                              <i class="fas fa-check-circle"></i>
-                              Devolvido em {{ rd[21] }}
-                            </span>
                           {% endif %}
-                        {% endif %}
+                        </div>
                       </div>
                     </td>
                   </tr>
@@ -1843,87 +2309,366 @@
             </div>
           </div>
 
-          <!-- Saldo a Devolver -->
-          <div class="tab-content" id="content7">
-            <div class="table-container">
-              <table id="tabela-saldo-a-devolver" class="display">
-                <thead>
-                  <tr>
-                    <th><i class="fas fa-hashtag"></i> ID</th>
-                    <th><i class="fas fa-user"></i> Solicitante</th>
-                    <th><i class="fas fa-user-tie"></i> Funcionário</th>
-                    <th><i class="fas fa-calendar"></i> Data</th>
-                    <th><i class="fas fa-building"></i> Centro de Custo</th>
-                    <th><i class="fas fa-industry"></i> Unidade de Negócio</th>
-                    <th><i class="fas fa-comment"></i> Observação</th>
-                    <th><i class="fas fa-paperclip"></i> Arquivos</th>
-                    <th><i class="fas fa-dollar-sign"></i> Valores</th>
-                    <th><i class="fas fa-cogs"></i> Ações</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for rd in saldos_a_devolver %}
-                  {% set rd_id = rd[0] %}
-                  {% set status = rd[6] %}
-                  <tr>
-                    <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
-                    <td data-label="Solicitante">{{ rd[1] }}</td>
-                    <td data-label="Funcionário">{{ rd[2] }}</td>
-                    <td data-label="Data">{{ rd[3] }}</td>
-                    <td data-label="Centro de Custo">{{ rd[4] }}</td>
-                    <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td>
-                    <td data-label="Observação">
-                      {% if rd[16] %}
+          <div class="tab-content" id="content5">
+
+            <div class="view-mobile">
+              <div class="simple-rd-list">
+                {% if fechamento_recusado %}
+                {% for rd in fechamento_recusado %}
+                <a href="{{ url_for('edit_form', id=rd.id) }}" class="simple-rd-item recusado">
+                  <span><i class="fas fa-exclamation-triangle"></i> Corrigir RD #{{ rd.id }} ({{ rd.funcionario
+                    }})</span>
+                  <strong>{{ rd.motivo_recusa or 'Recusado' }}</strong>
+                </a>
+                {% endfor %}
+                {% else %}
+                <p>Nenhuma RD recusada.</p>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="view-desktop">
+              <div class="table-container">
+                <table id="tabela-fechamento-recusado" class="display">
+                  <thead>
+                    <tr>
+                      <th><i class="fas fa-hashtag"></i> ID</th>
+                      <th><i class="fas fa-user"></i> Solicitante</th>
+                      <th><i class="fas fa-user-tie"></i> Funcionário</th>
+                      <th><i class="fas fa-calendar"></i> Data</th>
+                      <th><i class="fas fa-building"></i> Centro de Custo</th>
+                      <th><i class="fas fa-industry"></i> Unidade de Negócio</th>
+                      <th><i class="fas fa-comment"></i> Observação</th>
+                      <th><i class="fas fa-exclamation-triangle"></i> Motivo da Recusa</th>
+                      <th><i class="fas fa-paperclip"></i> Arquivos</th>
+                      <th><i class="fas fa-dollar-sign"></i> Valores</th>
+                      <th><i class="fas fa-cogs"></i> Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for rd in fechamento_recusado %}
+                    {% set rd_id = rd[0] %}
+                    <tr>
+                      <td data-label="ID">{{ rd_id }}<br><small>({{ rd.get('empresa_id', '?') }})</small></td>
+                      <td data-label="Solicitante">{{ rd[1] }}</td>
+                      <td data-label="Funcionário">{{ rd[2] }}</td>
+                      <td data-label="Data">{{ rd[3] }}</td>
+                      <td data-label="Centro de Custo">{{ rd[4] }}</td>
+                      <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td>
+                      <td data-label="Observação">
+                        {% if rd[16] %}
                         {% set obs = rd[16] %}
                         {% if obs|length > 50 %}
-                          <span class="observation-short">{{ obs[:50] }}...</span>
-                          <button class="toggle-observation">+</button>
-                          <div class="observation-full">{{ obs }}</div>
+                        <span class="observation-short">{{ obs[:50] }}...</span>
+                        <button class="toggle-observation">+</button>
+                        <div class="observation-full">{{ obs }}</div>
                         {% else %}
-                          {{ obs }}
+                        {{ obs }}
                         {% endif %}
-                      {% else %}
-                        -
-                      {% endif %}
-                    </td>
-                    <td data-label="Arquivos">
-                      {% if rd[12] %}
-                        <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}">
-                          <i class="fas fa-paperclip"></i>
-                          Anexos
+                        {% else %} - {% endif %}
+                      </td>
+                      <td data-label="Motivo da Recusa">{{ rd[19] }}</td>
+                      <td data-label="Arquivos">
+                        {% if rd[12] %}
+                        <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}"
+                          data-rd-id="{{ rd[0] }}">
+                          <i class="fas fa-paperclip"></i> Anexos
                         </button>
-                      {% else %}
-                        -
-                      {% endif %}
-                    </td>
-                    <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
-                    <td data-label="Ações">
-                      <div class="card-actions">
-                        {% if is_financeiro() %}
-                          <form action="/registrar_saldo_devolvido/{{ rd_id }}" method="POST" class="action-form">
-                            <button type="submit" class="btn btn-warning">
-                              <i class="fas fa-money-bill-wave"></i>
-                              Saldo Devolvido
-                            </button>
-                          </form>
-                        {% endif %}
-                      </div>
-                    </td>
-                  </tr>
-                  {% endfor %}
-                </tbody>
+                        {% else %} - {% endif %}
+                      </td>
+                      <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
+                      <td data-label="Ações">
+                        <div class="actions-menu">
+                          <button class="actions-toggle">Ações <i class="fas fa-caret-down"></i></button>
+                          <div class="actions-dropdown">
+                            {% if is_solicitante() or user_role == 'funcionario' %}
+                            <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit action-link">
+                              <i class="fas fa-edit"></i> Corrigir e Reenviar
+                            </a>
+                            {% endif %}
+                          </div>
+                        </div>
+              </div>
+              </td>
+              </tr>
+              {% endfor %}
+              </tbody>
               </table>
             </div>
+          </div>
+
+        </div>
+        <div class="tab-content" id="content6">
+          <div class="table-container">
+            <table id="tabela-fechados" class="display">
+              <thead>
+                <tr>
+                  <th><i class="fas fa-hashtag"></i> ID</th>
+                  <th><i class="fas fa-user"></i> Solicitante</th>
+                  <th><i class="fas fa-user-tie"></i> Funcionário</th>
+                  <th><i class="fas fa-calendar"></i> Data</th>
+                  <th><i class="fas fa-building"></i> Centro de Custo</th>
+                  <th><i class="fas fa-industry"></i> Unidade de Negócio</th>
+                  <th><i class="fas fa-comment"></i> Observações</th>
+                  <th><i class="fas fa-paperclip"></i> Arquivos</th>
+                  <th><i class="fas fa-dollar-sign"></i> Valores</th>
+                  <th><i class="fas fa-cogs"></i> Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for rd in fechados %}
+                {% set rd_id = rd[0] %}
+                <tr>
+                  <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
+                  <td data-label="Solicitante">{{ rd[1] }}</td>
+                  <td data-label="Funcionário">{{ rd[2] }}</td>
+                  <td data-label="Data">{{ rd[3] }}</td>
+                  <td data-label="Centro de Custo">{{ rd[4] }}</td>
+                  <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td>
+                  <td data-label="Observação">
+                    {% if rd[16] %}
+                    {% set obs = rd[16] %}
+                    {% if obs|length > 50 %}
+                    <span class="observation-short">{{ obs[:50] }}...</span>
+                    <button class="toggle-observation">+</button>
+                    <div class="observation-full">{{ obs }}</div>
+                    {% else %}
+                    {{ obs }}
+                    {% endif %}
+                    {% else %}
+                    -
+                    {% endif %}
+                  </td>
+                  <td data-label="Arquivos">
+                    {% if rd[12] %}
+                    <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}">
+                      <i class="fas fa-paperclip"></i>
+                      Anexos
+                    </button>
+                    {% else %}
+                    -
+                    {% endif %}
+                  </td>
+                  <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
+                  <td data-label="Ações">
+                    <div class="actions-menu">
+                      <button class="actions-toggle">
+                        Ações <i class="fas fa-caret-down"></i>
+                      </button>
+                      <div class="actions-dropdown">
+                        {% if is_financeiro() %}
+                        {% if not rd[21] %}
+                        <form action="/registrar_saldo_devolvido/{{ rd_id }}" method="POST" class="action-form">
+                          <button type="submit" class="btn btn-warning">
+                            <i class="fas fa-money-bill-wave"></i>
+                            Saldo Devolvido
+                          </button>
+                        </form>
+                        {% else %}
+                        <span style="color: var(--success-color); font-weight: 600; padding: 0.5rem 1rem;">
+                          <i class="fas fa-check-circle"></i>
+                          Devolvido em {{ rd[21] }}
+                        </span>
+                        {% endif %}
+                        {% endif %}
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="tab-content" id="content7">
+          <div class="table-container">
+            <table id="tabela-saldo-a-devolver" class="display">
+              <thead>
+                <tr>
+                  <th><i class="fas fa-hashtag"></i> ID</th>
+                  <th><i class="fas fa-user"></i> Solicitante</th>
+                  <th><i class="fas fa-user-tie"></i> Funcionário</th>
+                  <th><i class="fas fa-calendar"></i> Data</th>
+                  <th><i class="fas fa-building"></i> Centro de Custo</th>
+                  <th><i class="fas fa-industry"></i> Unidade de Negócio</th>
+                  <th><i class="fas fa-comment"></i> Observação</th>
+                  <th><i class="fas fa-paperclip"></i> Arquivos</th>
+                  <th><i class="fas fa-dollar-sign"></i> Valores</th>
+                  <th><i class="fas fa-cogs"></i> Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for rd in saldos_a_devolver %}
+                {% set rd_id = rd[0] %}
+                {% set status = rd[6] %}
+                <tr>
+                  <td data-label="ID">{{ rd_id }}<br><small>({{ rd[17] }})</small></td>
+                  <td data-label="Solicitante">{{ rd[1] }}</td>
+                  <td data-label="Funcionário">{{ rd[2] }}</td>
+                  <td data-label="Data">{{ rd[3] }}</td>
+                  <td data-label="Centro de Custo">{{ rd[4] }}</td>
+                  <td data-label="Unidade de Negócio">{{ rd[18] or '-' }}</td>
+                  <td data-label="Observação">
+                    {% if rd[16] %}
+                    {% set obs = rd[16] %}
+                    {% if obs|length > 50 %}
+                    <span class="observation-short">{{ obs[:50] }}...</span>
+                    <button class="toggle-observation">+</button>
+                    <div class="observation-full">{{ obs }}</div>
+                    {% else %}
+                    {{ obs }}
+                    {% endif %}
+                    {% else %}
+                    -
+                    {% endif %}
+                  </td>
+                  <td data-label="Arquivos">
+                    {% if rd[12] %}
+                    <button class="btn btn-secondary btn-view-files" data-files="{{ rd[12] }}" data-rd-id="{{ rd[0] }}">
+                      <i class="fas fa-paperclip"></i>
+                      Anexos
+                    </button>
+                    {% else %}
+                    -
+                    {% endif %}
+                  </td>
+                  <td data-label="Valores">{{ mostrar_valores(rd) }}</td>
+                  <td data-label="Ações">
+                    <div class="actions-menu">
+                      <button class="actions-toggle">
+                        Ações <i class="fas fa-caret-down"></i>
+                      </button>
+                      <div class="actions-dropdown">
+                        {% if is_financeiro() %}
+                        <form action="/registrar_saldo_devolvido/{{ rd_id }}" method="POST" class="action-form">
+                          <button type="submit" class="btn btn-warning">
+                            <i class="fas fa-money-bill-wave"></i>
+                            Saldo Devolvido
+                          </button>
+                        </form>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
+    </div>
     {% endif %}
+    {% endif %}
+  </div> {% if user_role is defined %}
+  <footer>
+    <div>
+      <i class="fas fa-code"></i>
+      Desenvolvido por André Ferreira
+    </div>
+  </footer>
   {% endif %}
 
-  <!-- Modals -->
+  </div> {% if user_role is defined %}
+  {% if can_add %}
+  <div id="solicitacaoModal" class="modal">
+    <div class="modal-content modal-lg">
+      <span class="close-btn" data-modal-close="solicitacaoModal">&times;</span>
+      <h2 id="solicitacaoModalTitle"><i class="fas fa-plus-circle"></i> Nova Solicitação de RD</h2>
+      <form id="form-solicitacao" action="/add" method="POST" enctype="multipart/form-data">
+        <div class="form-row">
+
+          <div class="form-group">
+            <label id="lbl-solicitante" for="solicitante">Solicitante:</label>
+            <input type="text" id="solicitante" name="solicitante" required>
+          </div>
+
+          <div class="form-group">
+            <label for="funcionario_id">Funcionário (Usuário):</label>
+            <select id="funcionario_id" name="funcionario_id" required>
+              <option value="">Selecione o funcionário...</option>
+
+              {% if usuarios_disponiveis %}
+              {% for usuario in usuarios_disponiveis %}
+              <option value="{{ usuario.id }}">{{ usuario.username }}</option>
+              {% endfor %}
+              {% endif %}
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="gestor_aprovador_id">Gestor Aprovador:</label>
+            <select id="gestor_aprovador_id" name="gestor_aprovador_id" required>
+              <option value="">-- Selecione um gestor --</option>
+              {% for gestor in gestores_disponiveis %}
+              <option value="{{ gestor.id }}">{{ gestor.username }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="data">Data:</label>
+            <input type="date" id="data" name="data" required>
+          </div>
+          <div class="form-group">
+            <label for="centro_custo">Centro de Custo:</label>
+            <input type="text" id="centro_custo" name="centro_custo" required>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="unidade_negocio">Unidade de Negócio:</label>
+            <input type="text" id="unidade_negocio" name="unidade_negocio" placeholder="Cód. Filial">
+          </div>
+          <div class="form-group">
+            <label for="valor">Valor (R$):</label>
+            <input type="number" id="valor" name="valor" step="0.01" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="observacao">Observação:</label>
+          <textarea id="observacao" name="observacao" rows="3"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="arquivo">Anexar Arquivos (opcional):</label>
+          <input type="file" id="arquivo" name="arquivo" multiple>
+        </div>
+        <input type="hidden" name="tipo" id="rd-tipo" value="">
+        <button type="submit" class="btn btn-primary">
+          <i class="fas fa-plus-circle"></i>
+          Enviar Solicitação
+        </button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if user_role == 'financeiro' %}
+  <div id="saldoModal" class="modal">
+    <div class="modal-content">
+      <span class="close-btn" data-modal-close="saldoModal">&times;</span>
+      <h2><i class="fas fa-wallet"></i> Editar Saldo Global</h2>
+      <form action="{{ url_for('edit_saldo') }}" method="POST">
+        <div class="form-group">
+          <label for="saldo_global">Saldo Global (R$):</label>
+          <input type="number" id="saldo_global" name="saldo_global" step="0.01" value="{{ saldo_global }}" required>
+        </div>
+        <button type="submit" class="btn btn-success">
+          <i class="fas fa-sync-alt"></i>
+          Atualizar Saldo
+        </button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
   <div id="popupDivergentes" class="modal">
     <div class="modal-content">
-      <span class="close-btn" id="closePopupDivergentes">×</span>
+      <span class="close-btn" data-modal-close="popupDivergentes">&times;</span>
       <h3><i class="fas fa-exclamation-triangle"></i> Atenção, Supervisor!</h3>
       <p>Há {{ divergentes_count }} RD(s) com anexos divergentes que precisam ser corrigidos.</p>
       <a href="{{ url_for('anexos_divergentes') }}" class="btn btn-blue">
@@ -1935,7 +2680,7 @@
 
   <div id="fileModal" class="modal">
     <div class="modal-content">
-      <span class="close-btn" id="closeFileModal">×</span>
+      <span class="close-btn" data-modal-close="fileModal">&times;</span>
       <h3><i class="fas fa-paperclip"></i> Arquivos Anexados</h3>
       <div id="modalFilesContainer"></div>
     </div>
@@ -1943,7 +2688,7 @@
 
   <div id="recusaModal" class="modal">
     <div class="modal-content">
-      <span class="close-btn" id="closeRecusaModal">×</span>
+      <span class="close-btn" data-modal-close="recusaModal">&times;</span>
       <h3><i class="fas fa-times-circle"></i> Informe o Motivo da Recusa</h3>
       <form id="formRecusa" method="POST">
         <div class="form-group">
@@ -1958,154 +2703,467 @@
     </div>
   </div>
 
-  <footer>
-    <div>
-      <i class="fas fa-code"></i>
-      Desenvolvido por André Ferreira
+  <div id="analiseIAModal" class="modal">
+    <div class="modal-content modal-lg">
+      <span class="close-btn" data-modal-close="analiseIAModal">&times;</span>
+      <h3><i class="fas fa-magic"></i> Análise de Gastos com IA</h3>
+
+      <div id="loadingAnaliseIA" style="display:none; text-align: center; padding: 2rem;">
+        <div class="spinner-border" style="color: var(--primary-color);" role="status"></div>
+        <p style="margin-top: 1rem; font-weight: 500;">Analisando documentos... Isso pode levar alguns segundos.</p>
+      </div>
+
+      <div id="erroAnaliseIA" class="notification notification-error" style="display:none; margin-top: 1rem;">
+      </div>
+
+      <div id="resultadosAnaliseIA" style="display:none; margin-top: 1rem;">
+        <h4><i class="fas fa-chart-pie"></i> Gastos Totais por Categoria:</h4>
+        <ul id="listaGastosTotais" class="list-group">
+        </ul>
+
+        <h4 style="margin-top: 2rem;"><i class="fas fa-file-invoice-dollar"></i> Análise por Arquivo:</h4>
+        <div id="listaAnalisePorArquivo">
+        </div>
+      </div>
+
     </div>
-  </footer>
+  </div>
+  {% endif %}
 
   <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
   <script type="text/javascript" src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
   <script>
-    // Notification System - Simplified and Fixed
-    function closeNotification(element) {
-      if (!element) return;
-      
-      element.style.animation = 'slideOutRight 0.3s ease-in forwards';
+    // === NOVO SISTEMA DE NOTIFICAÇÕES ===
+    // (Baseado em Categoria vinda do Backend)
+
+    /**
+     * Fecha um elemento de notificação com animação.
+     * @param {HTMLElement} notificationElement - O elemento da notificação a ser fechado.
+     */
+    function closeNotification(notificationElement) {
+      if (!notificationElement) return;
+
+      notificationElement.classList.add('removing');
+      // Espera a animação de saída (300ms) terminar antes de remover
       setTimeout(() => {
-        if (element && element.parentNode) {
-          element.parentNode.removeChild(element);
+        if (notificationElement && notificationElement.parentNode) {
+          notificationElement.parentNode.removeChild(notificationElement);
         }
       }, 300);
     }
 
-    function createAutoCloseTimer(notification, delay) {
-      setTimeout(() => {
-        if (notification && notification.parentNode) {
+    /**
+     * Cria uma nova notificação dinamicamente.
+     * @param {string} message - A mensagem a ser exibida.
+     * @param {string} category - 'success', 'error', 'info', 'warning'.
+     * @param {number} [duration=5000] - Duração em ms. 0 para não fechar automaticamente.
+     * @returns {string} O ID único da notificação criada.
+     */
+    function showNotification(message, category = 'info', duration = 5000) {
+      const container = document.getElementById('notificationsContainer');
+      if (!container) return;
+
+      const notificationId = 'notif-' + Date.now();
+      const notification = document.createElement('div');
+      notification.className = 'notification';
+      notification.id = notificationId;
+      notification.setAttribute('data-category', category);
+
+      // Mapeia categorias para classes e ícones
+      const types = {
+        success: { class: 'notification-success', icon: 'fa-check-circle' },
+        error: { class: 'notification-error', icon: 'fa-exclamation-circle' },
+        warning: { class: 'notification-warning', icon: 'fa-exclamation-triangle' },
+        info: { class: 'notification-info', icon: 'fa-info-circle' },
+        loading: { class: 'notification-info', icon: 'fa-spinner fa-spin' } // Categoria especial
+      };
+
+      const type = types[category] || types.info;
+      notification.classList.add(type.class);
+
+      notification.innerHTML = `
+        <div class="notification-icon">
+          <i class="fas ${type.icon}"></i>
+        </div>
+        <div class="notification-content">${message}</div>
+        <button class="notification-close" aria-label="Fechar notificação">
+          <i class="fas fa-times"></i>
+        </button>
+      `;
+
+      // Adiciona ouvintes de evento
+      notification.addEventListener('click', (e) => {
+        if (!e.target.closest('.notification-close')) {
           closeNotification(notification);
         }
-      }, delay);
+      });
+      notification.querySelector('.notification-close').addEventListener('click', () => {
+        closeNotification(notification);
+      });
+
+      // Adiciona ao DOM
+      container.appendChild(notification);
+
+      // Auto-fechar, se a duração for maior que 0
+      if (duration > 0) {
+        setTimeout(() => {
+          closeNotification(notification);
+        }, duration);
+      }
+
+      return notificationId;
     }
 
-    function initNotifications() {
-      // Process all notifications immediately
+    /**
+     * Mostra uma notificação de "Aguarde..." que não fecha sozinha.
+     * @param {string} message - A mensagem (ex: "Processando...")
+     * @returns {string} O ID da notificação, para fechá-la depois.
+     */
+    function showLoadingNotification(message = 'Aguarde, processando...') {
+      return showNotification(message, 'loading', 0);
+    }
+
+    /**
+     * Fecha uma notificação específica pelo seu ID.
+     * @param {string} notificationId - O ID retornado por showNotification.
+     */
+    function closeNotificationById(notificationId) {
+      const notification = document.getElementById(notificationId);
+      if (notification) {
+        closeNotification(notification);
+      }
+    }
+
+
+    /**
+     * Processa as notificações iniciais carregadas pela página (flashed messages).
+     */
+    function initFlashedNotifications() {
       const notifications = document.querySelectorAll('.notification[data-message]');
-      
+      const durations = {
+        success: 4000,
+        error: 8000,
+        warning: 6000,
+        info: 5000
+      };
+
       notifications.forEach((notification, index) => {
-        const message = notification.getAttribute('data-message');
-        const lowerMessage = message.toLowerCase();
-        
-        // Determine type based on message content
-        let type = 'info';
-        let icon = 'info-circle';
-        let autoCloseTime = 6000; // default 6 seconds
-        
-        if (lowerMessage.includes('sucesso') || lowerMessage.includes('bem-sucedido') || 
-            lowerMessage.includes('adicionada') || lowerMessage.includes('atualizada') || 
-            lowerMessage.includes('realizada') || lowerMessage.includes('registrado') ||
-            lowerMessage.includes('aprovado') || lowerMessage.includes('liberado') ||
-            lowerMessage.includes('fechado') || lowerMessage.includes('devolvido') ||
-            lowerMessage.includes('solicitado') || lowerMessage.includes('cadastrado') ||
-            lowerMessage.includes('excluída') || lowerMessage.includes('marcada')) {
-          type = 'success';
-          icon = 'check-circle';
-          autoCloseTime = 4000; // 4 seconds for success
-        } else if (lowerMessage.includes('erro') || lowerMessage.includes('falha') || 
-                   lowerMessage.includes('inválido') || lowerMessage.includes('negado') ||
-                   lowerMessage.includes('credenciais inválidas') || lowerMessage.includes('não encontrada') ||
-                   lowerMessage.includes('acesso negado')) {
-          type = 'error';
-          icon = 'exclamation-circle';
-          autoCloseTime = 8000; // 8 seconds for errors
-        } else if (lowerMessage.includes('atenção') || lowerMessage.includes('aviso') ||
-                   lowerMessage.includes('aguarde') || lowerMessage.includes('recusado') ||
-                   lowerMessage.includes('voltou para') || lowerMessage.includes('pendente')) {
-          type = 'warning';
-          icon = 'exclamation-triangle';
-          autoCloseTime = 6000; // 6 seconds for warnings
-        }
-        
-        // Apply styling immediately
-        notification.classList.add(`notification-${type}`);
-        
-        // Update icon
+        const category = notification.getAttribute('data-category') || 'info';
+        const duration = durations[category] || durations.info;
+
+        // Mapeia categorias para classes e ícones
+        const types = {
+          success: { class: 'notification-success', icon: 'fa-check-circle' },
+          error: { class: 'notification-error', icon: 'fa-exclamation-circle' },
+          warning: { class: 'notification-warning', icon: 'fa-exclamation-triangle' },
+          info: { class: 'notification-info', icon: 'fa-info-circle' }
+        };
+
+        const type = types[category] || types.info;
+
+        // Aplica classe e ícone
+        notification.classList.add(type.class);
         const iconElement = notification.querySelector('.notification-icon i');
         if (iconElement) {
-          iconElement.className = `fas fa-${icon}`;
+          iconElement.className = `fas ${type.icon}`;
         }
-        
-        // Add click to close functionality
-        notification.addEventListener('click', function(e) {
+
+        // Adiciona ouvintes de evento
+        notification.addEventListener('click', (e) => {
           if (!e.target.closest('.notification-close')) {
-            closeNotification(this);
+            closeNotification(notification);
           }
         });
-        
-        // Set up auto-close with delay based on index to show them sequentially
-        const delay = autoCloseTime + (index * 500); // Stagger by 500ms each
-        createAutoCloseTimer(notification, delay);
-        
-        console.log(`Notification #${index + 1}: "${message}" | Type: ${type} | Auto-close in: ${delay}ms`);
+        notification.querySelector('.notification-close').addEventListener('click', () => {
+          closeNotification(notification);
+        });
+
+        // Auto-fechar com um pequeno delay escalonado
+        const autoCloseDelay = duration + (index * 500);
+        setTimeout(() => {
+          closeNotification(notification);
+        }, autoCloseDelay);
       });
-      
-      console.log(`Initialized ${notifications.length} notifications`);
     }
 
-    $(document).ready(function(){
-      // Initialize notifications
-      initNotifications();
+    // === NOVO SISTEMA DE MODAIS ===
+    (function () {
+      let focusedElementBeforeModal;
+      const focusableElementsString = 'a[href], area[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [tabindex="0"]';
 
-      // Bloquear digitação manual no campo de data
-      $('#data').on('keydown', function(e) {
-        e.preventDefault();
-      });
+      function openModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (!modal) return;
 
-      $('#tabela-pendentes').DataTable();
-      $('#tabela-aprovados').DataTable();
-      $('#tabela-liberados').DataTable();
-      $('#tabela-fechamento-solicitado').DataTable();
-      $('#tabela-fechamento-recusado').DataTable();
-      $('#tabela-fechados').DataTable();
-      $('#tabela-saldo-a-devolver').DataTable();
+        focusedElementBeforeModal = document.activeElement;
+        modal.classList.add('show');
+        modal.setAttribute('aria-hidden', 'false');
 
-      {% if user_role == 'supervisor' and divergentes_count > 0 %}
-        $("#popupDivergentes").show();
-      {% endif %}
+        // Trap focus
+        modal.addEventListener('keydown', trapFocus);
 
-      $("#closePopupDivergentes").click(function(){
-        $("#popupDivergentes").hide();
-      });
-      
-      $(document).on('click', '.toggle-details', function(){
-        var details = $(this).closest('.valor-resumo').next('.rd-details');
-        if(details.is(':visible')){
-          details.slideUp();
-          $(this).text('+');
+        // Foca o modal ou o primeiro elemento focável
+        const firstFocusable = modal.querySelector(focusableElementsString);
+        if (firstFocusable) {
+          firstFocusable.focus();
         } else {
-          details.slideDown();
-          $(this).text('-');
+          modal.setAttribute('tabindex', '-1');
+          modal.focus();
+        }
+      }
+
+      function closeModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (!modal) return;
+
+        modal.classList.remove('show');
+        modal.setAttribute('aria-hidden', 'true');
+        modal.removeEventListener('keydown', trapFocus);
+
+        // Devolve o foco para quem abriu o modal
+        if (focusedElementBeforeModal) {
+          focusedElementBeforeModal.focus();
+        }
+      }
+
+      function trapFocus(e) {
+        if (e.key !== 'Tab') return;
+
+        const modal = e.currentTarget;
+        const focusableElements = Array.from(modal.querySelectorAll(focusableElementsString));
+        const firstFocusable = focusableElements[0];
+        const lastFocusable = focusableElements[focusableElements.length - 1];
+
+        if (e.shiftKey) { // Shift + Tab
+          if (document.activeElement === firstFocusable) {
+            lastFocusable.focus();
+            e.preventDefault();
+          }
+        } else { // Tab
+          if (document.activeElement === lastFocusable) {
+            firstFocusable.focus();
+            e.preventDefault();
+          }
+        }
+      }
+
+      // Adiciona ouvintes de evento para todos os botões que abrem e fecham modais
+      document.addEventListener('click', (e) => {
+        // Botões de fechar (x)
+        const closeButton = e.target.closest('[data-modal-close]');
+        if (closeButton) {
+          closeModal(closeButton.getAttribute('data-modal-close'));
+        }
+
+        // Clicar fora do modal-content para fechar
+        if (e.target.classList.contains('modal')) {
+          closeModal(e.target.id);
         }
       });
 
-      $(document).on('click', '.toggle-observation', function(){
-        var full = $(this).siblings('.observation-full');
-        if(full.is(':visible')){
-          full.slideUp();
-          $(this).text('+');
-        } else {
-          full.slideDown();
-          $(this).text('-');
+      // Exportar funções para o escopo global para serem usadas por botões
+      window.openModal = openModal;
+      window.closeModal = closeModal;
+
+    })();
+
+    // ==========================================================
+    // INÍCIO: Função JavaScript para o Modal de Análise IA
+    // ==========================================================
+    function openAnaliseIAModal(rdId) {
+      // Abre o modal
+      window.openModal('analiseIAModal');
+
+      // Mostra o loading e esconde os resultados/erros
+      $('#loadingAnaliseIA').show();
+      $('#resultadosAnaliseIA').hide();
+      $('#erroAnaliseIA').hide().text('');
+
+      // Limpa resultados anteriores
+      $('#listaGastosTotais').empty();
+      $('#listaAnalisePorArquivo').empty();
+      $('#totalGeralAnalise').remove(); // Remove o H2 do total geral anterior
+
+      $.ajax({
+        url: `/analise_gastos_ia/${rdId}`,
+        method: 'GET',
+        success: function (response) {
+          $('#loadingAnaliseIA').hide();
+          if (response.success) {
+            $('#resultadosAnaliseIA').show();
+
+            // --- Bloco para calcular o Total Geral ---
+            let totalGeral = 0;
+            if (response.gastos_totais_por_categoria && response.gastos_totais_por_categoria.length > 0) {
+              response.gastos_totais_por_categoria.forEach(function (item) {
+                totalGeral += item.total;
+              });
+            }
+            // Adiciona o H2 com o Total Geral no topo do modal
+            $('#resultadosAnaliseIA').prepend(
+              `<h2 id="totalGeralAnalise" style="text-align:center; color: var(--primary-color); margin-bottom: 1.5rem;">
+                            Total Geral Verificado: R$ ${totalGeral.toFixed(2).replace('.', ',')}
+                         </h2>`
+            );
+            // --- FIM DO Bloco Total Geral ---
+
+
+            // --- Preenche Gastos Totais (com ícone) ---
+            if (response.gastos_totais_por_categoria && response.gastos_totais_por_categoria.length > 0) {
+              response.gastos_totais_por_categoria.forEach(function (item) {
+
+                let alertaIconHTML = '';
+                if (item.alerta_gasto === 'sim') {
+                  alertaIconHTML = ' <i class="fas fa-exclamation-triangle alerta-gasto-icon" title="Esta categoria contém gastos acima do limite"></i>';
+                }
+
+                $('#listaGastosTotais').append(
+                  `<li class="list-group-item">
+                                    <span>${item.categoria}${alertaIconHTML}</span>
+                                    <span class="badge">${'R$ ' + item.total.toFixed(2).replace('.', ',')}</span>
+                                </li>`
+                );
+              });
+            } else {
+              $('#listaGastosTotais').append(`<li class="list-group-item">Nenhum gasto identificado.</li>`);
+            }
+
+            // --- Preenche Análise por Arquivo (com ícone) ---
+            if (response.analise_por_arquivo && response.analise_por_arquivo.length > 0) {
+              response.analise_por_arquivo.forEach(function (item) {
+
+                if (item.categoria === 'Resumo (Ignorado)') {
+                  return;
+                }
+
+                let alertaIconArquivoHTML = '';
+                if (item.alerta_gasto === 'sim') {
+                  alertaIconArquivoHTML = ' <i class="fas fa-exclamation-triangle alerta-gasto-icon" title="Este gasto está acima do limite"></i>';
+                }
+
+                // ==========================================================
+                // INÍCIO: Adiciona o 'Tipo de Refeição'
+                // ==========================================================
+                let tipoRefeicaoHTML = '';
+                if (item.tipo_refeicao && item.tipo_refeicao !== 'N/A') {
+                  // Deixa o texto do tipo de refeição um pouco menor e cinza
+                  tipoRefeicaoHTML = `<span style="font-size: 0.85rem; color: #555;">(${item.tipo_refeicao})</span>`;
+                }
+                // ==========================================================
+                // FIM: Adiciona o 'Tipo de Refeição'
+                // ==========================================================
+
+                let cardHtml = `
+                                <div class="analise-file-card">
+                                    <a href="${item.url}" target="_blank" class="arquivo-link">${item.filename} <i class="fas fa-external-link-alt"></i></a>
+                                    <p style="margin: 0.25rem 0 0 0;">
+                                        <strong>Categoria:</strong> ${item.categoria} ${tipoRefeicaoHTML}${alertaIconArquivoHTML}<br>
+                                        <strong>Valor:</strong> R$ ${item.valor.toFixed(2).replace('.', ',')}
+                                    </p>
+                                </div>
+                            `;
+                $('#listaAnalisePorArquivo').append(cardHtml);
+              });
+            } else {
+              $('#listaAnalisePorArquivo').append('<p>Nenhum arquivo para analisar ou erro na análise.</p>');
+            }
+
+          } else {
+            $('#erroAnaliseIA').show().text(response.message || "Erro desconhecido ao analisar gastos.");
+          }
+        },
+        error: function (xhr, status, error) {
+          $('#loadingAnaliseIA').hide();
+          let errorMsg = "Erro ao carregar análise: " + (xhr.responseJSON ? xhr.responseJSON.message : error);
+          $('#erroAnaliseIA').show().text(errorMsg);
+          console.error("Erro na análise IA:", error, xhr.responseText);
         }
       });
+    }
+    // ==========================================================
+    // FIM: Função JavaScript para o Modal de Análise IA
+    // ==========================================================
 
-      $(document).on('click', '.btn-view-files', function(){
-        let filesStr = $(this).data('files');    
-        let rdId     = $(this).data('rdId');     
-        if(!filesStr){ return; }
+
+    // === INICIALIZAÇÃO DO JQUERY E PLUGINS ===
+    $(document).ready(function () {
+      // Inicializa notificações vindas do Flask
+      initFlashedNotifications();
+
+      // Inicializa DataTables
+      try {
+        $('#tabela-pendentes').DataTable();
+        $('#tabela-aprovados').DataTable();
+        $('#tabela-liberados').DataTable();
+        $('#tabela-fechamento-solicitado').DataTable();
+        $('#tabela-fechamento-recusado').DataTable();
+        $('#tabela-fechados').DataTable();
+        $('#tabela-saldo-a-devolver').DataTable();
+      } catch (e) {
+        console.error("Erro ao inicializar DataTables:", e);
+      }
+
+      // === NOVO: LÓGICA DO SIDEBAR ===
+      $('#sidebarToggle').click(function () {
+        $('#sidebar').toggleClass('show');
+        $('#sidebarOverlay').toggleClass('show');
+      });
+      $('#sidebarOverlay').click(function () {
+        $('#sidebar').removeClass('show');
+        $('#sidebarOverlay').removeClass('show');
+      });
+
+      // --- Início: Lógica do Sidebar Colapsável (Desktop - Click-to-Toggle) ---
+      if (window.innerWidth > 1024) {
+
+        // MUDANÇA: Alvo alterado de #sidebar para .sidebar-header para evitar conflito com links
+        // Ao clicar no CABEÇALHO do menu, alterna (expande ou recolhe)
+        $('.sidebar-header').on('click', function () {
+          $('body').toggleClass('sidebar-expanded');
+        });
+
+      }
+      // --- Fim: Lógica do Sidebar Colapsável (Desktop - Click-to-Toggle) ---
+
+
+      // === NOVO: LÓGICA DOS MODAIS ===
+
+      // Abrir modal de Saldo Global (Financeiro)
+      $('#btn-saldo-global').click(function () {
+        window.openModal('saldoModal');
+      });
+
+      // Abrir modal de Solicitação Alelo
+      $('#btn-alelo')?.click(function () {
+        $('#solicitacaoModalTitle').html('<i class="fas fa-credit-card"></i> Solicitação RD Alelo');
+        $('#rd-tipo').val('credito alelo');
+        $('#form-solicitacao')[0].reset(); // Limpa o formulário
+        window.openModal('solicitacaoModal');
+      });
+
+      // Abrir modal de Solicitação Reembolso
+      $('#btn-reembolso')?.click(function () {
+        $('#solicitacaoModalTitle').html('<i class="fas fa-receipt"></i> Solicitação RD Reembolso');
+        $('#rd-tipo').val('reembolso');
+        $('#form-solicitacao')[0].reset(); // Limpa o formulário
+        window.openModal('solicitacaoModal');
+      });
+
+      // Abrir modal de Recusa
+      $(document).on('click', '.btn-recusar', function () {
+        var rdId = $(this).data('rdId');
+        $('#formRecusa').attr('action', '/reject_fechamento/' + rdId);
+        window.openModal('recusaModal');
+      });
+
+      // Abrir modal de Anexos
+      $(document).on('click', '.btn-view-files', function () {
+        let filesStr = $(this).data('files');
+        let rdId = $(this).data('rdId');
+        if (!filesStr) { return; }
         let filesArr = filesStr.split(',');
         let html = '';
-        filesArr.forEach(function(arquivo){
+        filesArr.forEach(function (arquivo) {
           html += `
             <div class="file-item" style="display: flex; align-items: center; gap: 1rem; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); margin-bottom: 0.5rem;">
               <a href="${getPublicUrl(arquivo)}" class="arquivo-link" target="_blank" style="flex: 1;">${arquivo}</a>
@@ -2117,36 +3175,51 @@
           `;
         });
         $('#modalFilesContainer').html(html);
-        $('#fileModal').show();
+        window.openModal('fileModal');
       });
-      $('#closeFileModal').click(function(){ $('#fileModal').hide(); });
-      $(window).click(function(e){
-        if(e.target == document.getElementById('fileModal')){ $('#fileModal').hide(); }
+
+      // Popup de Divergentes (Supervisor)
+      {% if user_role == 'supervisor' and divergentes_count > 0 %}
+      window.openModal('popupDivergentes');
+      {% endif %}
+
+      // Exemplo de como usar a notificação de "Aguarde"
+      $('#form-solicitacao').submit(function () {
+        // Mostra a notificação de carregamento
+        var loadingNotifId = showLoadingNotification('Enviando solicitação, aguarde...');
+        // Você pode desabilitar o botão aqui
+        $(this).find('button[type="submit"]').prop('disabled', true);
+
+        // NOTA: No mundo real, você faria isso após uma resposta AJAX.
+        // Como isso é um submit de formulário, a página vai recarregar.
+        // A notificação de SUCESSO virá do 'flash' do Flask na próxima página.
+        // Se fosse AJAX, vocẽ faria:
+        // ajax.success(function() {
+        //   closeNotificationById(loadingNotifId);
+        //   showNotification('Solicitação enviada com sucesso!', 'success');
+        //   window.closeModal('solicitacaoModal');
+        // })
       });
-      function getPublicUrl(filename){
+
+
+      // === LÓGICA EXISTENTE ===
+
+      // Expandir Observação
+      $(document).on('click', '.toggle-observation', function () {
+        var full = $(this).siblings('.observation-full');
+        if (full.is(':visible')) {
+          full.slideUp();
+          $(this).text('+');
+        } else {
+          full.slideDown();
+          $(this).text('-');
+        }
+      });
+
+      // URL Pública para Arquivos
+      function getPublicUrl(filename) {
         return "https://pub-1e6f8559bc2b413c889fbf4860462599.r2.dev/" + filename;
       }
-
-      document.getElementById('btn-alelo')?.addEventListener('click', function(){
-        document.getElementById('form-solicitacao').style.display = 'block';
-        document.getElementById('rd-tipo').value = 'credito alelo';
-        document.getElementById('lbl-solicitante').innerText = 'Solicitante do RD Alelo';
-      });
-      document.getElementById('btn-reembolso')?.addEventListener('click', function(){
-        document.getElementById('form-solicitacao').style.display = 'block';
-        document.getElementById('rd-tipo').value = 'reembolso';
-        document.getElementById('lbl-solicitante').innerText = 'Solicitante do RD Reembolso';
-      });
-      
-      $(document).on('click', '.btn-recusar', function(){
-        var rdId = $(this).data('rdId');
-        $('#formRecusa').attr('action', '/reject_fechamento/' + rdId);
-        $('#recusaModal').show();
-      });
-      $('#closeRecusaModal').click(function(){ $('#recusaModal').hide(); });
-      $(window).click(function(e){
-        if(e.target == document.getElementById('recusaModal')){ $('#recusaModal').hide(); }
-      });
 
       // Salvar aba selecionada
       document.querySelectorAll('input[name="tab-control"]').forEach(tab => {
@@ -2164,57 +3237,150 @@
         }
       });
 
-      // JavaScript para posicionar o tooltip dinamicamente
-      const tooltips = document.querySelectorAll('.valor-tooltip-wrapper');
-      tooltips.forEach(wrapper => {
-        const tooltip = wrapper.querySelector('.valor-tooltip');
-        const total = wrapper.querySelector('.valor-total');
+      // === NOVO: Tooltip de Valores (Click e Hover) ===
+      function positionTooltip(wrapper, tooltip, total) {
+        const rect = total.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const tooltipWidth = 350;
+        const tooltipHeight = 300; // max-height
 
-        if (!tooltip || !total) return; // Safety check
+        let left = rect.right + 10;
+        let top = rect.top;
 
-        wrapper.addEventListener('mouseenter', function(e) {
-          const rect = total.getBoundingClientRect();
-          const viewportWidth = window.innerWidth;
-          const viewportHeight = window.innerHeight;
-          const tooltipWidth = 350;
-          const tooltipHeight = 300;
+        if (left + tooltipWidth > viewportWidth) {
+          left = rect.left - tooltipWidth - 10;
+        }
+        if (top + tooltipHeight > viewportHeight) {
+          top = viewportHeight - tooltipHeight - 10;
+        }
+        if (top < 10) {
+          top = 10;
+        }
+        if (left < 10) {
+          left = 10;
+        }
 
-          // Calculate position
-          let left = rect.right + 10; // Default: to the right
-          let top = rect.top;
+        tooltip.style.left = `${left}px`;
+        tooltip.style.top = `${top}px`;
+      }
 
-          // If tooltip goes off right edge, position to the left
-          if (left + tooltipWidth > viewportWidth) {
-            left = rect.left - tooltipWidth - 10;
-          }
+      $('.valor-tooltip-wrapper').each(function () {
+        const wrapper = $(this)[0];
+        const tooltip = $(this).find('.valor-tooltip')[0];
+        const total = $(this).find('.valor-total')[0];
 
-          // If tooltip goes off bottom, adjust upward
-          if (top + tooltipHeight > viewportHeight) {
-            top = viewportHeight - tooltipHeight - 10;
-          }
+        if (!tooltip || !total) return;
 
-          // Ensure tooltip doesn't go above viewport
-          if (top < 10) {
-            top = 10;
-          }
-
-          // Ensure tooltip doesn't go off left edge
-          if (left < 10) {
-            left = 10;
-          }
-
-          tooltip.style.left = `${left}px`;
-          tooltip.style.top = `${top}px`;
-          tooltip.style.visibility = 'visible';
-          tooltip.style.opacity = '1';
+        // Abrir com hover
+        $(wrapper).on('mouseenter', function () {
+          positionTooltip(wrapper, tooltip, total);
+          $(wrapper).addClass('show-tooltip');
         });
 
-        wrapper.addEventListener('mouseleave', function() {
-          tooltip.style.visibility = 'hidden';
-          tooltip.style.opacity = '0';
+        // Fechar com hover
+        $(wrapper).on('mouseleave', function () {
+          // Só fecha se não foi ativado por clique
+          if (!$(wrapper).hasClass('clicked-open')) {
+            $(wrapper).removeClass('show-tooltip');
+          }
+        });
+
+        // Abrir/Fechar com clique (para mobile)
+        $(total).on('click', function (e) {
+          e.preventDefault();
+          if ($(wrapper).hasClass('clicked-open')) {
+            // Se já está aberto por clique, fecha
+            $(wrapper).removeClass('show-tooltip clicked-open');
+          } else {
+            // Se não, abre por clique
+            positionTooltip(wrapper, tooltip, total);
+            $(wrapper).addClass('show-tooltip clicked-open');
+          }
         });
       });
+
+      // Fechar tooltips abertos por clique ao clicar fora
+      $(document).on('click', function (e) {
+        if (!$(e.target).closest('.valor-tooltip-wrapper').length) {
+          $('.valor-tooltip-wrapper.clicked-open').removeClass('show-tooltip clicked-open');
+        }
+      });
+
+
+      // === MUDANÇA: Dropdown de Ações (com detecção de borda) ===
+      $(document).on('click', '.actions-toggle', function (e) {
+        e.stopPropagation(); // Impede que o clique feche o menu imediatamente
+        let dropdown = $(this).siblings('.actions-dropdown');
+        let toggle = $(this); // O botão que foi clicado
+
+        // Fecha todos os outros dropdowns abertos
+        $('.actions-dropdown').not(dropdown).removeClass('show drop-up');
+
+        // Alterna o dropdown atual
+        dropdown.toggleClass('show');
+
+        // Se o dropdown foi aberto (agora tem 'show')
+        if (dropdown.hasClass('show')) {
+          // Reseta as classes de animação/posição
+          dropdown.removeClass('drop-up');
+
+          let rect = toggle[0].getBoundingClientRect();
+          let viewportHeight = window.innerHeight;
+          let viewportWidth = window.innerWidth;
+          let dropdownEl = dropdown[0];
+
+          // Define a posição inicial (abaixo e alinhado à direita)
+          let top = rect.bottom + 2;
+          let left = 'auto';
+          let right = viewportWidth - rect.right;
+          let bottom = 'auto';
+
+          // Temporariamente aplica para medir
+          dropdown.css({
+            top: `${top}px`,
+            left: left,
+            right: `${right}px`,
+            bottom: bottom
+          });
+
+          let dropdownRect = dropdownEl.getBoundingClientRect();
+
+          // 1. Verifica se corta embaixo
+          if (dropdownRect.bottom > viewportHeight) {
+            // Tenta abrir para cima
+            top = 'auto';
+            bottom = viewportHeight - rect.top + 2;
+            dropdown.addClass('drop-up'); // Adiciona classe para animação
+          }
+
+          // 2. Verifica se corta à esquerda (menu mais largo que o espaço)
+          if (dropdownRect.left < 0) {
+            // Alinha à esquerda do botão em vez da direita
+            left = rect.left;
+            right = 'auto';
+          }
+
+          // Aplica a posição final
+          dropdown.css({
+            top: top === 'auto' ? 'auto' : `${top}px`,
+            bottom: bottom === 'auto' ? 'auto' : `${bottom}px`,
+            left: left === 'auto' ? 'auto' : `${left}px`,
+            right: right === 'auto' ? 'auto' : `${right}px`
+          });
+        }
+      });
+      // --- FIM DA MUDANÇA ---
+
+      // Fecha dropdowns se clicar fora
+      $(document).on('click', function (e) {
+        if (!$(e.target).closest('.actions-menu').length) {
+          $('.actions-dropdown').removeClass('show');
+        }
+      });
+
     });
   </script>
 </body>
+
 </html>

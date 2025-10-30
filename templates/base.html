@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+  <title>{% block title %}Gerenciamento de RDs{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    referrerpolicy="no-referrer" />
+  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.1/css/jquery.dataTables.min.css" />
+  
+  <style>
+    :root {
+      /* Paleta de Cores Refinada (Claro, Cinza, Azul) */
+      --primary-color: #2563eb;
+      /* Azul principal */
+      --primary-light: #3b82f6;
+      --primary-dark: #1d4ed8;
+      --secondary-color: #f59e0b;
+      --success-color: #10b981;
+      --danger-color: #ef4444;
+      --warning-color: #f59e0b;
+      --info-color: #0ea5e9;
+
+      /* Fundo mais claro para um visual "clean" */
+      --background-color: #f1f5f9;
+      /* Cinza (Slate 100) */
+      --surface-color: #ffffff;
+      /* Cards e superfícies brancos */
+      --border-color: #e2e8f0;
+      /* Cinza (Slate 200) */
+
+      --text-primary: #1e293b;
+      /* Cinza (Slate 800) */
+      --text-secondary: #64748b;
+      --text-muted: #94a3b8;
+
+      --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.05);
+      --card-shadow-hover: 0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
+      --header-height: 70px;
+      --sidebar-width: 180px;
+      --sidebar-width-collapsed: 80px;
+
+      --border-radius: 12px;
+      --border-radius-sm: 8px;
+      --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--background-color);
+      color: var(--text-primary);
+      line-height: 1.6;
+      min-height: 100vh;
+      /* Previne rolagem horizontal com o sidebar */
+      overflow-x: hidden;
+    }
+
+    /* === NOVOS ESTILOS: LAYOUT PRINCIPAL (Sidebar + Conteúdo) === */
+
+    .sidebar {
+      width: var(--sidebar-width);
+      height: 100vh;
+      position: fixed;
+      top: 0;
+      left: 0;
+      background: var(--surface-color);
+      border-right: 1px solid var(--border-color);
+      padding: 1rem;
+      transition: var(--transition);
+      z-index: 1001;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.5rem;
+      height: var(--header-height);
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: 1rem;
+    }
+
+    .sidebar-header .logo {
+      height: 45px;
+      width: auto;
+    }
+
+    .sidebar-header .brand-text {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--primary-color);
+      white-space: nowrap;
+    }
+
+    .sidebar-nav {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .sidebar-nav-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .sidebar-nav-item {
+      margin-bottom: 0.5rem;
+    }
+
+    .sidebar-nav-link {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.875rem 1rem;
+      border-radius: var(--border-radius-sm);
+      text-decoration: none;
+      font-weight: 500;
+      color: var(--text-secondary);
+      transition: var(--transition);
+      white-space: nowrap;
+      font-size: 0.875rem;
+    }
+
+    .sidebar-nav-link .nav-icon {
+      font-size: 1.125rem;
+      width: 20px;
+      text-align: center;
+    }
+
+    .sidebar-nav-link:hover {
+      background: rgba(37, 99, 235, 0.08);
+      color: var(--primary-color);
+    }
+
+    .sidebar-nav-link.active {
+      background: var(--primary-color);
+      color: white;
+      box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);
+    }
+
+    /* Badge no Menu */
+    .sidebar-nav-link .badge {
+      margin-left: auto;
+      background: var(--danger-color);
+    }
+
+    .sidebar-nav-link.btn-animated .badge {
+      animation: pulse 2s infinite;
+    }
+
+    /* Estilo do botão de Saldo Global no menu */
+    .sidebar-nav-button {
+      width: 100%;
+      background: linear-gradient(135deg, var(--success-color), #059669);
+      color: white;
+      margin-top: 1rem;
+    }
+
+    /* Main Content Area */
+    .main-content {
+      margin-left: var(--sidebar-width);
+      width: calc(100% - var(--sidebar-width));
+      transition: var(--transition);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header Styles (Agora dentro do Main Content) */
+    .top-bar {
+      background: rgba(255, 255, 255, 0.8);
+      /* Efeito de vidro */
+      backdrop-filter: blur(10px);
+      height: var(--header-height);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+
+    .sidebar-toggle {
+      display: none;
+      /* Oculto por padrão, aparece em mobile */
+      font-size: 1.5rem;
+      color: var(--text-primary);
+      cursor: pointer;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      margin-left: auto;
+      /* Empurra para a direita */
+    }
+
+    /* Container de conteúdo principal */
+    .container {
+      max-width: 1600px;
+      /* Aumentado para layouts maiores */
+      margin: 0 auto;
+      padding: 2rem;
+      flex: 1; /* Faz o conteúdo crescer */
+    }
+
+    /* ================================================================ */
+    /* ... (Todos os outros estilos: .form-group, .card, .btn, .tabs, .table, etc.) ... */
+    /* ... (COLE TODO O SEU BLOCO <style> AQUI) ... */
+    /* ... (Vou omitir por brevidade, mas você deve colar TUDO) ... */
+
+    /* Importante: Estilos de LOGIN. Eles não são mais necessários aqui, */
+    /* mas os estilos de MODAL, NOTIFICATION, etc. SÃO. */
+
+    /* Colando apenas os estilos que faltam para o exemplo */
+
+    .login-card {
+      background: var(--surface-color);
+      padding: 3rem;
+      border-radius: var(--border-radius);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      width: 100%;
+      max-width: 420px;
+      margin: 0 auto;
+    }
+
+    .login-card h2 {
+      text-align: center;
+      margin-bottom: 2rem;
+      color: var(--text-primary);
+      font-weight: 700;
+      font-size: 1.75rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      font-size: 0.875rem;
+    }
+    
+    .form-group input,
+    .form-group textarea,
+    .form-group select {
+      width: 100%;
+      padding: 0.875rem 1rem;
+      border: 1px solid var(--border-color);
+      border-radius: var(--border-radius-sm);
+      font-size: 0.875rem;
+      transition: var(--transition);
+      background: #ffffff;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+    }
+    
+    .form-group input:focus,
+    .form-group textarea:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: var(--border-radius-sm);
+      font-weight: 500;
+      font-size: 0.875rem;
+      text-decoration: none;
+      cursor: pointer;
+      transition: var(--transition);
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+      color: white;
+      box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);
+    }
+    
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.4);
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, var(--success-color), #059669);
+      color: white;
+    }
+
+    /* ... (cole todos os seus estilos aqui) ... */
+
+    /* Estilos de Tabela */
+    .table-container {
+      background: var(--surface-color);
+      border-radius: var(--border-radius);
+      overflow: hidden;
+      box-shadow: var(--card-shadow);
+      border: 1px solid var(--border-color);
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+    th {
+      background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+      color: white;
+      padding: 1rem;
+      text-align: left;
+    }
+    td {
+      padding: 1rem;
+      border-right: 1px solid #cbd5e1;
+      border-bottom: 1px solid #cbd5e1;
+      vertical-align: middle;
+      background: #fdfdfe;
+    }
+    tbody tr:hover td { background: rgba(59, 130, 246, 0.08) !important; }
+
+    /* ... (cole todos os seus estilos de tabela, modal, notificação, etc. aqui) ... */
+    
+    /* Footer */
+    footer {
+      text-align: center;
+      color: var(--text-muted);
+      padding: 2rem;
+      border-top: 1px solid var(--border-color);
+      background: var(--surface-color);
+      margin-top: 4rem; /* Garante espaço acima do rodapé */
+    }
+
+    /* Modal Styles */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 9998;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+      align-items: center;
+      justify-content: center;
+      animation: modalFadeIn 0.3s ease-out;
+    }
+    .modal.show { display: flex; }
+    @keyframes modalFadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .modal-content {
+      background: var(--surface-color);
+      padding: 2.5rem;
+      border-radius: var(--border-radius);
+      width: 90%;
+      max-width: 600px;
+      position: relative;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+      animation: modalSlideIn 0.3s ease-out;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    .modal-content.modal-lg { max-width: 800px; }
+    @keyframes modalSlideIn {
+      from { opacity: 0; transform: translateY(-50px) scale(0.95); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .close-btn {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      color: var(--text-muted);
+      font-size: 1.5rem;
+      cursor: pointer;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: var(--transition);
+      z-index: 10;
+    }
+    .close-btn:hover { background: var(--danger-color); color: white; }
+    .modal-content h2,
+    .modal-content h3 {
+      margin-top: 0;
+      margin-bottom: 1.5rem;
+      color: var(--text-primary);
+      font-weight: 600;
+      padding-right: 2rem;
+    }
+
+    /* Notifications */
+    .notifications-container {
+      position: fixed;
+      top: 90px;
+      right: 20px;
+      z-index: 9999;
+      max-width: 400px;
+      width: 100%;
+    }
+    /* ... (cole todos os estilos de notificação) ... */
+    .notification {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1rem 1.25rem;
+      margin-bottom: 0.75rem;
+      border-radius: var(--border-radius);
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      font-weight: 500;
+      animation: slideInRight 0.3s ease-out;
+      cursor: pointer;
+      transition: var(--transition);
+      border: 1px solid transparent;
+    }
+    /* ... etc ... */
+
+    /* Responsive Design */
+    @media (max-width: 1024px) {
+      .sidebar {
+        transform: translateX(calc(-1 * var(--sidebar-width)));
+        z-index: 9997;
+      }
+      .sidebar.show {
+        transform: translateX(0);
+        box-shadow: 0 0 50px rgba(0, 0, 0, 0.1);
+      }
+      .main-content {
+        margin-left: 0;
+        width: 100%;
+      }
+      .sidebar-toggle { display: block; }
+      .sidebar-overlay {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.4);
+        z-index: 9996;
+      }
+      .sidebar-overlay.show { display: block; }
+    }
+
+    @media (max-width: 768px) {
+      .container { padding: 1rem; }
+      .top-bar { padding: 0 1rem; }
+      .header-actions { gap: 0.5rem; }
+      .user-info, .saldo-info { padding: 0.5rem; font-size: 0.8rem; }
+      .user-info span, .saldo-info span { display: none; }
+      
+      /* ... (cole todos os estilos responsivos de tabela, etc) ... */
+      
+      .notifications-container {
+        top: 70px;
+        left: 10px;
+        right: 10px;
+        max-width: none;
+      }
+    }
+
+  </style>
+
+  {% block head_extra %}{% endblock %}
+</head>
+
+<body>
+
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <img src="https://pub-1e6f8559bc2b413c889fbf4860462599.r2.dev/logo_animado.gif" alt="Logo Tecsul" class="logo">
+      <div class="brand-text">Ger. de RDs</div>
+    </div>
+    <nav class="sidebar-nav">
+      <ul class="sidebar-nav-list">
+        <li class="sidebar-nav-item">
+          <a href="{{ url_for('index') }}" class="sidebar-nav-link {% if request.endpoint == 'index' %}active{% endif %}">
+            <i class="fas fa-home nav-icon"></i>
+            <span>Dashboard (RDs)</span>
+          </a>
+        </li>
+        <li class="sidebar-nav-item">
+          <a href="{{ url_for('cadastro_funcionario') }}" class="sidebar-nav-link {% if request.endpoint == 'cadastro_funcionario' %}active{% endif %}">
+            <i class="fas fa-user-plus nav-icon"></i>
+            <span>Cadastro Funcionários</span>
+          </a>
+        </li>
+        <li class="sidebar-nav-item">
+          <a href="{{ url_for('consulta_funcionario') }}" class="sidebar-nav-link {% if request.endpoint == 'consulta_funcionario' %}active{% endif %}">
+            <i class="fas fa-search nav-icon"></i>
+            <span>Consulta Funcionários</span>
+          </a>
+        </li>
+        {% if is_financeiro() %}
+        <li class="sidebar-nav-item">
+          <a href="{{ url_for('admin_usuarios') }}" class="sidebar-nav-link {% if request.endpoint == 'admin_usuarios' %}active{% endif %}">
+            <i class="fas fa-user-cog nav-icon"></i>
+            <span>Gerenciar Usuários</span>
+          </a>
+        </li>
+        {% endif %}
+        <li class="sidebar-nav-item">
+          <a href="{{ url_for('historico_geral') }}" class="sidebar-nav-link {% if request.endpoint == 'historico_geral' %}active{% endif %}">
+            <i class="fas fa-history nav-icon"></i>
+            <span>Histórico Geral</span>
+          </a>
+        </li>
+        <li class="sidebar-nav-item">
+          <a href="{{ url_for('dashboard') }}" class="sidebar-nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
+            <i class="fas fa-chart-line nav-icon"></i>
+            <span>Métricas</span>
+          </a>
+        </li>
+        <li class="sidebar-nav-item">
+          <a href="{{ url_for('anexos_divergentes') }}"
+            class="sidebar-nav-link {% if request.endpoint == 'anexos_divergentes' %}active{% endif %} {% if divergentes_count > 0 %}btn-animated{% endif %}">
+            <i class="fas fa-paperclip nav-icon"></i>
+            <span>Anexos Divergentes</span>
+            {% if divergentes_count > 0 %}
+            <span class="badge">{{ divergentes_count }}</span>
+            {% endif %}
+          </a>
+        </li>
+        {% if user_role == 'financeiro' %}
+        <li class="sidebar-nav-item">
+          <a href="{{ url_for('export_historico') }}" class="sidebar-nav-link {% if request.endpoint == 'export_historico' %}active{% endif %}">
+            <i class="fas fa-file-invoice-dollar nav-icon"></i>
+            <span>Hist. de Movimentação</span>
+          </a>
+        </li>
+        {% endif %}
+        <li class="sidebar-nav-item">
+          <a href="{{ url_for('export_excel') }}" class="sidebar-nav-link {% if request.endpoint == 'export_excel' %}active{% endif %}">
+            <i class="fas fa-file-excel nav-icon"></i>
+            <span>Exportar Excel</span>
+          </a>
+        </li>
+
+        {% if user_role == 'financeiro' %}
+        <li class="sidebar-nav-item">
+          <button type="button" class="btn btn-success sidebar-nav-button" id="btn-saldo-global">
+            <i class="fas fa-wallet"></i>
+            <span>Editar Saldo Global</span>
+          </button>
+        </li>
+        {% endif %}
+      </ul>
+    </nav>
+  </aside>
+  
+  <div class="main-content">
+    
+    <header class="top-bar">
+      <div class="sidebar-toggle" id="sidebarToggle">
+        <i class="fas fa-bars"></i>
+      </div>
+      <div class="header-actions">
+        <div class="user-info">
+          <i class="fas fa-user-circle"></i>
+          <span>{{ user_role }}</span>
+        </div>
+        {% if saldo_global is defined and saldo_global is not none %}
+        <div class="saldo-info">
+          <i class="fas fa-wallet"></i>
+          <span>Saldo Global: R${{ format_currency(saldo_global) }}</span>
+        </div>
+        {% endif %}
+        <a href="{{ url_for('logout') }}" title="Sair">
+          <i class="fas fa-sign-out-alt"></i>
+          <span class="d-none d-md-inline">Sair</span>
+        </a>
+      </div>
+    </header>
+
+    <div class="notifications-container" id="notificationsContainer">
+      {% with messages = get_flashed_messages(with_categories=True) %}
+      {% if messages %}
+      {% for category, message in messages %}
+      <div class="notification" data-category="{{ category }}" data-message="{{ message }}">
+        <div class="notification-icon">
+          <i class="fas fa-info-circle"></i>
+        </div>
+        <div class="notification-content">{{ message }}</div>
+        <button class="notification-close">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      {% endfor %}
+      {% endif %}
+      {% endwith %}
+    </div>
+
+    <div class="container">
+      {% block content %}{% endblock %}
+    </div>
+
+    <footer>
+      <div>
+        <i class="fas fa-code"></i>
+        Desenvolvido por André Ferreira
+      </div>
+    </footer>
+
+  </div> {% block modals %}
+    {% if user_role == 'financeiro' %}
+    <div id="saldoModal" class="modal">
+      <div class="modal-content">
+        <span class="close-btn" data-modal-close="saldoModal">&times;</span>
+        <h2><i class="fas fa-wallet"></i> Editar Saldo Global</h2>
+        <form action="{{ url_for('edit_saldo') }}" method="POST">
+          <div class="form-group">
+            <label for="saldo_global">Saldo Global (R$):</label>
+            <input type="number" id="saldo_global" name="saldo_global" step="0.01" value="{{ saldo_global }}" required>
+          </div>
+          <button type="submit" class="btn btn-success">
+            <i class="fas fa-sync-alt"></i>
+            Atualizar Saldo
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+  {% endblock %}
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script type="text/javascript" src="https://cdn.datatables.net/1.13.1/js/jquery.dataTables.min.js"></script>
+  
+  <script>
+    // === SISTEMA DE NOTIFICAÇÕES (GLOBAL) ===
+    function closeNotification(notificationElement) {
+      if (!notificationElement) return;
+      notificationElement.classList.add('removing');
+      setTimeout(() => {
+        if (notificationElement && notificationElement.parentNode) {
+          notificationElement.parentNode.removeChild(notificationElement);
+        }
+      }, 300);
+    }
+
+    function showNotification(message, category = 'info', duration = 5000) {
+      const container = document.getElementById('notificationsContainer');
+      if (!container) return;
+      const notificationId = 'notif-' + Date.now();
+      const notification = document.createElement('div');
+      notification.className = 'notification';
+      notification.id = notificationId;
+      notification.setAttribute('data-category', category);
+      const types = {
+        success: { class: 'notification-success', icon: 'fa-check-circle' },
+        error: { class: 'notification-error', icon: 'fa-exclamation-circle' },
+        warning: { class: 'notification-warning', icon: 'fa-exclamation-triangle' },
+        info: { class: 'notification-info', icon: 'fa-info-circle' },
+        loading: { class: 'notification-info', icon: 'fa-spinner fa-spin' }
+      };
+      const type = types[category] || types.info;
+      notification.classList.add(type.class);
+      notification.innerHTML = `
+        <div class="notification-icon"><i class="fas ${type.icon}"></i></div>
+        <div class="notification-content">${message}</div>
+        <button class="notification-close" aria-label="Fechar notificação"><i class="fas fa-times"></i></button>
+      `;
+      notification.addEventListener('click', (e) => {
+        if (!e.target.closest('.notification-close')) { closeNotification(notification); }
+      });
+      notification.querySelector('.notification-close').addEventListener('click', () => {
+        closeNotification(notification);
+      });
+      container.appendChild(notification);
+      if (duration > 0) {
+        setTimeout(() => { closeNotification(notification); }, duration);
+      }
+      return notificationId;
+    }
+
+    function showLoadingNotification(message = 'Aguarde, processando...') {
+      return showNotification(message, 'loading', 0);
+    }
+    
+    function closeNotificationById(notificationId) {
+      const notification = document.getElementById(notificationId);
+      if (notification) { closeNotification(notification); }
+    }
+
+    function initFlashedNotifications() {
+      const notifications = document.querySelectorAll('.notification[data-message]');
+      const durations = { success: 4000, error: 8000, warning: 6000, info: 5000 };
+      notifications.forEach((notification, index) => {
+        const category = notification.getAttribute('data-category') || 'info';
+        const duration = durations[category] || durations.info;
+        const types = {
+          success: { class: 'notification-success', icon: 'fa-check-circle' },
+          error: { class: 'notification-error', icon: 'fa-exclamation-circle' },
+          warning: { class: 'notification-warning', icon: 'fa-exclamation-triangle' },
+          info: { class: 'notification-info', icon: 'fa-info-circle' }
+        };
+        const type = types[category] || types.info;
+        notification.classList.add(type.class);
+        const iconElement = notification.querySelector('.notification-icon i');
+        if (iconElement) { iconElement.className = `fas ${type.icon}`; }
+        notification.addEventListener('click', (e) => {
+          if (!e.target.closest('.notification-close')) { closeNotification(notification); }
+        });
+        notification.querySelector('.notification-close').addEventListener('click', () => {
+          closeNotification(notification);
+        });
+        const autoCloseDelay = duration + (index * 500);
+        setTimeout(() => { closeNotification(notification); }, autoCloseDelay);
+      });
+    }
+
+    // === SISTEMA DE MODAIS (GLOBAL) ===
+    (function () {
+      let focusedElementBeforeModal;
+      const focusableElementsString = 'a[href], area[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), [tabindex="0"]';
+      
+      window.openModal = function(modalId) {
+        const modal = document.getElementById(modalId);
+        if (!modal) return;
+        focusedElementBeforeModal = document.activeElement;
+        modal.classList.add('show');
+        modal.setAttribute('aria-hidden', 'false');
+        modal.addEventListener('keydown', trapFocus);
+        const firstFocusable = modal.querySelector(focusableElementsString);
+        if (firstFocusable) { firstFocusable.focus(); }
+        else { modal.setAttribute('tabindex', '-1'); modal.focus(); }
+      }
+
+      window.closeModal = function(modalId) {
+        const modal = document.getElementById(modalId);
+        if (!modal) return;
+        modal.classList.remove('show');
+        modal.setAttribute('aria-hidden', 'true');
+        modal.removeEventListener('keydown', trapFocus);
+        if (focusedElementBeforeModal) { focusedElementBeforeModal.focus(); }
+      }
+
+      function trapFocus(e) {
+        if (e.key !== 'Tab') return;
+        const modal = e.currentTarget;
+        const focusableElements = Array.from(modal.querySelectorAll(focusableElementsString));
+        const firstFocusable = focusableElements[0];
+        const lastFocusable = focusableElements[focusableElements.length - 1];
+        if (e.shiftKey) {
+          if (document.activeElement === firstFocusable) { lastFocusable.focus(); e.preventDefault(); }
+        } else {
+          if (document.activeElement === lastFocusable) { firstFocusable.focus(); e.preventDefault(); }
+        }
+      }
+
+      document.addEventListener('click', (e) => {
+        const closeButton = e.target.closest('[data-modal-close]');
+        if (closeButton) {
+          closeModal(closeButton.getAttribute('data-modal-close'));
+        }
+        if (e.target.classList.contains('modal')) {
+          closeModal(e.target.id);
+        }
+      });
+    })();
+
+    // === LÓGICA DE UI GLOBAL (Sidebar, Dropdowns, etc.) ===
+    $(document).ready(function () {
+      // Inicializa notificações vindas do Flask
+      initFlashedNotifications();
+
+      // Lógica do Sidebar
+      $('#sidebarToggle').click(function () {
+        $('#sidebar').toggleClass('show');
+        $('#sidebarOverlay').toggleClass('show');
+      });
+      $('#sidebarOverlay').click(function () {
+        $('#sidebar').removeClass('show');
+        $('#sidebarOverlay').removeClass('show');
+      });
+
+      // Lógica do Modal de Saldo Global (está no base.html)
+      $('#btn-saldo-global').click(function () {
+        window.openModal('saldoModal');
+      });
+
+      // Lógica Dropdown de Ações (global)
+      $(document).on('click', '.actions-toggle', function (e) {
+        e.stopPropagation();
+        let dropdown = $(this).siblings('.actions-dropdown');
+        $('.actions-dropdown').not(dropdown).removeClass('show');
+        dropdown.toggleClass('show');
+      });
+
+      $(document).on('click', function (e) {
+        if (!$(e.target).closest('.actions-menu').length) {
+          $('.actions-dropdown').removeClass('show');
+        }
+      });
+      
+      // Lógica Tooltip de Valores (global)
+      function positionTooltip(wrapper, tooltip, total) {
+        const rect = total.getBoundingClientRect();
+        const viewportWidth = window.innerWidth;
+        const viewportHeight = window.innerHeight;
+        const tooltipWidth = 350;
+        const tooltipHeight = 300; 
+
+        let left = rect.right + 10;
+        let top = rect.top;
+
+        if (left + tooltipWidth > viewportWidth) { left = rect.left - tooltipWidth - 10; }
+        if (top + tooltipHeight > viewportHeight) { top = viewportHeight - tooltipHeight - 10; }
+        if (top < 10) { top = 10; }
+        if (left < 10) { left = 10; }
+
+        tooltip.style.left = `${left}px`;
+        tooltip.style.top = `${top}px`;
+      }
+
+      $(document).on('mouseenter', '.valor-tooltip-wrapper', function () {
+        const wrapper = $(this)[0];
+        const tooltip = $(this).find('.valor-tooltip')[0];
+        const total = $(this).find('.valor-total')[0];
+        if (!tooltip || !total) return;
+        positionTooltip(wrapper, tooltip, total);
+        $(wrapper).addClass('show-tooltip');
+      });
+
+      $(document).on('mouseleave', '.valor-tooltip-wrapper', function () {
+        if (!$(this).hasClass('clicked-open')) {
+          $(this).removeClass('show-tooltip');
+        }
+      });
+      
+      $(document).on('click', '.valor-total', function (e) {
+          e.preventDefault();
+          const wrapper = $(this).closest('.valor-tooltip-wrapper');
+          const tooltip = wrapper.find('.valor-tooltip')[0];
+          const total = $(this)[0];
+          
+          if (wrapper.hasClass('clicked-open')) {
+            wrapper.removeClass('show-tooltip clicked-open');
+          } else {
+            positionTooltip(wrapper[0], tooltip, total);
+            wrapper.addClass('show-tooltip clicked-open');
+          }
+      });
+
+      $(document).on('click', function (e) {
+        if (!$(e.target).closest('.valor-tooltip-wrapper').length) {
+          $('.valor-tooltip-wrapper.clicked-open').removeClass('show-tooltip clicked-open');
+        }
+      });
+      
+    });
+  </script>
+
+  {% block page_scripts %}{% endblock %}
+
+</body>
+
+</html>
