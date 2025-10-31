@@ -2591,7 +2591,7 @@ def delete_file(id):
         flash("Nenhum arquivo na RD.")
         return redirect(url_for("index"))
 
-    if not (can_edit(rd_status) or can_delete(rd_status, rd_solic)):
+    if not (can_edit(rd_status, rd_solic) or can_delete(rd_status, rd_solic)):
         conn.close()
         flash("Você não pode excluir arquivos desta RD.")
         return redirect(url_for("index"))
