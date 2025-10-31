@@ -55,7 +55,8 @@
             color: var(--header-color);
         }
         .main-form input,
-        .main-form textarea {
+        .main-form textarea,
+        .main-form select { /* <-- ADICIONADO SELECT */
             width: 100%;
             padding: 10px;
             margin-bottom: 15px;
@@ -63,8 +64,10 @@
             border-radius: 5px;
             font-size: 0.9rem;
             box-sizing: border-box;
+            background-color: #fff; /* Garante fundo branco para selects */
         }
-        .main-form input[readonly] {
+        .main-form input[readonly],
+        .main-form select[disabled] { /* <-- ADICIONADO SELECT */
             background-color: #f9f9f9;
             cursor: not-allowed;
         }
@@ -109,11 +112,32 @@
     <div class="container">
         <h1>Editar RD #{{ rd[0] }}</h1>
         <form action="{{ url_for('edit_submit', id=rd[0]) }}" method="POST" enctype="multipart/form-data" class="main-form">
+            
             <label for="solicitante">Solicitante:</label>
             <input type="text" id="solicitante" name="solicitante" value="{{ rd[1] }}" {% if user_role == 'supervisor' %}readonly{% endif %} required>
 
-            <label for="funcionario">Funcionário:</label>
-            <input type="text" id="funcionario" name="funcionario" value="{{ rd[2] }}" {% if user_role == 'supervisor' %}readonly{% endif %} required>
+            <label for="funcionario_id">Funcionário (Usuário):</label>
+            <select id="funcionario_id" name="funcionario_id" {% if user_role == 'supervisor' %}disabled{% else %}required{% endif %}>
+                <option value="">Selecione o funcionário...</option>
+                {% for usuario in usuarios_disponiveis %}
+                <option value="{{ usuario.id }}" {% if usuario.id == rd[27] %}selected{% endif %}>
+                    {{ usuario.username }}
+                </option>
+                {% endfor %}
+            </select>
+            {% if user_role == 'supervisor' %}<input type="hidden" name="funcionario_id" value="{{ rd[27] }}">{% endif %}
+
+
+            <label for="gestor_aprovador_id">Gestor Aprovador:</label>
+            <select id="gestor_aprovador_id" name="gestor_aprovador_id" {% if user_role == 'supervisor' %}disabled{% else %}required{% endif %}>
+                <option value="">-- Selecione um gestor --</option>
+                {% for gestor in gestores_disponiveis %}
+                <option value="{{ gestor.id }}" {% if gestor.id == rd[25] %}selected{% endif %}>
+                    {{ gestor.username }}
+                </option>
+                {% endfor %}
+            </select>
+            {% if user_role == 'supervisor' %}<input type="hidden" name="gestor_aprovador_id" value="{{ rd[25] }}">{% endif %}
 
             <label for="data">Data:</label>
             <input type="date" id="data" name="data" value="{{ rd[3] }}" {% if user_role == 'supervisor' %}readonly{% endif %} required>
