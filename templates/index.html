@@ -2158,6 +2158,10 @@
                         <div class="actions-menu">
                           <button class="actions-toggle">Ações <i class="fas fa-caret-down"></i></button>
                           <div class="actions-dropdown">
+                            <button type="button" class="btn btn-blue action-button"
+                              onclick="openAnaliseIAModal('{{ rd_id }}')">
+                              <i class="fas fa-magic"></i> Análise de Gastos IA
+                            </button>
                             {% if can_edit_func(status, rd[1]) %}
                             <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit action-link"><i
                                 class="fas fa-edit"></i> Editar</a>
