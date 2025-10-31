@@ -1980,21 +1980,21 @@
                             </button>
                           </form>
                           {% endif %}
-                          <div class="actions-dropdown">
-                            {% if can_edit_func(status, rd[1]) %}
-                            <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit action-link">
-                              <i class="fas fa-edit"></i> Editar
-                            </a>
-                            {% endif %}
-                            {% if can_delete_func(status, rd[1]) %}
-                            <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
-                              <button type="submit" class="btn btn-delete-rd">
-                                <i class="fas fa-trash-alt"></i>
-                                Excluir
-                              </button>
-                            </form>
-                            {% endif %}
-                          </div>
+                          
+                          {% if can_edit_func(status, rd[1]) %}
+                          <a href="{{ url_for('edit_form', id=rd_id) }}" class="btn btn-edit action-link">
+                            <i class="fas fa-edit"></i> Editar
+                          </a>
+                          {% endif %}
+                          {% if can_delete_func(status, rd[1]) %}
+                          <form action="/delete/{{ rd_id }}" method="POST" class="action-form">
+                            <button type="submit" class="btn btn-delete-rd">
+                              <i class="fas fa-trash-alt"></i>
+                              Excluir
+                            </button>
+                          </form>
+                          {% endif %}
+                        </div>
                         </div>
                     </td>
                   </tr>
@@ -2087,7 +2087,7 @@
                           </form>
                           {% endif %}
                         </div>
-                      </div>
+                        </div>
                     </td>
                   </tr>
                   {% endfor %}
@@ -3158,12 +3158,32 @@
 
       // Abrir modal de Anexos
       $(document).on('click', '.btn-view-files', function () {
-        let filesStr = $(this).data('files');
+        let filesData = $(this).data('files'); // Renomeado para clareza
         let rdId = $(this).data('rdId');
-        if (!filesStr) { return; }
-        let filesArr = filesStr.split(',');
+        if (!filesData) { return; }
+
+        let filesArr; // Declara a variável
+
+        // INÍCIO DA CORREÇÃO: Verifica o tipo do dado
+        if (Array.isArray(filesData)) {
+          // Se já for um array (veio do JSON salvo pelo mobile), usa direto
+          filesArr = filesData;
+        } 
+        else if (typeof filesData === 'string') {
+          // Se for string (veio do formato antigo 'file1,file2'), faz o split
+          filesArr = filesData.split(',');
+        } 
+        else {
+          // Caso não seja nenhum dos dois, evita o erro
+          filesArr = []; 
+        }
+        // FIM DA CORREÇÃO
+
         let html = '';
         filesArr.forEach(function (arquivo) {
+          // Pula strings vazias (caso de "file1,,file2" do formato antigo)
+          if (!arquivo) return; 
+
           html += `
             <div class="file-item" style="display: flex; align-items: center; gap: 1rem; padding: 0.5rem; border: 1px solid var(--border-color); border-radius: var(--border-radius-sm); margin-bottom: 0.5rem;">
               <a href="${getPublicUrl(arquivo)}" class="arquivo-link" target="_blank" style="flex: 1;">${arquivo}</a>
@@ -3177,7 +3197,7 @@
         $('#modalFilesContainer').html(html);
         window.openModal('fileModal');
       });
-
+      
       // Popup de Divergentes (Supervisor)
       {% if user_role == 'supervisor' and divergentes_count > 0 %}
       window.openModal('popupDivergentes');
