@@ -520,12 +520,17 @@ def can_add():
     return user_role() in ["solicitante", "gestor", "financeiro", "funcionario"]
 
 
-def can_edit(status):
+def can_edit(status, solicitante):  # <-- ADICIONADO 'solicitante'
     if status == "Fechado":
         return False
+    
+    # Lógica do Solicitante corrigida
     if is_solicitante():
-        return status in ["Pendente", "Fechamento Recusado"]
-    # ADICIONE O FUNCIONÁRIO AQUI
+        is_owner = session.get("username") == solicitante
+        # Só pode editar se for o dono E o status permitir
+        return status in ["Pendente", "Fechamento Recusado"] and is_owner
+    
+    # Lógica para outros (Gestor, Financeiro, etc.)
     if (
         is_gestor()
         or is_financeiro()
@@ -535,12 +540,16 @@ def can_edit(status):
         return True
     return False
 
-
 def can_delete(status, solicitante):
     if status == "Fechado":
         return False
+    
+    # Lógica do Solicitante corrigida
     if status == "Pendente" and is_solicitante():
-        return True
+        is_owner = session.get("username") == solicitante
+        return is_owner  # <-- Só retorna True se for o dono
+    
+    # Lógica para outros (Gestor, Financeiro)
     if (is_gestor() or is_financeiro()) and status in [
         "Pendente",
         "Aprovado",
@@ -888,9 +897,9 @@ def mobile_gerenciar_anexos(rd_id):
 
     # Carrega a lista de anexos (que está guardada como JSON)
     anexos_list = []
-    if rd["anexos_path"]:
+    if rd["arquivos"]:
         try:
-            anexos_list = json.loads(rd["anexos_path"])
+            anexos_list = json.loads(rd["arquivos"])
         except json.JSONDecodeError:
             anexos_list = []  # Trata o caso de JSON mal formatado
 
@@ -925,9 +934,9 @@ def mobile_upload_anexo(rd_id):
 
     # Carrega a lista de anexos existentes
     anexos_list = []
-    if rd["anexos_path"]:
+    if rd["arquivos"]:
         try:
-            anexos_list = json.loads(rd["anexos_path"])
+            anexos_list = json.loads(rd["arquivos"])
         except json.JSONDecodeError:
             anexos_list = []
 
@@ -948,7 +957,7 @@ def mobile_upload_anexo(rd_id):
 
     # Atualiza o banco de dados com a nova lista de anexos
     cursor.execute(
-        "UPDATE rd SET anexos_path = %s WHERE id = %s", (json.dumps(anexos_list), rd_id)
+        "UPDATE rd SET arquivos = %s WHERE id = %s", (json.dumps(anexos_list), rd_id)
     )
     conn.commit()
     conn.close()
@@ -975,20 +984,20 @@ def mobile_delete_anexo(rd_id):
     )
     rd = cursor.fetchone()
 
-    if not rd or not rd["anexos_path"]:
+    if not rd or not rd["arquivos"]:
         flash("RD não encontrada ou sem anexos.", "error")
         conn.close()
         return redirect(url_for("mobile_dashboard"))
 
     # Carrega, modifica e salva a lista de anexos
     try:
-        anexos_list = json.loads(rd["anexos_path"])
+        anexos_list = json.loads(rd["arquivos"])
         if filename_to_delete in anexos_list:
             anexos_list.remove(filename_to_delete)
 
             # Atualiza o DB
             cursor.execute(
-                "UPDATE rd SET anexos_path = %s WHERE id = %s",
+                "UPDATE rd SET arquivos = %s WHERE id = %s",
                 (json.dumps(anexos_list), rd_id),
             )
             conn.commit()
@@ -1364,15 +1373,18 @@ def can_edit_status(id):
 
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
-    # Filtra por ID e EMPRESA
+    
+    # CORREÇÃO: Buscar 'status' E 'solicitante'
     cursor.execute(
-        "SELECT status FROM rd WHERE id=%s AND empresa_id = %s", (id, empresa_id_logada)
+        "SELECT status, solicitante FROM rd WHERE id=%s AND empresa_id = %s", (id, empresa_id_logada)
     )
     row = cursor.fetchone()
     conn.close()
     if not row:
         return False
-    return can_edit(row[0])
+    
+    # CORREÇÃO: Passar os dois argumentos para a função can_edit
+    return can_edit(row["status"], row["solicitante"])
 
 
 @app.route("/edit_form/<id>", methods=["GET"])
@@ -1394,8 +1406,9 @@ def edit_form(id):
         flash("RD não encontrada ou não pertence à sua empresa.")
         return "RD não encontrada", 404
 
-    if not can_edit(rd["status"]):
-        flash("Acesso negado.")
+    # CORREÇÃO: Passar 'rd["solicitante"]' para a função
+    if not can_edit(rd["status"], rd["solicitante"]):
+        flash("Acesso negado. Você só pode editar suas próprias RDs pendentes.")
         return "Acesso negado", 403
 
     return render_template("edit_form.html", rd=rd, user_role=session.get("user_role"))
