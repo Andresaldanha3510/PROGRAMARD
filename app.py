@@ -161,13 +161,15 @@ def is_date_format(value):
 
 def get_pg_connection():
     try:
-        # 1. Pega a URL completa do ambiente (carregada do .env)
-        DATABASE_URL = os.getenv("DATABASE_URL")
-        if not DATABASE_URL:
-            raise ValueError("DATABASE_URL não encontrada no ambiente!")
-
+        # CORREÇÃO: Usa as variáveis individuais (PG_HOST, PG_USER, etc.)
+        # que já estão definidas no topo do seu app.py (linhas 149-153)
+        
         conn = psycopg2.connect(
-            DATABASE_URL, # <--- MUDANÇA PRINCIPAL
+            host=PG_HOST,
+            port=PG_PORT,
+            dbname=PG_DB,
+            user=PG_USER,
+            password=PG_PASSWORD,
             cursor_factory=DictCursor,
         )
         return conn
@@ -982,14 +984,13 @@ def mobile_delete_anexo(rd_id):
 
     filename_to_delete = request.form["filename"]
     user_id_logado = session["user_id"]
-    empresa_id_logada = session["empresa_id"] # <-- NECESSÁRIO
 
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
 
     cursor.execute(
-        "SELECT * FROM rd WHERE id = %s AND funcionario_id = %s AND empresa_id = %s",
-        (rd_id, user_id_logado, empresa_id_logada),
+        "SELECT * FROM rd WHERE id = %s AND funcionario_id = %s",
+        (rd_id, user_id_logado),
     )
     rd = cursor.fetchone()
 
@@ -1006,16 +1007,16 @@ def mobile_delete_anexo(rd_id):
 
             # Atualiza o DB
             cursor.execute(
-                "UPDATE rd SET arquivos = %s WHERE id = %s AND empresa_id = %s",
-                (json.dumps(anexos_list), rd_id, empresa_id_logada),
+                "UPDATE rd SET arquivos = %s WHERE id = %s",
+                (json.dumps(anexos_list), rd_id),
             )
             conn.commit()
 
-            # CORREÇÃO 5: Deleta o arquivo do R2
+            # Apaga o ficheiro físico
             try:
-                delete_file_from_r2(filename_to_delete)
-            except Exception as e:
-                logging.warning(f"Erro ao apagar ficheiro do R2 (mobile): {e}")
+                os.remove(os.path.join(app.config["UPLOAD_FOLDER"], filename_to_delete))
+            except OSError as e:
+                print(f"Erro ao apagar ficheiro físico: {e}")
 
             flash(f"Anexo '{filename_to_delete}' removido.", "success")
         else:
