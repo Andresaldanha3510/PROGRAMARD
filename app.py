@@ -161,19 +161,19 @@ def is_date_format(value):
 
 def get_pg_connection():
     try:
+        # 1. Pega a URL completa do ambiente (carregada do .env)
+        DATABASE_URL = os.getenv("DATABASE_URL")
+        if not DATABASE_URL:
+            raise ValueError("DATABASE_URL não encontrada no ambiente!")
+
         conn = psycopg2.connect(
-            host=PG_HOST,
-            port=PG_PORT,
-            dbname=PG_DB,
-            user=PG_USER,
-            password=PG_PASSWORD,
+            DATABASE_URL, # <--- MUDANÇA PRINCIPAL
             cursor_factory=DictCursor,
         )
         return conn
     except psycopg2.Error as e:
         logging.error(f"Erro ao conectar ao PostgreSQL: {e}")
         import sys
-
         sys.exit(1)
 
 
@@ -520,15 +520,15 @@ def can_add():
     return user_role() in ["solicitante", "gestor", "financeiro", "funcionario"]
 
 
-def can_edit(status, solicitante):  # <-- ADICIONADO 'solicitante'
+def can_edit(status, solicitante):  # <-- 'solicitante' agora é ignorado aqui
     if status == "Fechado":
         return False
     
-    # Lógica do Solicitante corrigida
+    # Lógica do Solicitante corrigida (SEM CHECAGEM DE DONO)
     if is_solicitante():
-        is_owner = session.get("username") == solicitante
-        # Só pode editar se for o dono E o status permitir
-        return status in ["Pendente", "Fechamento Recusado"] and is_owner
+        # is_owner = session.get("username") == solicitante <-- REMOVIDO
+        # Pode editar se o status permitir
+        return status in ["Pendente", "Fechamento Recusado"] # <-- REMOVIDO 'and is_owner'
     
     # Lógica para outros (Gestor, Financeiro, etc.)
     if (
@@ -544,10 +544,10 @@ def can_delete(status, solicitante):
     if status == "Fechado":
         return False
     
-    # Lógica do Solicitante corrigida
+    # Lógica do Solicitante corrigida (SEM CHECAGEM DE DONO)
     if status == "Pendente" and is_solicitante():
-        is_owner = session.get("username") == solicitante
-        return is_owner  # <-- Só retorna True se for o dono
+        # is_owner = session.get("username") == solicitante <-- REMOVIDO
+        return True  # <-- Retorna True direto, sem checar o dono
     
     # Lógica para outros (Gestor, Financeiro)
     if (is_gestor() or is_financeiro()) and status in [
@@ -557,7 +557,6 @@ def can_delete(status, solicitante):
     ]:
         return True
     return False
-
 
 def can_approve(status):
     if status == "Pendente" and is_gestor():
@@ -918,6 +917,7 @@ def mobile_upload_anexo(rd_id):
         return redirect(url_for("index"))
 
     user_id_logado = session["user_id"]
+    empresa_id_logada = session["empresa_id"] # <-- NECESSÁRIO PARA O NOME DO ARQUIVO
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
 
@@ -948,23 +948,31 @@ def mobile_upload_anexo(rd_id):
         return redirect(url_for("mobile_gerenciar_anexos", rd_id=rd_id))
 
     for file in files:
+        # CORREÇÃO 2: Chama a função allowed_file() que acabamos de criar
         if file and allowed_file(file.filename):
-            filename = f"{rd_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{secure_filename(file.filename)}"
-            file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
-            anexos_list.append(filename)  # Adiciona o novo ficheiro à lista
+            # CORREÇÃO 3: Usa o padrão de nome de arquivo do R2 (igual ao 'add_rd')
+            filename = f"emp{empresa_id_logada}_{rd_id}_{secure_filename(file.filename)}"
+            
+            # CORREÇÃO 4: Salva no R2 em vez de na pasta local
+            try:
+                upload_file_to_r2(file, filename)
+                anexos_list.append(filename)  # Adiciona o novo ficheiro à lista
+            except Exception as e:
+                logging.error(f"Falha ao enviar arquivo para R2 (mobile): {e}")
+                flash(f"Erro ao salvar arquivo: {file.filename}", "error")
         else:
             flash(f"Tipo de ficheiro não permitido: {file.filename}", "warning")
 
     # Atualiza o banco de dados com a nova lista de anexos
     cursor.execute(
-        "UPDATE rd SET arquivos = %s WHERE id = %s", (json.dumps(anexos_list), rd_id)
+        "UPDATE rd SET arquivos = %s WHERE id = %s AND empresa_id = %s", 
+        (json.dumps(anexos_list), rd_id, empresa_id_logada) # <-- Segurança extra
     )
     conn.commit()
     conn.close()
 
     flash("Anexo(s) enviado(s) com sucesso!", "success")
     return redirect(url_for("mobile_gerenciar_anexos", rd_id=rd_id))
-
 
 @app.route("/mobile/delete_anexo/<rd_id>", methods=["POST"])
 @login_required
@@ -974,13 +982,14 @@ def mobile_delete_anexo(rd_id):
 
     filename_to_delete = request.form["filename"]
     user_id_logado = session["user_id"]
+    empresa_id_logada = session["empresa_id"] # <-- NECESSÁRIO
 
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
 
     cursor.execute(
-        "SELECT * FROM rd WHERE id = %s AND funcionario_id = %s",
-        (rd_id, user_id_logado),
+        "SELECT * FROM rd WHERE id = %s AND funcionario_id = %s AND empresa_id = %s",
+        (rd_id, user_id_logado, empresa_id_logada),
     )
     rd = cursor.fetchone()
 
@@ -997,16 +1006,16 @@ def mobile_delete_anexo(rd_id):
 
             # Atualiza o DB
             cursor.execute(
-                "UPDATE rd SET arquivos = %s WHERE id = %s",
-                (json.dumps(anexos_list), rd_id),
+                "UPDATE rd SET arquivos = %s WHERE id = %s AND empresa_id = %s",
+                (json.dumps(anexos_list), rd_id, empresa_id_logada),
             )
             conn.commit()
 
-            # Apaga o ficheiro físico
+            # CORREÇÃO 5: Deleta o arquivo do R2
             try:
-                os.remove(os.path.join(app.config["UPLOAD_FOLDER"], filename_to_delete))
-            except OSError as e:
-                print(f"Erro ao apagar ficheiro físico: {e}")
+                delete_file_from_r2(filename_to_delete)
+            except Exception as e:
+                logging.warning(f"Erro ao apagar ficheiro do R2 (mobile): {e}")
 
             flash(f"Anexo '{filename_to_delete}' removido.", "success")
         else:
@@ -1320,6 +1329,19 @@ def is_mobile_device():
     user_agent = request.headers.get("User-Agent", "").lower()
     mobile_keywords = ["android", "iphone", "ipad", "ipod", "windows phone", "mobi"]
     return any(keyword in user_agent for keyword in mobile_keywords)
+
+
+# ==========================================================
+# INÍCIO DA CORREÇÃO 1: Adicionar função 'allowed_file'
+# ==========================================================
+ALLOWED_EXTENSIONS = {
+    'png', 'jpg', 'jpeg', 'gif', 
+    'pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'xml'
+}
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
 # ==========================================================
@@ -3480,5 +3502,5 @@ def admin_excluir_usuario(user_id):
 
 
 if __name__ == "__main__":
-    init_db()
+    #init_db()
     app.run(debug=True)
