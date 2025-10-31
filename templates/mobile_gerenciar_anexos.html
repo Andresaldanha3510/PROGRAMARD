@@ -144,7 +144,7 @@
         Ao clicar abaixo, o seu telemóvel irá perguntar se quer usar a câmara ou a galeria de fotos.
       </p>
       <form action="{{ url_for('mobile_upload_anexo', rd_id=rd.id) }}" method="POST" enctype="multipart/form-data" class="form-upload">
-        <input type="file" name="arquivo" accept="image/*" multiple required>
+        <input type="file" name="arquivo" accept="image/*" capture="environment" multiple required>
         <button type="submit" class="btn-submit">
           <i class="fas fa-upload"></i> Enviar Foto(s)
         </button>
