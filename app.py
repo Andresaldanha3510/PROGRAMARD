@@ -231,7 +231,7 @@ def init_db():
     ]
 
     for user, pwd, role in users_to_migrate:
-        hash_pwd = generate_password_hash(pwd)
+        hash_pwd = generate_password_hash(pwd, method="pbkdf2:sha512")
         cursor.execute(
             "INSERT INTO usuarios (username, password_hash, role, empresa_id) VALUES (%s, %s, %s, %s) ON CONFLICT (username) DO NOTHING",
             (user, hash_pwd, role, servicos_id),
@@ -520,6 +520,8 @@ def is_financeiro():
 
 def can_add():
     return user_role() in ["solicitante", "gestor", "financeiro", "funcionario"]
+
+
 
 
 def can_edit(status, solicitante):  # <-- 'solicitante' agora é ignorado aqui
@@ -1423,18 +1425,42 @@ def edit_form(id):
         "SELECT * FROM rd WHERE id=%s AND empresa_id = %s", (id, empresa_id_logada)
     )
     rd = cursor.fetchone()
-    conn.close()
 
     if not rd:
+        conn.close() # <-- CORRIGIDO
         flash("RD não encontrada ou não pertence à sua empresa.")
         return "RD não encontrada", 404
 
     # CORREÇÃO: Passar 'rd["solicitante"]' para a função
     if not can_edit(rd["status"], rd["solicitante"]):
+        conn.close() # <-- CORRIGIDO
         flash("Acesso negado. Você só pode editar suas próprias RDs pendentes.")
         return "Acesso negado", 403
 
-    return render_template("edit_form.html", rd=rd, user_role=session.get("user_role"))
+    # === INÍCIO DA ATUALIZAÇÃO ===
+    # Buscar listas de gestores e funcionários (como no index)
+    cursor.execute(
+        "SELECT id, username FROM usuarios WHERE role = 'gestor' AND empresa_id = %s",
+        (empresa_id_logada,),
+    )
+    gestores_disponiveis = cursor.fetchall()
+    cursor.execute(
+        "SELECT id, username FROM usuarios WHERE empresa_id = %s ORDER BY username",
+        (empresa_id_logada,),
+    )
+    usuarios_disponiveis = cursor.fetchall()
+    # === FIM DA ATUALIZAÇÃO ===
+
+    conn.close() # <-- CORRIGIDO (movido para o final)
+
+    # === ATUALIZAÇÃO: Passar as listas para o template ===
+    return render_template(
+        "edit_form.html", 
+        rd=rd, 
+        user_role=session.get("user_role"),
+        gestores_disponiveis=gestores_disponiveis, # <-- NOVO
+        usuarios_disponiveis=usuarios_disponiveis  # <-- NOVO
+    )
 
 
 @app.route("/edit_submit/<id>", methods=["POST"])
@@ -1506,19 +1532,44 @@ def edit_submit(id):
             logging.error(f"Erro no banco de dados (supervisor): {e}")
             conn.rollback()
             flash("Erro ao salvar no banco de dados.")
+    
+    # === INÍCIO DA ATUALIZAÇÃO ===
     else:
+        # Pega os novos IDs do formulário
         solicitante = request.form.get("solicitante", "").strip()
-        funcionario = request.form.get("funcionario", "").strip()
+        funcionario_id_selecionado = request.form.get("funcionario_id")
+        gestor_id = request.form.get("gestor_aprovador_id")
+
         data_str = request.form.get("data", "").strip()
         centro_custo = request.form.get("centro_custo", "").strip()
         observacao = request.form.get("observacao", "").strip()
         unidade_negocio = request.form.get("unidade_negocio", "").strip()
 
-        if not all([solicitante, funcionario, data_str, centro_custo]):
-            flash("Preencha todos os campos obrigatórios.")
+        if not all([solicitante, funcionario_id_selecionado, gestor_id, data_str, centro_custo]):
+            flash("Preencha todos os campos obrigatórios (Solicitante, Funcionário, Gestor, Data, CC).")
             conn.close()
-            return redirect(url_for("index"))
+            # Redireciona de volta para o formulário de edição
+            return redirect(url_for("edit_form", id=id)) 
 
+        # Busca o NOME do funcionário (como na rota /add)
+        try:
+            cursor.execute(
+                "SELECT username FROM usuarios WHERE id = %s AND empresa_id = %s",
+                (funcionario_id_selecionado, empresa_id_logada),
+            )
+            funcionario_row = cursor.fetchone()
+            if not funcionario_row:
+                raise Exception("Funcionário não encontrado")
+            funcionario_nome = funcionario_row["username"]
+        except Exception as e:
+            conn.rollback()
+            logging.error(f"Erro ao buscar dados do funcionário: {e}")
+            flash(f"Erro ao buscar dados do funcionário: {e}")
+            conn.close()
+            # Redireciona de volta para o formulário de edição
+            return redirect(url_for("edit_form", id=id))
+        
+        # Leitura e conversão de valores (Decimal)
         valor_raw = request.form.get("valor", "").strip()
         valor_adicional_raw = request.form.get("valor_adicional", "").strip()
         valor_despesa_raw = request.form.get("valor_despesa", "").strip()
@@ -1547,16 +1598,18 @@ def edit_submit(id):
         )
 
         try:
+            # ATUALIZA A QUERY com os novos campos (IDs e NOME do funcionário)
             cursor.execute(
                 """
             UPDATE rd
             SET solicitante=%s, funcionario=%s, data=%s, centro_custo=%s, valor=%s, valor_adicional=%s,
-                valor_despesa=%s, saldo_devolver=%s, arquivos=%s, observacao=%s, unidade_negocio=%s
+                valor_despesa=%s, saldo_devolver=%s, arquivos=%s, observacao=%s, unidade_negocio=%s,
+                funcionario_id=%s, gestor_aprovador_id=%s
             WHERE id=%s AND empresa_id = %s
             """,
                 (
                     solicitante,
-                    funcionario,
+                    funcionario_nome, # Nome atualizado
                     data_str,
                     centro_custo,
                     valor_novo,
@@ -1566,10 +1619,13 @@ def edit_submit(id):
                     new_arqs,
                     observacao,
                     unidade_negocio,
+                    funcionario_id_selecionado, # ID atualizado
+                    gestor_id, # ID atualizado
                     id,
                     empresa_id_logada,
                 ),
             )
+            # === FIM DA ATUALIZAÇÃO ===
 
             registrar_historico(conn, id, "RD Editada")
 
@@ -1593,16 +1649,6 @@ def edit_submit(id):
 
     active_tab = request.form.get("active_tab", "tab1")
     return redirect(url_for("index", active_tab=active_tab))
-
-
-# Não se esqueça de adicionar estes imports no topo do seu app.py (junto com os outros)
-# import re
-# import io
-# from pdf2image import convert_from_bytes
-# from decimal import Decimal
-# import json
-# import mimetypes
-# import requests
 
 
 
@@ -3429,7 +3475,7 @@ def admin_usuarios():
             flash("Todos os campos, incluindo a empresa, são obrigatórios.")
         else:
             try:
-                hash_pwd = generate_password_hash(password)
+                hash_pwd = generate_password_hash(password, method="pbkdf2:sha512")
                 # Insere o usuário na empresa selecionada
                 cursor.execute(
                     "INSERT INTO usuarios (username, password_hash, role, empresa_id) VALUES (%s, %s, %s, %s)",
