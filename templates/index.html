@@ -1596,18 +1596,7 @@
         </li>
 
         {% if user_role != 'funcionario' %}
-        <li class="sidebar-nav-item">
-          <a href="{{ url_for('cadastro_funcionario') }}" class="sidebar-nav-link">
-            <i class="fas fa-user-plus nav-icon"></i>
-            <span>Cadastro Funcionários</span>
-          </a>
-        </li>
-        <li class="sidebar-nav-item">
-          <a href="{{ url_for('consulta_funcionario') }}" class="sidebar-nav-link">
-            <i class="fas fa-search nav-icon"></i>
-            <span>Consulta Funcionários</span>
-          </a>
-        </li>
+ 
         {% if is_financeiro() %}
         <li class="sidebar-nav-item">
           <a href="{{ url_for('admin_usuarios') }}" class="sidebar-nav-link">
@@ -2635,7 +2624,7 @@
 
         <div class="form-group">
           <label for="arquivo">Anexar Arquivos (opcional):</label>
-          <input type="file" id="arquivo" name="arquivo" multiple accept="image/*" capture="environment">
+          <input type="file" id="arquivo" name="arquivo" multiple>
         </div>
         <input type="hidden" name="tipo" id="rd-tipo" value="">
         <button type="submit" class="btn btn-primary">
