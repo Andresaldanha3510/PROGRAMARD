@@ -936,13 +936,21 @@ def mobile_upload_anexo(rd_id):
         conn.close()
         return redirect(url_for("mobile_dashboard"))
 
+    # <-- INÍCIO DA MUDANÇA (Leitura JSON + Fallback) -->
     # Carrega a lista de anexos existentes
     anexos_list = []
     if rd["arquivos"]:
         try:
-            anexos_list = json.loads(rd["arquivos"])
-        except json.JSONDecodeError:
-            anexos_list = []
+            # Tenta ler como JSON (formato novo/correto)
+            anexos_list = json.loads(rd["arquivos"]) 
+            if not isinstance(anexos_list, list):
+                 # Se for um JSON inválido (ex: só uma string), coloca numa lista
+                 anexos_list = [rd["arquivos"]]
+        except (json.JSONDecodeError, TypeError):
+            # Se falhar, assume que é o formato antigo (separado por vírgula)
+            anexos_list = [f for f in rd["arquivos"].split(',') if f] #
+    # <-- FIM DA MUDANÇA -->
+
 
     # Processa os novos ficheiros
     files = request.files.getlist("arquivo")
@@ -967,7 +975,7 @@ def mobile_upload_anexo(rd_id):
         else:
             flash(f"Tipo de ficheiro não permitido: {file.filename}", "warning")
 
-    # Atualiza o banco de dados com a nova lista de anexos
+    # Atualiza o banco de dados com a nova lista de anexos (Já estava correto)
     cursor.execute(
         "UPDATE rd SET arquivos = %s WHERE id = %s AND empresa_id = %s", 
         (json.dumps(anexos_list), rd_id, empresa_id_logada) # <-- Segurança extra
@@ -1003,22 +1011,36 @@ def mobile_delete_anexo(rd_id):
 
     # Carrega, modifica e salva a lista de anexos
     try:
-        anexos_list = json.loads(rd["arquivos"])
+        # <-- INÍCIO DA MUDANÇA (Leitura JSON + Fallback) -->
+        anexos_list = []
+        if rd["arquivos"]:
+            try:
+                anexos_list = json.loads(rd["arquivos"]) # Tenta ler JSON
+                if not isinstance(anexos_list, list):
+                     anexos_list = [rd["arquivos"]]
+            except (json.JSONDecodeError, TypeError):
+                # Fallback para formato antigo (vírgula)
+                anexos_list = [f for f in rd["arquivos"].split(',') if f]
+        # <-- FIM DA MUDANÇA -->
+        
         if filename_to_delete in anexos_list:
             anexos_list.remove(filename_to_delete)
 
-            # Atualiza o DB
+            # Atualiza o DB (Salva como JSON)
             cursor.execute(
                 "UPDATE rd SET arquivos = %s WHERE id = %s",
                 (json.dumps(anexos_list), rd_id),
             )
             conn.commit()
 
-            # Apaga o ficheiro físico
+            # <-- INÍCIO DA MUDANÇA (Apagar do R2) -->
             try:
-                os.remove(os.path.join(app.config["UPLOAD_FOLDER"], filename_to_delete))
-            except OSError as e:
-                print(f"Erro ao apagar ficheiro físico: {e}")
+                # os.remove(os.path.join(app.config["UPLOAD_FOLDER"], filename_to_delete)) # <-- Linha Antiga/Bugada
+                delete_file_from_r2(filename_to_delete) # <-- Linha Nova
+            except Exception as e:
+                # Mesmo se falhar em apagar do R2, o registro do BD foi removido
+                logging.warning(f"Falha ao deletar {filename_to_delete} do R2: {e}")
+            # <-- FIM DA MUDANÇA -->
 
             flash(f"Anexo '{filename_to_delete}' removido.", "success")
         else:
@@ -1244,7 +1266,12 @@ def add_rd():
                 fname = f"emp{empresa_id_logada}_{custom_id}_{f.filename}"
                 upload_file_to_r2(f, fname)
                 arquivos.append(fname)
-    arquivos_str = ",".join(arquivos) if arquivos else None
+
+    # <-- INÍCIO DA MUDANÇA (Salvar como JSON) -->
+    #
+    # arquivos_str = ",".join(arquivos) if arquivos else None # <-- Linha Antiga
+    arquivos_str = json.dumps(arquivos) if arquivos else None # <-- Linha Nova
+    # <-- FIM DA MUDANÇA -->
 
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
@@ -1498,7 +1525,19 @@ def edit_submit(id):
         observacao_antiga,
     ) = row
 
-    arqs_list = arquivos_str.split(",") if arquivos_str else []
+    # <-- INÍCIO DA MUDANÇA (Leitura JSON + Fallback) -->
+    # arqs_list = arquivos_str.split(",") if arquivos_str else [] # <-- Linha Antiga
+    arqs_list = []
+    if arquivos_str:
+        try:
+            arqs_list = json.loads(arquivos_str) # Tenta ler JSON
+            if not isinstance(arqs_list, list):
+                 arqs_list = [arquivos_str]
+        except (json.JSONDecodeError, TypeError):
+            # Fallback para formato antigo (vírgula)
+            arqs_list = [f for f in arquivos_str.split(',') if f]
+    # <-- FIM DA MUDANÇA -->
+    
     if "arquivo" in request.files:
         uploaded_files = request.files.getlist("arquivo")
         for f in uploaded_files:
@@ -1507,7 +1546,11 @@ def edit_submit(id):
                 upload_file_to_r2(f, fname)
                 arqs_list.append(fname)
                 logging.debug(f"Anexo adicionado: {fname}")
-    new_arqs = ",".join(arqs_list) if arqs_list else None
+    
+    # <-- INÍCIO DA MUDANÇA (Salvar como JSON) -->
+    # new_arqs = ",".join(arqs_list) if arqs_list else None # <-- Linha Antiga
+    new_arqs = json.dumps(arqs_list) if arqs_list else None # <-- Linha Nova
+    # <-- FIM DA MUDANÇA -->
 
     if user_role() == "supervisor":
         observacao = request.form.get("observacao", "").strip()
@@ -1616,7 +1659,7 @@ def edit_submit(id):
                     valor_adicional_novo,
                     valor_despesa_novo,
                     saldo_devolver_novo,
-                    new_arqs,
+                    new_arqs, # <-- Já contém o JSON
                     observacao,
                     unidade_negocio,
                     funcionario_id_selecionado, # ID atualizado
@@ -2110,15 +2153,30 @@ def adicional_submit(id):
         flash("Não é possível solicitar adicional agora.")
         return redirect(url_for("index"))
 
-    # Lógica de Arquivos
-    arqs_atual = arquivos_str.split(",") if arquivos_str else []
+    # <-- INÍCIO DA MUDANÇA (Leitura JSON + Fallback) -->
+    # arqs_atual = arquivos_str.split(",") if arquivos_str else [] # <-- Linha Antiga
+    arqs_atual = []
+    if arquivos_str:
+        try:
+            arqs_atual = json.loads(arquivos_str) # Tenta ler JSON
+            if not isinstance(arqs_atual, list):
+                 arqs_atual = [arquivos_str]
+        except (json.JSONDecodeError, TypeError):
+            # Fallback para formato antigo (vírgula)
+            arqs_atual = [f for f in arquivos_str.split(',') if f]
+    # <-- FIM DA MUDANÇA -->
+    
     if "arquivo" in request.files:
         for f in request.files.getlist("arquivo"):
             if f.filename:
                 fname = f"emp{empresa_id_logada}_{id}_{f.filename}"
                 upload_file_to_r2(f, fname)
                 arqs_atual.append(fname)
-    new_arqs_str = ",".join(arqs_atual) if arqs_atual else None
+    
+    # <-- INÍCIO DA MUDANÇA (Salvar como JSON) -->
+    # new_arqs_str = ",".join(arqs_atual) if arqs_atual else None # <-- Linha Antiga
+    new_arqs_str = json.dumps(arqs_atual) if arqs_atual else None # <-- Linha Nova
+    # <-- FIM DA MUDANÇA -->
 
     try:
         # CORREÇÃO 1: O valor do formulário deve ser 'Decimal', não 'float'.
@@ -2164,7 +2222,7 @@ def adicional_submit(id):
                 data_add,
                 add_ind,
                 saldo_dev,
-                new_arqs_str,
+                new_arqs_str, # <-- Já contém o JSON
                 id,
                 empresa_id_logada,
             ),
@@ -2246,15 +2304,30 @@ def fechamento_submit(id):
     saldo_dev = total_cred - val_desp
     data_fech = datetime.now().strftime("%Y-%m-%d")
 
-    # 4. Lógica de Arquivos (mantida do seu código original)
-    arqs_atual = arquivos_str.split(",") if arquivos_str else []
+    # <-- INÍCIO DA MUDANÇA (Leitura JSON + Fallback) -->
+    # arqs_atual = arquivos_str.split(",") if arquivos_str else [] # <-- Linha Antiga
+    arqs_atual = []
+    if arquivos_str:
+        try:
+            arqs_atual = json.loads(arquivos_str) # Tenta ler JSON
+            if not isinstance(arqs_atual, list):
+                 arqs_atual = [arquivos_str]
+        except (json.JSONDecodeError, TypeError):
+            # Fallback para formato antigo (vírgula)
+            arqs_atual = [f for f in arquivos_str.split(',') if f]
+    # <-- FIM DA MUDANÇA -->
+
     if "arquivo" in request.files:
         for f in request.files.getlist("arquivo"):
             if f.filename:
                 fname = f"emp{empresa_id_logada}_{id}_{f.filename}"
                 upload_file_to_r2(f, fname)
                 arqs_atual.append(fname)
-    new_arqs_str = ",".join(arqs_atual) if arqs_atual else None
+    
+    # <-- INÍCIO DA MUDANÇA (Salvar como JSON) -->
+    # new_arqs_str = ",".join(arqs_atual) if arqs_atual else None # <-- Linha Antiga
+    new_arqs_str = json.dumps(arqs_atual) if arqs_atual else None # <-- Linha Nova
+    # <-- FIM DA MUDANÇA -->
 
     try:
         # 5. ATUALIZA A RD com o valor manual e novos arquivos
@@ -2271,7 +2344,7 @@ def fechamento_submit(id):
                 saldo_dev,
                 data_fech,
                 data_fech,
-                new_arqs_str,
+                new_arqs_str, # <-- Já contém o JSON
                 id,
                 empresa_id_logada,
             ),
@@ -2295,7 +2368,6 @@ def fechamento_submit(id):
 
     active_tab = request.form.get("active_tab", "tab3")
     return redirect(url_for("index", active_tab=active_tab))
-
 
 def decimal_default(obj):
     if isinstance(obj, Decimal):
@@ -2604,9 +2676,6 @@ def edit_saldo():
     return redirect(url_for("index", active_tab=active_tab))
 
 
-# ==========================================================
-# 16. ROTA /delete_file ATUALIZADA
-# ==========================================================
 @app.route("/delete_file/<id>", methods=["POST"])
 def delete_file(id):
     filename = request.form.get("filename")
@@ -2642,7 +2711,18 @@ def delete_file(id):
         flash("Você não pode excluir arquivos desta RD.")
         return redirect(url_for("index"))
 
-    arq_list = arquivos_str.split(",")
+    # <-- INÍCIO DA MUDANÇA (Leitura JSON + Fallback) -->
+    # arq_list = arquivos_str.split(",") # <-- Linha Antiga
+    arq_list = []
+    try:
+        arq_list = json.loads(arquivos_str) # Tenta ler JSON
+        if not isinstance(arq_list, list):
+             arq_list = [arquivos_str]
+    except (json.JSONDecodeError, TypeError):
+        # Fallback para formato antigo (vírgula)
+        arq_list = [f for f in arquivos_str.split(',') if f]
+    # <-- FIM DA MUDANÇA -->
+    
     if filename not in arq_list:
         conn.close()
         flash("Arquivo não pertence a esta RD.")
@@ -2651,7 +2731,11 @@ def delete_file(id):
     try:
         delete_file_from_r2(filename)
         arq_list.remove(filename)
-        new_str = ",".join(arq_list) if arq_list else None
+        
+        # <-- INÍCIO DA MUDANÇA (Salvar como JSON) -->
+        # new_str = ",".join(arq_list) if arq_list else None # <-- Linha Antiga
+        new_str = json.dumps(arq_list) if arq_list else None # <-- Linha Nova
+        # <-- FIM DA MUDANÇA -->
 
         # Filtra por ID e EMPRESA
         cursor.execute(
@@ -2670,7 +2754,6 @@ def delete_file(id):
 
     active_tab = request.form.get("active_tab", "tab1")
     return redirect(url_for("index", active_tab=active_tab))
-
 
 # ==========================================================
 # 17. ROTA /registrar_saldo_devolvido ATUALIZADA
@@ -3357,15 +3440,31 @@ def corrigir_divergente(id):
                 (id, empresa_id_logada),
             )
             row = cursor.fetchone()
-            a_list = row[0].split(",") if (row and row[0]) else []
 
+            # <-- INÍCIO DA MUDANÇA (Leitura JSON + Fallback) -->
+            # a_list = row[0].split(",") if (row and row[0]) else [] # <-- Linha Antiga
+            a_list = []
+            if row and row[0]:
+                try:
+                    a_list = json.loads(row[0]) # Tenta ler JSON
+                    if not isinstance(a_list, list):
+                         a_list = [row[0]]
+                except (json.JSONDecodeError, TypeError):
+                    # Fallback para formato antigo (vírgula)
+                    a_list = [f for f in row[0].split(',') if f]
+            # <-- FIM DA MUDANÇA -->
+            
             if "arquivo" in request.files:
                 for f in request.files.getlist("arquivo"):
                     if f.filename:
                         fname = f"emp{empresa_id_logada}_{id}_{f.filename}"
                         upload_file_to_r2(f, fname)
                         a_list.append(fname)
-            new_arq_str = ",".join(a_list) if a_list else None
+            
+            # <-- INÍCIO DA MUDANÇA (Salvar como JSON) -->
+            # new_arq_str = ",".join(a_list) if a_list else None # <-- Linha Antiga
+            new_arq_str = json.dumps(a_list) if a_list else None # <-- Linha Nova
+            # <-- FIM DA MUDANÇA -->
 
             # Filtra por ID e EMPRESA
             cursor.execute(
