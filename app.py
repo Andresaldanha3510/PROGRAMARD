@@ -1714,7 +1714,21 @@ def analise_gastos_ia(rd_id):
         if not rd_row or not rd_row['arquivos']:
             return jsonify({"success": False, "message": "Nenhum arquivo anexado a esta RD."})
 
-        arquivos = [f for f in rd_row['arquivos'].split(',') if f]
+        # --- INÍCIO DA CORREÇÃO ---
+        # (Substitui a linha antiga que usava .split(','))
+        arquivos_str = rd_row['arquivos']
+        arquivos = []
+        try:
+            # Tenta ler como JSON (formato novo)
+            arquivos = json.loads(arquivos_str)
+            if not isinstance(arquivos, list):
+                 # Se for um JSON inválido (ex: só uma string), coloca numa lista
+                 arquivos = [arquivos_str]
+        except (json.JSONDecodeError, TypeError):
+            # Se falhar, assume que é o formato antigo (separado por vírgula)
+            arquivos = [f for f in arquivos_str.split(',') if f]
+        # --- FIM DA CORREÇÃO ---
+            
         resultados_analise = [] # Esta lista agora só terá arquivos válidos
 
         try:
