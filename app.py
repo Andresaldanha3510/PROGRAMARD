@@ -1251,10 +1251,54 @@ def add_rd():
         flash("Erro: Solicitante, Funcionário e Gestor Aprovador são obrigatórios.")
         return redirect(url_for("index"))
 
+    # ==================================================
+    # INÍCIO DA NOVA VALIDAÇÃO: VERIFICAR RD ABERTA
+    # ==================================================
+    # Abre a conexão mais cedo para fazer a verificação
+    conn = get_pg_connection()
+    cursor = conn.cursor(cursor_factory=DictCursor)
+
+    try:
+        cursor.execute(
+            """
+            SELECT id, status FROM rd 
+            WHERE funcionario_id = %s 
+            AND empresa_id = %s 
+            AND status NOT IN ('Fechado', 'Saldos a Devolver')
+            LIMIT 1
+            """,
+            (funcionario_id_selecionado, empresa_id_logada)
+        )
+        rd_aberta_existente = cursor.fetchone()
+
+        if rd_aberta_existente:
+            # Tenta buscar o nome do funcionário para uma mensagem de erro melhor
+            cursor.execute("SELECT username FROM usuarios WHERE id = %s AND empresa_id = %s", (funcionario_id_selecionado, empresa_id_logada))
+            func_row = cursor.fetchone()
+            func_nome = func_row['username'] if func_row else f"ID {funcionario_id_selecionado}"
+            
+            flash(f"Não é possível criar uma nova RD. O funcionário '{func_nome}' já possui uma RD aberta (RD: {rd_aberta_existente['id']}, Status: {rd_aberta_existente['status']}).", "error")
+            cursor.close()
+            conn.close()
+            return redirect(url_for("index"))
+    
+    except psycopg2.Error as e:
+        conn.rollback()
+        logging.error(f"Erro ao verificar RD existente: {e}")
+        flash(f"Erro ao verificar RDs abertas: {e}")
+        cursor.close()
+        conn.close()
+        return redirect(url_for("index"))
+    # ==================================================
+    # FIM DA NOVA VALIDAÇÃO
+    # ==================================================
+
     try:
         valor = Decimal(request.form["valor"].replace(",", "."))
     except (ValueError, TypeError):
         flash("Valor inválido.")
+        cursor.close() # <-- Fecha a conexão em caso de erro
+        conn.close() # <-- Fecha a conexão em caso de erro
         return redirect(url_for("index"))
 
     custom_id = generate_custom_id()
@@ -1273,8 +1317,9 @@ def add_rd():
     arquivos_str = json.dumps(arquivos) if arquivos else None # <-- Linha Nova
     # <-- FIM DA MUDANÇA -->
 
-    conn = get_pg_connection()
-    cursor = conn.cursor(cursor_factory=DictCursor)
+    # NÃO ABRE MAIS A CONEXÃO AQUI (já está aberta)
+    # conn = get_pg_connection()
+    # cursor = conn.cursor(cursor_factory=DictCursor)
 
     # ==================================================
     # BUSCAR O NOME (username) SOMENTE DO FUNCIONÁRIO
@@ -1353,6 +1398,57 @@ def add_rd():
     active_tab = request.form.get("active_tab", "tab1")
     return redirect(url_for("index", active_tab=active_tab))
 
+@app.route("/verificar_rd_aberta/<int:funcionario_id>", methods=["GET"])
+@login_required
+def verificar_rd_aberta(funcionario_id):
+    """
+    Verifica se um funcionário já possui uma RD que não esteja
+    'Fechado' ou 'Saldos a Devolver'.
+    """
+    if "empresa_id" not in session:
+        return jsonify({"error": "Sessão inválida"}), 401
+    
+    empresa_id_logada = session["empresa_id"]
+    
+    conn = get_pg_connection()
+    cursor = conn.cursor(cursor_factory=DictCursor)
+    
+    try:
+        cursor.execute(
+            """
+            SELECT id, status 
+            FROM rd 
+            WHERE funcionario_id = %s 
+            AND empresa_id = %s 
+            AND status NOT IN ('Fechado', 'Saldos a Devolver')
+            LIMIT 1
+            """,
+            (funcionario_id, empresa_id_logada)
+        )
+        rd_aberta = cursor.fetchone()
+        
+        conn.close()
+        
+        if rd_aberta:
+            # Encontrou uma RD aberta
+            return jsonify({
+                "possui_rd_aberta": True,
+                "rd_id": rd_aberta["id"],
+                "status": rd_aberta["status"]
+            })
+        else:
+            # Nenhuma RD aberta encontrada
+            return jsonify({"possui_rd_aberta": False})
+
+    except psycopg2.Error as e:
+        logging.error(f"Erro ao verificar RD aberta: {e}")
+        conn.close()
+        # Retorna um erro genérico, mas não bloqueia o front-end
+        return jsonify({"error": "Erro ao verificar"}), 500
+    except Exception as e:
+        logging.error(f"Erro geral ao verificar RD: {e}")
+        conn.close()
+        return jsonify({"error": str(e)}), 500
 
 def is_mobile_device():
     """Verifica se o User-Agent do request indica um dispositivo móvel."""
