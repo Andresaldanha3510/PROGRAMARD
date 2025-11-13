@@ -2588,7 +2588,9 @@
               {% endfor %}
               {% endif %}
             </select>
-          </div>
+            
+            <div id="msgErroFuncionario" style="color: #dc2626; font-weight: 700; margin-top: 8px; font-size: 0.875rem;"></div>
+            </div>
         </div>
         <div class="form-row">
           <div class="form-group">
@@ -3394,6 +3396,92 @@
 
     });
   </script>
-</body>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        // 1. Encontre os elementos do formulário de ADICIONAR RD
+        // (IDs corrigidos para bater com seu index.html)
+        const formAddRD = document.getElementById('form-solicitacao'); 
+        
+        if (!formAddRD) {
+            console.warn('Formulário "form-solicitacao" não encontrado. A verificação de RD aberta não funcionará.');
+            return;
+        }
+
+        const selectFuncionario = formAddRD.querySelector('#funcionario_id'); 
+        const btnSalvarRD = formAddRD.querySelector('button[type="submit"]'); // Corrigido para pegar o botão de submit
+        const msgErroEl = formAddRD.querySelector('#msgErroFuncionario');    // O <div> que acabamos de adicionar
+        
+        if (!selectFuncionario || !btnSalvarRD || !msgErroEl) {
+            console.error('Elementos essenciais (select, botão ou msg) não encontrados no "form-solicitacao". Verifique os IDs.');
+            return;
+        }
+
+        // 2. Adicione o "escutador" de eventos
+        selectFuncionario.addEventListener('change', function() {
+            const funcionarioId = this.value;
+
+            // Limpa o estado de erro se o usuário selecionar "Selecione..."
+            if (!funcionarioId) {
+                msgErroEl.textContent = '';
+                btnSalvarRD.disabled = false;
+                btnSalvarRD.style.opacity = '1'; // Garante que o botão volte ao normal
+                return;
+            }
+
+            // 3. Chame a nova rota no Flask (que você já deve ter adicionado ao app.py)
+            fetch(`/verificar_rd_aberta/${funcionarioId}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erro de rede ao verificar RD.');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // 4. Reaja à resposta
+                    if (data.possui_rd_aberta) {
+                        // BLOQUEIA
+                        msgErroEl.textContent = `Este funcionário já possui uma RD aberta (ID: ${data.rd_id}, Status: ${data.status}). Feche a RD anterior para abrir uma nova.`;
+                        btnSalvarRD.disabled = true; 
+                        btnSalvarRD.style.opacity = '0.5'; // Deixa o botão visualmente desabilitado
+                    } else {
+                        // LIBERA
+                        msgErroEl.textContent = ''; // Limpa a mensagem de erro
+                        btnSalvarRD.disabled = false; 
+                        btnSalvarRD.style.opacity = '1';
+                    }
+                })
+                .catch(error => {
+                    console.error('Falha ao verificar RD aberta:', error);
+                    // Em caso de falha na API, é mais seguro NÃO bloquear o usuário
+                    msgErroEl.textContent = 'Não foi possível verificar RDs abertas. Cuidado.';
+                    btnSalvarRD.disabled = false;
+                    btnSalvarRD.style.opacity = '1';
+                });
+        });
+
+        // 5. Opcional: Limpar o estado de erro quando o modal for fechado
+        // Isso "assiste" o modal e reseta o formulário se ele for fechado
+        const modal = document.getElementById('solicitacaoModal');
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                // Se o atributo 'class' foi modificado E o modal não está mais com a classe 'show'
+                if (mutation.attributeName === 'class' && !modal.classList.contains('show')) {
+                    // O modal foi fechado
+                    msgErroEl.textContent = '';
+                    btnSalvarRD.disabled = false;
+                    btnSalvarRD.style.opacity = '1';
+                    // Não reseta o form aqui, pois o seu código de abrir o modal já faz isso (linha 1150)
+                }
+            });
+        });
+
+        if (modal) {
+            observer.observe(modal, { attributes: true });
+        }
+    });
+  </script>
+  </body>
 
 </html>
