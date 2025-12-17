@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Saldo dos Cartões</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"/>
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #2563eb, #1d4ed8);
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --bg-body: #f1f5f9;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-body);
+            color: var(--text-main);
+            margin: 0; padding: 0;
+        }
+        .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+        
+        /* Header */
+        .header-saldo {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 2rem;
+        }
+        .btn-voltar {
+            text-decoration: none; color: #64748b; font-weight: 500;
+            display: flex; align-items: center; gap: 0.5rem;
+            transition: 0.2s;
+        }
+        .btn-voltar:hover { color: #2563eb; }
+
+        /* Big Number Card */
+        .total-banner {
+            background: linear-gradient(135deg, #0f172a, #334155);
+            color: white;
+            padding: 2rem;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1);
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        .total-banner h2 { margin: 0; font-size: 1rem; opacity: 0.8; font-weight: 400; }
+        .total-banner .valor { font-size: 3rem; font-weight: 700; margin: 0.5rem 0; color: #4ade80; }
+        .total-banner p { margin: 0; font-size: 0.9rem; opacity: 0.6; }
+
+        /* Grid de Cartões (Centros de Custo) */
+        .section-title { font-size: 1.25rem; font-weight: 600; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.5rem; }
+        
+        .cc-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        /* O Visual do "Cartão de Crédito" */
+        .cc-card {
+            background: var(--card-bg);
+            border-radius: 16px;
+            padding: 1.5rem;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 1px solid #e2e8f0;
+            display: flex; flex-direction: column; justify-content: space-between;
+            min-height: 160px;
+        }
+        .cc-card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+        
+        /* Faixa colorida no topo do card */
+        .cc-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 6px;
+            background: var(--primary-gradient);
+        }
+
+        .cc-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
+        .cc-icon { 
+            background: #eff6ff; color: #2563eb; width: 40px; height: 40px; 
+            border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem;
+        }
+        .cc-badge { background: #f1f5f9; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; color: #64748b; }
+
+        .cc-name { font-size: 1.1rem; font-weight: 600; color: #334155; margin-bottom: 0.25rem; }
+        .cc-value { font-size: 1.75rem; font-weight: 700; color: #0f172a; }
+        .cc-footer { margin-top: 1rem; font-size: 0.85rem; color: #64748b; display: flex; justify-content: space-between; }
+
+        /* Tabela detalhada */
+        .detail-table-wrapper {
+            background: white; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); overflow: hidden;
+        }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f8fafc; text-align: left; padding: 1rem; font-size: 0.8rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; }
+        td { padding: 1rem; border-top: 1px solid #e2e8f0; font-size: 0.9rem; }
+        tr:hover td { background: #f8fafc; }
+        .status-dot { height: 8px; width: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+        .st-liberado { background: #3b82f6; } /* Azul */
+        .st-fechamento { background: #f59e0b; } /* Laranja */
+        .st-devolver { background: #ef4444; } /* Vermelho */
+        
+        .text-right { text-align: right; }
+        .font-mono { font-family: monospace; font-size: 1rem; }
+
+        @media (max-width: 768px) {
+            .cc-grid { grid-template-columns: 1fr; }
+            .total-banner .valor { font-size: 2.25rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header-saldo">
+            <a href="/" class="btn-voltar"><i class="fas fa-arrow-left"></i> Voltar ao Dashboard</a>
+            <div style="font-weight: 600; color: #94a3b8;">Gerenciamento de RDs</div>
+        </div>
+
+        <div class="total-banner">
+            <h2>SALDO TOTAL DISTRIBUÍDO (FLUTUANTE)</h2>
+            <div class="valor">R$ {{ format_currency(total_na_rua) }}</div>
+            <p>Dinheiro atualmente em posse dos funcionários (Cartões ou Pendente de Prestação)</p>
+        </div>
+
+        <div class="section-title">
+            <i class="fas fa-wallet" style="color: #2563eb;"></i>
+            Distribuição por Centro de Custo
+        </div>
+        
+        <div class="cc-grid">
+            {% for cc in por_centro_custo %}
+            <div class="cc-card">
+                <div class="cc-header">
+                    <div class="cc-icon"><i class="fas fa-building"></i></div>
+                    <div class="cc-badge">{{ cc['qtd_rds'] }} RDs ATIVAS</div>
+                </div>
+                <div>
+                    <div class="cc-name">{{ cc['centro_custo'] }}</div>
+                    <div class="cc-value">R$ {{ format_currency(cc['total_cc']) }}</div>
+                </div>
+                <div class="cc-footer">
+                    <span>Em circulação</span>
+                    <i class="fas fa-chart-line"></i>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="section-title">
+            <i class="fas fa-list-ul" style="color: #64748b;"></i>
+            Detalhamento por Funcionário
+        </div>
+        <div class="detail-table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Funcionário</th>
+                        <th>RD ID</th>
+                        <th>Centro de Custo</th>
+                        <th>Status Atual</th>
+                        <th class="text-right">Saldo na Mão (R$)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in detalhes_funcionarios %}
+                    <tr>
+                        <td style="font-weight: 500;">{{ item['funcionario'] }}</td>
+                        <td>#{{ item['rd_id'] }}</td>
+                        <td>{{ item['centro_custo'] }}</td>
+                        <td>
+                            {% if item['status'] == 'Liberado' %}
+                                <span class="status-dot st-liberado"></span>Liberado
+                            {% elif item['status'] == 'Saldos a Devolver' %}
+                                <span class="status-dot st-devolver"></span>A Devolver
+                            {% else %}
+                                <span class="status-dot st-fechamento"></span>Em Análise
+                            {% endif %}
+                        </td>
+                        <td class="text-right font-mono" style="font-weight: 600; color: #1e293b;">
+                            {{ format_currency(item['saldo_atual']) }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
