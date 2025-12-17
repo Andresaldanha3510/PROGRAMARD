@@ -474,6 +474,76 @@ def login_required(f):
 
     return decorated_function
 
+@app.route("/saldo_cartoes")
+@login_required
+def saldo_cartoes():
+    if "empresa_id" not in session:
+        return redirect(url_for("logout"))
+    empresa_id_logada = session["empresa_id"]
+
+    conn = get_pg_connection()
+    cursor = conn.cursor(cursor_factory=DictCursor)
+
+    # 1. Busca Saldo Total "Na Rua" (Dinheiro distribuído mas não fechado)
+    # Consideramos: Liberado, Fechamento Solicitado, Fechamento Recusado e Saldos a Devolver
+    cursor.execute("""
+        SELECT 
+            SUM(CASE 
+                WHEN status = 'Saldos a Devolver' THEN saldo_devolver 
+                ELSE (valor + COALESCE(valor_adicional, 0)) 
+            END) as total_na_rua
+        FROM rd 
+        WHERE status IN ('Liberado', 'Fechamento Solicitado', 'Fechamento Recusado', 'Saldos a Devolver')
+        AND empresa_id = %s
+    """, (empresa_id_logada,))
+    row_total = cursor.fetchone()
+    total_na_rua = row_total['total_na_rua'] or 0
+
+    # 2. Agrupamento por Centro de Custo (Para os Cards)
+    cursor.execute("""
+        SELECT 
+            centro_custo,
+            COUNT(id) as qtd_rds,
+            SUM(CASE 
+                WHEN status = 'Saldos a Devolver' THEN saldo_devolver 
+                ELSE (valor + COALESCE(valor_adicional, 0)) 
+            END) as total_cc
+        FROM rd 
+        WHERE status IN ('Liberado', 'Fechamento Solicitado', 'Fechamento Recusado', 'Saldos a Devolver')
+        AND empresa_id = %s
+        GROUP BY centro_custo
+        ORDER BY total_cc DESC
+    """, (empresa_id_logada,))
+    por_centro_custo = cursor.fetchall()
+
+    # 3. Detalhamento por Funcionário (Quem está com o dinheiro?)
+    cursor.execute("""
+        SELECT 
+            funcionario,
+            centro_custo,
+            id as rd_id,
+            status,
+            CASE 
+                WHEN status = 'Saldos a Devolver' THEN saldo_devolver 
+                ELSE (valor + COALESCE(valor_adicional, 0)) 
+            END as saldo_atual
+        FROM rd 
+        WHERE status IN ('Liberado', 'Fechamento Solicitado', 'Fechamento Recusado', 'Saldos a Devolver')
+        AND empresa_id = %s
+        ORDER BY saldo_atual DESC
+    """, (empresa_id_logada,))
+    detalhes_funcionarios = cursor.fetchall()
+
+    conn.close()
+
+    return render_template(
+        "saldo_cartoes.html",
+        total_na_rua=total_na_rua,
+        por_centro_custo=por_centro_custo,
+        detalhes_funcionarios=detalhes_funcionarios,
+        format_currency=format_currency
+    )
+
 
 def generate_custom_id():
     # Esta função agora gera IDs sequenciais globais, independente da empresa.
@@ -679,7 +749,7 @@ app.jinja_env.globals.update(
 @app.route("/", methods=["GET", "POST"])
 def index():
     if request.method == "POST":
-        # Lógica de LOGIN (mantida)
+        # ... (Lógica de login permanece IGUAL) ...
         username = request.form.get("username", "").strip()
         password = request.form.get("password", "").strip()
         conn = get_pg_connection()
@@ -694,51 +764,24 @@ def index():
             session["username"] = user_data["username"]
             session["empresa_id"] = user_data["empresa_id"]
             flash(f"Login como {user_data['role']} bem-sucedido.")
-
-            # ==========================================================
-            # === 1. INÍCIO DA CORREÇÃO (Após o Login) ===
-            # ==========================================================
-            # Redirecionamento inteligente após o login
             if user_data["role"] == "funcionario" and is_mobile_device():
                 return redirect(url_for("mobile_dashboard"))
             else:
-                # Se for outro user OU funcionário no computador, vai para o index
                 return redirect(url_for("index"))
-            # ==========================================================
-            # === FIM DA CORREÇÃO ===
-            # ==========================================================
-
         else:
             flash("Credenciais inválidas.")
-            return render_template(
-                "index.html",
-                error="Credenciais inválidas",
-                format_currency=format_currency,
-            )
+            return render_template("index.html", error="Credenciais inválidas", format_currency=format_currency)
 
-    # Se não estiver logado, mostra a tela de login
     if "user_role" not in session:
-        return render_template(
-            "index.html", error=None, format_currency=format_currency
-        )
+        return render_template("index.html", error=None, format_currency=format_currency)
 
-    # ==========================================================
-    # === 2. INÍCIO DA CORREÇÃO (Para quem já está logado) ===
-    # ==========================================================
-    # Se for funcionário E estiver no telemóvel, redireciona
     if session.get("user_role") == "funcionario" and is_mobile_device():
         return redirect(url_for("mobile_dashboard"))
-    # ==========================================================
-    # === FIM DA CORREÇÃO ===
-    # ==========================================================
 
-    # =================================================================
-    # Lógica GET Unificada (Isto agora só corre se NÃO for funcionário no telemóvel)
-    # =================================================================
     try:
         empresa_id_logada = session["empresa_id"]
         user_id_logado = session["user_id"]
-        current_role = user_role()  # Pega o papel atual
+        current_role = user_role()
     except KeyError:
         flash("Erro de sessão. Faça login novamente.")
         return redirect(url_for("logout"))
@@ -746,103 +789,73 @@ def index():
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
 
-    # --- Busca listas para o modal de Adicionar RD ---
+    # --- Listas para Modais ---
     gestores_disponiveis = []
     usuarios_disponiveis = []
     if can_add():
-        cursor.execute(
-            "SELECT id, username FROM usuarios WHERE role = 'gestor' AND empresa_id = %s",
-            (empresa_id_logada,),
-        )
+        cursor.execute("SELECT id, username FROM usuarios WHERE role = 'gestor' AND empresa_id = %s", (empresa_id_logada,))
         gestores_disponiveis = cursor.fetchall()
-        cursor.execute(
-            "SELECT id, username FROM usuarios WHERE empresa_id = %s ORDER BY username",
-            (empresa_id_logada,),
-        )
+        cursor.execute("SELECT id, username FROM usuarios WHERE empresa_id = %s ORDER BY username", (empresa_id_logada,))
         usuarios_disponiveis = cursor.fetchall()
 
-    # --- Lógica de Filtro Unificada ---
+    # --- Filtros e Ordenação ---
     base_select = "SELECT * FROM rd WHERE empresa_id = %s"
     params = [empresa_id_logada]
     additional_filter = ""
+    
+    # ORDENAÇÃO INTELIGENTE: Data mais recente -> ID mais alto
+    # O split_part garante que ordenamos pelo número antes do ponto (ex: 100 vem depois de 50)
+    order_clause = " ORDER BY data DESC, CAST(split_part(id, '.', 1) AS INTEGER) DESC"
 
     if current_role == "funcionario":
         additional_filter = " AND funcionario_id = %s"
         params.append(user_id_logado)
-
     elif current_role == "gestor":
         additional_filter = " AND gestor_aprovador_id = %s"
         params.append(user_id_logado)
 
-    # --- Busca as RDs ---
-    (
-        pendentes,
-        aprovados,
-        liberados,
-        fechamento_solicitado,
-        fechamento_recusado,
-        saldos_a_devolver,
-        fechados,
-    ) = ([], [], [], [], [], [], [])
+    (pendentes, aprovados, liberados, fechamento_solicitado, fechamento_recusado, saldos_a_devolver, fechados) = ([], [], [], [], [], [], [])
     divergentes_count = 0
 
     if current_role == "supervisor":
-        cursor.execute(f"{base_select} AND status='Liberado'", (empresa_id_logada,))
+        # Supervisor vê todos liberados ordenados
+        cursor.execute(f"{base_select} AND status='Liberado' {order_clause}", (empresa_id_logada,))
         liberados = cursor.fetchall()
-        cursor.execute(
-            "SELECT COUNT(*) FROM rd WHERE anexo_divergente=TRUE AND empresa_id = %s",
-            (empresa_id_logada,),
-        )
+        cursor.execute("SELECT COUNT(*) FROM rd WHERE anexo_divergente=TRUE AND empresa_id = %s", (empresa_id_logada,))
         divergentes_count = cursor.fetchone()[0]
     else:
-        cursor.execute(
-            f"{base_select} AND status='Pendente' {additional_filter}", tuple(params)
-        )
+        # Consultas com Ordenação Aplicada
+        cursor.execute(f"{base_select} AND status='Pendente' {additional_filter} {order_clause}", tuple(params))
         pendentes = cursor.fetchall()
-        cursor.execute(
-            f"{base_select} AND status='Aprovado' {additional_filter}", tuple(params)
-        )
+        
+        cursor.execute(f"{base_select} AND status='Aprovado' {additional_filter} {order_clause}", tuple(params))
         aprovados = cursor.fetchall()
-        cursor.execute(
-            f"{base_select} AND status='Liberado' {additional_filter}", tuple(params)
-        )
+        
+        cursor.execute(f"{base_select} AND status='Liberado' {additional_filter} {order_clause}", tuple(params))
         liberados = cursor.fetchall()
-        cursor.execute(
-            f"{base_select} AND status='Fechamento Solicitado' {additional_filter}",
-            tuple(params),
-        )
+        
+        cursor.execute(f"{base_select} AND status='Fechamento Solicitado' {additional_filter} {order_clause}", tuple(params))
         fechamento_solicitado = cursor.fetchall()
-        cursor.execute(
-            f"{base_select} AND status='Fechamento Recusado' {additional_filter}",
-            tuple(params),
-        )
+        
+        cursor.execute(f"{base_select} AND status='Fechamento Recusado' {additional_filter} {order_clause}", tuple(params))
         fechamento_recusado = cursor.fetchall()
-        cursor.execute(
-            f"{base_select} AND status='Saldos a Devolver' {additional_filter}",
-            tuple(params),
-        )
+        
+        cursor.execute(f"{base_select} AND status='Saldos a Devolver' {additional_filter} {order_clause}", tuple(params))
         saldos_a_devolver = cursor.fetchall()
-        cursor.execute(
-            f"{base_select} AND status='Fechado' {additional_filter}", tuple(params)
-        )
+        
+        cursor.execute(f"{base_select} AND status='Fechado' {additional_filter} {order_clause}", tuple(params))
         fechados = cursor.fetchall()
 
+        # Contagem de divergentes
         if current_role != "financeiro":
-            cursor.execute(
-                f"SELECT COUNT(*) FROM rd WHERE anexo_divergente=TRUE AND empresa_id = %s {additional_filter}",
-                tuple(params),
-            )
+            cursor.execute(f"SELECT COUNT(*) FROM rd WHERE anexo_divergente=TRUE AND empresa_id = %s {additional_filter}", tuple(params))
             count_row = cursor.fetchone()
             divergentes_count = count_row[0] if count_row else 0
         else:
-            cursor.execute(
-                "SELECT COUNT(*) FROM rd WHERE anexo_divergente=TRUE AND empresa_id = %s",
-                (empresa_id_logada,),
-            )
+            cursor.execute("SELECT COUNT(*) FROM rd WHERE anexo_divergente=TRUE AND empresa_id = %s", (empresa_id_logada,))
             count_row = cursor.fetchone()
             divergentes_count = count_row[0] if count_row else 0
 
-    # --- Finalização ---
     saldo_global = get_saldo_global(empresa_id_logada)
     adicional_id = request.args.get("adicional")
     fechamento_id = request.args.get("fechamento")
@@ -875,7 +888,6 @@ def index():
         gestores_disponiveis=gestores_disponiveis,
         usuarios_disponiveis=usuarios_disponiveis,
     )
-
 
 @app.route("/mobile/rd/<rd_id>")
 @login_required
@@ -1233,17 +1245,18 @@ def add_rd():
     # ==================================================
     # CAMPOS ATUALIZADOS (HÍBRIDO: TEXTO + ID)
     # ==================================================
-    solicitante = request.form["solicitante"].strip()  # <-- MUDANÇA: Lendo o TEXTO
-    funcionario_id_selecionado = request.form.get(
-        "funcionario_id"
-    )  # <-- Pegando o ID do funcionário
+    solicitante = request.form["solicitante"].strip()
+    funcionario_id_selecionado = request.form.get("funcionario_id")
     gestor_id = request.form.get("gestor_aprovador_id")
     # ==================================================
 
     data_str = request.form["data"].strip()
     centro_custo = request.form["centro_custo"].strip()
     observacao = request.form.get("observacao", "").strip()
+    
+    # Captura o tipo da RD para usar na validação
     rd_tipo = request.form.get("tipo", "credito alelo").strip()
+    
     unidade_negocio = request.form.get("unidade_negocio", "").strip()
 
     # Validação dos campos obrigatórios
@@ -1259,28 +1272,31 @@ def add_rd():
     cursor = conn.cursor(cursor_factory=DictCursor)
 
     try:
-        cursor.execute(
-            """
-            SELECT id, status FROM rd 
-            WHERE funcionario_id = %s 
-            AND empresa_id = %s 
-            AND status NOT IN ('Fechado', 'Saldos a Devolver')
-            LIMIT 1
-            """,
-            (funcionario_id_selecionado, empresa_id_logada)
-        )
-        rd_aberta_existente = cursor.fetchone()
+        # --- LÓGICA ALTERADA: SÓ VALIDA SE NÃO FOR REEMBOLSO ---
+        if rd_tipo != 'reembolso':
+            cursor.execute(
+                """
+                SELECT id, status FROM rd 
+                WHERE funcionario_id = %s 
+                AND empresa_id = %s 
+                AND status NOT IN ('Fechado', 'Saldos a Devolver')
+                LIMIT 1
+                """,
+                (funcionario_id_selecionado, empresa_id_logada)
+            )
+            rd_aberta_existente = cursor.fetchone()
 
-        if rd_aberta_existente:
-            # Tenta buscar o nome do funcionário para uma mensagem de erro melhor
-            cursor.execute("SELECT username FROM usuarios WHERE id = %s AND empresa_id = %s", (funcionario_id_selecionado, empresa_id_logada))
-            func_row = cursor.fetchone()
-            func_nome = func_row['username'] if func_row else f"ID {funcionario_id_selecionado}"
-            
-            flash(f"Não é possível criar uma nova RD. O funcionário '{func_nome}' já possui uma RD aberta (RD: {rd_aberta_existente['id']}, Status: {rd_aberta_existente['status']}).", "error")
-            cursor.close()
-            conn.close()
-            return redirect(url_for("index"))
+            if rd_aberta_existente:
+                # Tenta buscar o nome do funcionário para uma mensagem de erro melhor
+                cursor.execute("SELECT username FROM usuarios WHERE id = %s AND empresa_id = %s", (funcionario_id_selecionado, empresa_id_logada))
+                func_row = cursor.fetchone()
+                func_nome = func_row['username'] if func_row else f"ID {funcionario_id_selecionado}"
+                
+                flash(f"Não é possível criar uma nova RD. O funcionário '{func_nome}' já possui uma RD aberta (RD: {rd_aberta_existente['id']}, Status: {rd_aberta_existente['status']}).", "error")
+                cursor.close()
+                conn.close()
+                return redirect(url_for("index"))
+        # -------------------------------------------------------
     
     except psycopg2.Error as e:
         conn.rollback()
@@ -1297,29 +1313,28 @@ def add_rd():
         valor = Decimal(request.form["valor"].replace(",", "."))
     except (ValueError, TypeError):
         flash("Valor inválido.")
-        cursor.close() # <-- Fecha a conexão em caso de erro
-        conn.close() # <-- Fecha a conexão em caso de erro
+        # Se houver erro aqui, fecha a conexão que foi aberta acima
+        cursor.close() 
+        conn.close() 
         return redirect(url_for("index"))
 
     custom_id = generate_custom_id()
     data_atual = datetime.now().strftime("%Y-%m-%d")
     arquivos = []
+    
     if "arquivo" in request.files:
         for f in request.files.getlist("arquivo"):
             if f.filename:
-                fname = f"emp{empresa_id_logada}_{custom_id}_{f.filename}"
-                upload_file_to_r2(f, fname)
-                arquivos.append(fname)
+                fname = f"emp{empresa_id_logada}_{custom_id}_{secure_filename(f.filename)}"
+                try:
+                    upload_file_to_r2(f, fname)
+                    arquivos.append(fname)
+                except Exception as e:
+                    logging.error(f"Erro no upload R2: {e}")
+                    # Não impede o salvamento da RD, mas loga o erro
 
-    # <-- INÍCIO DA MUDANÇA (Salvar como JSON) -->
-    #
-    # arquivos_str = ",".join(arquivos) if arquivos else None # <-- Linha Antiga
-    arquivos_str = json.dumps(arquivos) if arquivos else None # <-- Linha Nova
-    # <-- FIM DA MUDANÇA -->
-
-    # NÃO ABRE MAIS A CONEXÃO AQUI (já está aberta)
-    # conn = get_pg_connection()
-    # cursor = conn.cursor(cursor_factory=DictCursor)
+    # Salva como JSON
+    arquivos_str = json.dumps(arquivos) if arquivos else None
 
     # ==================================================
     # BUSCAR O NOME (username) SOMENTE DO FUNCIONÁRIO
@@ -1339,12 +1354,12 @@ def add_rd():
         conn.rollback()
         logging.error(f"Erro ao buscar nome do funcionário: {e}")
         flash(f"Erro ao buscar dados do funcionário selecionado: {e}")
+        cursor.close() # Garante fechamento
         conn.close()
         return redirect(url_for("index"))
     # ==================================================
 
     try:
-        # Nota: A coluna solicitante_id não está sendo usada aqui, o que é OK.
         cursor.execute(
             """
         INSERT INTO rd (
@@ -1363,7 +1378,7 @@ def add_rd():
                 solicitante,
                 funcionario_nome,
                 data_str,
-                centro_custo,  # <-- Salva NOME do funcionário
+                centro_custo,
                 valor,
                 "Pendente",
                 arquivos_str,
@@ -1375,12 +1390,14 @@ def add_rd():
                 gestor_id,
                 funcionario_id_selecionado,
             ),
-        )  # <-- Salva ID do funcionário
+        )
 
         detalhe_valor = f"Valor solicitado: R$ {format_currency(valor)}"
         registrar_historico(conn, custom_id, "RD Criada", detalhe_valor)
 
         conn.commit()
+        flash("RD adicionada com sucesso.")
+
     except psycopg2.Error as e:
         conn.rollback()
         logging.error(f"Erro ao inserir RD: {e}")
@@ -1392,8 +1409,6 @@ def add_rd():
     finally:
         cursor.close()
         conn.close()
-
-    flash("RD adicionada com sucesso.")
 
     active_tab = request.form.get("active_tab", "tab1")
     return redirect(url_for("index", active_tab=active_tab))
@@ -1788,6 +1803,13 @@ def edit_submit(id):
 
     active_tab = request.form.get("active_tab", "tab1")
     return redirect(url_for("index", active_tab=active_tab))
+
+@app.route('/sw.js')
+def service_worker():
+    response = send_file('sw.js', mimetype='application/javascript')
+    # Adiciona cabeçalhos para evitar cache excessivo do navegador no SW
+    response.headers['Cache-Control'] = 'no-cache'
+    return response
 
 
 
@@ -3499,9 +3521,9 @@ def anexos_divergentes():
 
     conn = get_pg_connection()
     cursor = conn.cursor(cursor_factory=DictCursor)
-    # Filtra por EMPRESA
+    # Filtra por EMPRESA e ORDENA (Alterado aqui)
     cursor.execute(
-        "SELECT * FROM rd WHERE anexo_divergente = TRUE AND empresa_id = %s ORDER BY id",
+        "SELECT * FROM rd WHERE anexo_divergente = TRUE AND empresa_id = %s ORDER BY data DESC, CAST(split_part(id, '.', 1) AS INTEGER) DESC",
         (empresa_id_logada,),
     )
     divergentes = cursor.fetchall()
